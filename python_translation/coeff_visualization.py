@@ -1,0 +1,48 @@
+import matplotlib.pyplot as plt
+
+def coeff_visualization(Ahat_orig, Ahat_mod, distance, cluster):
+    Y_og = abs(Ahat_orig[:, 0])
+    U_og = abs(Ahat_orig[:, 1])
+    V_og = abs(Ahat_orig[:, 2])
+
+    Y_mod = abs(Ahat_mod[:, 0])
+    U_mod = abs(Ahat_mod[:, 1])
+    V_mod = abs(Ahat_mod[:, 2])
+
+    fig, ax = plt.subplots()
+    ax.grid(True)
+    ax.scatter(range(1, len(Y_og) + 1), Y_og, marker='s')
+    ax.scatter(range(1, len(Y_mod) + 1), Y_mod, marker='d')
+    ax.legend(['Original', 'Modified'])
+    ax.set_xlabel('Index')
+    ax.set_ylabel('Magnitude')
+    ax.set_title(f'Transform coefficients Y - Distance = {distance} Cluster {cluster}')
+    ax.set_xlim(0.5, len(Y_og) + 0.5)
+    ax.set_ylim(min(Y_og) - 1, max(Y_og) + 1)
+    ax.axis('tight')
+
+    fig, ax = plt.subplots()
+    ax.grid(True)
+    ax.scatter(range(1, len(U_og) + 1), U_og, marker='s')
+    ax.scatter(range(1, len(U_mod) + 1), U_mod, marker='d')
+    ax.legend(['Original', 'Modified'])
+    ax.set_xlabel('Index')
+    ax.set_ylabel('Magnitude')
+    ax.set_title(f'Transform coefficients U - Distance = {distance} Cluster {cluster}')
+    ax.set_xlim(0.5, len(U_og) + 0.5)
+    ax.set_ylim(min(U_og) - 1, max(U_og) + 1)
+    ax.axis('tight')
+
+    fig, ax = plt.subplots()
+    ax.grid(True)
+    ax.scatter(range(1, len(V_og) + 1), V_og, marker='s')
+    ax.scatter(range(1, len(V_mod) + 1), V_mod, marker='d')
+    ax.legend(['Original', 'Modified'])
+    ax.set_xlabel('Index')
+    ax.set_ylabel('Magnitude')
+    ax.set_title(f'Transform coefficients V - Distance = {distance} Cluster {cluster}')
+    ax.set_xlim(0.5, len(V_og) + 0.5)
+    ax.set_ylim(min(V_og) - 1, max(V_og) + 1)
+    ax.axis('tight')
+
+    plt.show()
