@@ -1,5 +1,9 @@
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')  # or 'Qt5Agg'
+
 import matplotlib.pyplot as plt
+from utils.color import YUVtoRGB
 
 def visualization(Vblock, Ablock, im_num, method, *varargin):
     """
@@ -22,7 +26,7 @@ def visualization(Vblock, Ablock, im_num, method, *varargin):
     X_mean, Y_mean, Z_mean = np.mean(Vblock, axis=0)
     
     # Convert YUV attributes to RGB
-    RGB_block = YUVtoRGB(Ablock)
+    RGB_block = YUVtoRGB(Ablock)/256
     RGB_block_double = RGB_block.astype(float)
     
     # Create a figure
@@ -61,7 +65,7 @@ def visualization(Vblock, Ablock, im_num, method, *varargin):
     
     # Set view angle
     ax.view_init(elev=60, azim=30)
-    
+    fig.show()
     # Get aspect ratio
     aspect_ratio = ax.get_box_aspect()
     

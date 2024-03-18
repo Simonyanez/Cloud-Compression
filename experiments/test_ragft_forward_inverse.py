@@ -1,5 +1,5 @@
 import numpy as np
-from ply_utils import ply_read8i, ply_write
+from ply import ply_read8i, ply_write
 from color_conversion import RGBtoYUV, YUVtoRGB
 from ragft import Region_Adaptive_GFT, iRegion_Adaptive_GFT
 
