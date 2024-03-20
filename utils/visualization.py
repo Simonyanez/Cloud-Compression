@@ -8,7 +8,7 @@ from utils.color import YUVtoRGB
 from graph.properties import direction
 from graph.create import compute_graph_sl
 
-def visualization(Vblock, Ablock, im_num, method, *varargin):
+def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
     """
     Visualization of 3D point cloud with custom colors.
     
@@ -64,15 +64,36 @@ def visualization(Vblock, Ablock, im_num, method, *varargin):
     ax.set_xlabel('X-axis')
     ax.set_ylabel('Y-axis')
     ax.set_zlabel('Z-axis')
-    ax.set_title(f'3D Point Cloud Plot with Custom Colors - Image Number: {im_num} Method: {method}')
+    ax.set_title(f'3D Point Cloud Plot with Custom Colors - STD: {round(Astd,2)} Mean: {round(Amean,2)} Method {method}')
     
     # Set view angle
     ax.view_init(elev=60, azim=30)
-    fig.show()
+
+    #plt.show()
+
     # Get aspect ratio
     aspect_ratio = ax.get_box_aspect()
     
-    return aspect_ratio
+    return aspect_ratio,fig
+
+def hist_plot(data, stat):
+    """
+    Plot a histogram of the given data with a specified title.
+    
+    Args:
+        data: Input data to plot the histogram for.
+        stat (str): Additional information to include in the title.
+        
+    Returns:
+        fig: The figure object containing the histogram.
+    """
+    fig, ax = plt.subplots()
+    ax.hist(data)
+    ax.set_title(f"Histogram of Blocks {stat}")
+    ax.set_xlabel("Values")
+    ax.set_ylabel("Frequency")
+    
+    return fig
 
 def block_visualization(A, params):
     V = params['V']
@@ -130,27 +151,36 @@ def block_visualization(A, params):
         Gfreq_curr = np.zeros(N)
 
         # Dictionary for useful information
-        Sorted_Blocks = []
+        SubBlocks = []
 
         for currblock in to_change:         # Iteración por bloque
             first_point = start_indices[currblock]      # First point of current block
             last_point = end_indices[currblock]         # Last point of current block
             Vblock = Vcurr[first_point:last_point + 1, :]   # Block vertex
-            Qin_block = Qin[first_point:last_point + 1]     # Remnant
+            Qin_block = Qin[first_point:last_point + 1]     # Remnant of other implementation
             Ablock = Acurr[first_point:last_point + 1, :]   # Block attributes (tipicaly color)
 
             # Clustering
             # Add clustering logic here
-            _,_, distance_vectors, weights = direction(Vblock,Ablock)
-            _,_,
+            #_,_, distance_vectors, weights = direction(Vblock,Ablock)
+
+            # Metrics
+            AttributeMean = np.mean(Ablock)
+            AttributeSTD = np.std(Ablock)
+            #GraphDiffsMean = np.mean(GraphDiffsMatrix)
+            #GraphDiffsSTD = np.std(GraphDiffsMatrix)
+
+            # For now this is the block data
             block_data = {
                         'Vblock': Vblock,
                         'Ablock': Ablock,
-
+                        'Amean':AttributeMean,
+                        'Astd':AttributeSTD
                             }
-            Sorted_Blocks.append(block_data)
-
-    return Ahat, freqs, weights, Vblock, Ablock, Sorted_Blocks
+            SubBlocks.append(block_data)
+    # OLD -> return Ahat, freqs, weights, Vblock, Ablock, Sorted_Blocks
+    # Returning last block
+    return SubBlocks
 
 def coeff_visualization(Ahat_orig, Ahat_mod, distance, cluster):
     Y_og = abs(Ahat_orig[:, 0])
