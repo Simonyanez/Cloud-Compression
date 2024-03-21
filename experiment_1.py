@@ -1,8 +1,14 @@
 
+# Full Import
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 
+# From Library
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import MinMaxScaler
+
+# Own Imports
 from utils import ply
 from utils.visualization import *
 from utils.color import *
@@ -36,10 +42,31 @@ if __name__ == "__main__":
     print(f"This block size {np.shape(Vbiggest)}")
     print(f"This block attributes size {np.shape(Cbiggest)}")
     
-    Blocks_Mean = [x['Amean'] for x in SubBlocks]
-    Blocks_STD = [x['Astd'] for x in SubBlocks]
-    
-    means_fig = hist_plot(Blocks_Mean,'Mean')
-    stds_fig = hist_plot(Blocks_STD,'Standard Deviation')
+    Blocks_Color_Mean = [x['Amean'] for x in SubBlocks]
+    Blocks_Color_STD = [x['Astd'] for x in SubBlocks]
+    Blocks_Diff_Mean = [x['Dmean'] for x in SubBlocks]
+    Blocks_Diff_STD = [x['Dstd'] for x in SubBlocks]
+
+    means_fig = hist_plot(Blocks_Color_Mean,'Mean')
+    stds_fig = hist_plot(Blocks_Color_STD,'Standard Deviation')
     aspect_ratio,block_fig = visualization(Vbiggest,Cbiggest,Cmean,Cstd,None)
+    
+    Features = np.column_stack((Blocks_Color_Mean, 
+                                Blocks_Color_STD, 
+                                Blocks_Diff_Mean, 
+                                Blocks_Diff_STD))
+    
+    # Initialize the MinMaxScaler
+    scaler = MinMaxScaler()
+    # Normalize the features
+    Features_normalized = scaler.fit_transform(Features)
+
+    kmeans = KMeans(n_clusters=3)
+    kmeans.fit(Features_normalized)
+
+    centroids = kmeans.cluster_centers_
+    labels = kmeans.labels_
+    
+    cluster_fig1, cluster_fig2 = cluster_visualization3d(Features_normalized, centroids, labels)
     plt.show()
+

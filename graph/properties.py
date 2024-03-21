@@ -1,8 +1,10 @@
 import numpy as np
 
 def gradient(V, C):
+    #TODO: Make this function work from a constructed graph, don't do it again
     """
-    Computes the gradient between points in a point cloud based on their Euclidean distance and color difference.
+    Computes the gradient between points in a point cloud build graph
+    based on their Euclidean distance and color difference.
 
     Parameters:
     - V (ndarray): Array of 3D points.
@@ -32,7 +34,7 @@ def gradient(V, C):
     YUV_block_double = C.astype(float)  # Block in YUV format
     YUV_block_normed = YUV_block_double / 256  # Normalization
 
-    G_vec = np.zeros_like(C[:, 0])
+    G_vec = np.zeros(D.shape)
     for id in range(edge.shape[0]):
         i, j = edge[id]
         D_aux[i, j] *= (1 + abs(YUV_block_normed[i, 0] - YUV_block_normed[j, 0]))  # Use only luminance information. Weight the difference
@@ -44,7 +46,7 @@ def gradient(V, C):
     iD_aux[D == 0] = 0
     W = iD_aux.T + iD_aux
 
-    return G_vec, W, edge
+    return G_vec
 
 import matplotlib.pyplot as plt
 

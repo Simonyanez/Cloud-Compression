@@ -5,7 +5,7 @@ matplotlib.use('TkAgg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
 from graph.properties import block_indices
 from utils.color import YUVtoRGB
-from graph.properties import direction
+from graph.properties import direction,gradient
 from graph.create import compute_graph_sl
 
 def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
@@ -95,6 +95,46 @@ def hist_plot(data, stat):
     
     return fig
 
+def cluster_visualization(X, centroids, labels):
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(X[:, 0], X[:, 1], c=labels, cmap='viridis')
+    ax.scatter(centroids[:, 0], centroids[:, 1], marker='x', s=200, color='red')
+    ax.set_title('K-Means Clustering')
+    ax.set_xlabel('Color Mean')
+    ax.set_ylabel('Color Standard Deviation')
+    return fig
+
+def cluster_visualization3d(X, centroids, labels):
+    fig_1 = plt.figure()
+    ax_1 = fig_1.add_subplot(111, projection='3d')
+    
+    # Scatter plot for data points
+    scatter = ax_1.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, cmap='viridis')
+    
+    # Centroids plot
+    ax_1.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2], marker='x', s=200, color='red')
+    
+    ax_1.set_title('K-Means Clustering')
+    ax_1.set_xlabel('Color Mean')
+    ax_1.set_ylabel('Color Standard Deviation')
+    ax_1.set_zlabel('Graph Color Diff Mean')
+    
+    fig_2 = plt.figure()
+    ax_2 = fig_2.add_subplot(111, projection='3d')
+    
+    # Scatter plot for data points
+    scatter = ax_2.scatter(X[:, 0], X[:, 1], X[:, 3], c=labels, cmap='viridis')
+    
+    # Centroids plot
+    ax_2.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2], marker='x', s=200, color='red')
+    
+    ax_2.set_title('K-Means Clustering')
+    ax_2.set_xlabel('Color Mean')
+    ax_2.set_ylabel('Color Standard Deviation')
+    ax_2.set_zlabel('Graph Color Diff Standard Deviation')
+
+    return fig_1, fig_2
+
 def block_visualization(A, params):
     V = params['V']
     b = params['bsize']
@@ -163,20 +203,25 @@ def block_visualization(A, params):
             # Clustering
             # Add clustering logic here
             #_,_, distance_vectors, weights = direction(Vblock,Ablock)
+            GraphDiffsMatrix = gradient(Vblock, Ablock)
 
             # Metrics
             AttributeMean = np.mean(Ablock)
             AttributeSTD = np.std(Ablock)
-            #GraphDiffsMean = np.mean(GraphDiffsMatrix)
-            #GraphDiffsSTD = np.std(GraphDiffsMatrix)
+            GraphDiffsMean = np.mean(GraphDiffsMatrix)
+            GraphDiffsSTD = np.std(GraphDiffsMatrix)
 
             # For now this is the block data
             block_data = {
                         'Vblock': Vblock,
                         'Ablock': Ablock,
                         'Amean':AttributeMean,
-                        'Astd':AttributeSTD
+                        'Astd':AttributeSTD,
+                        'Dmatrix':GraphDiffsMatrix,
+                        'Dmean':GraphDiffsMean,
+                        'Dstd':GraphDiffsSTD
                             }
+            
             SubBlocks.append(block_data)
     # OLD -> return Ahat, freqs, weights, Vblock, Ablock, Sorted_Blocks
     # Returning last block
