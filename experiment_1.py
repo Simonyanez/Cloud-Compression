@@ -12,6 +12,8 @@ from sklearn.preprocessing import MinMaxScaler
 from utils import ply
 from utils.visualization import *
 from utils.color import *
+from graph.transforms import *
+from graph.create import *
 
 if __name__ == "__main__":
     V,C_rgb,J = ply.ply_read8i("res/longdress_vox10_1051.ply")         # Read
@@ -58,15 +60,51 @@ if __name__ == "__main__":
     
     # Initialize the MinMaxScaler
     scaler = MinMaxScaler()
+
     # Normalize the features
     Features_normalized = scaler.fit_transform(Features)
 
+    # Execute K-means
     kmeans = KMeans(n_clusters=3)
     kmeans.fit(Features_normalized)
 
     centroids = kmeans.cluster_centers_
     labels = kmeans.labels_
-    
-    cluster_fig1, cluster_fig2 = cluster_visualization3d(Features_normalized, centroids, labels)
-    plt.show()
 
+    #Typical GFT
+    T_og = {'GFTs': [], 'Gfreqs' : [], 'Ahats'  : [] }
+    for Block in SizeSortedBlocks:
+        Vblock = Block['Vblock']
+        Cblock = Block['Ablock']
+        W,edge = compute_graph_MSR(Vblock)
+        GFT, Gfreq, Ahat = compute_GFT_noQ(W,Cblock)        # Cblock is just for getting Ahat
+        T_og['GFTs'].append(GFT)
+        T_og['Gfreqs'].append(Gfreq)
+        T_og['Ahats'].append(Ahat)
+
+    #Modified GFT (self-looped)
+    T_sl = {'GFTs': [], 'Gfreqs' : [], 'Ahats'  : []}
+    for Block in SizeSortedBlocks:
+        Vblock = Block['Vblock']
+        Distvecs = Block['DistVecs']
+        Weights = Block['Wblock']
+        W_sl,_,degrees,_,idx_closest = compute_graph_sl(Vblock,Distvecs,Weights)
+        GFT, Gfreq, Ahat = compute_GFT_noQ(W_sl,Cblock, idx_closest)        # Graph Fourier Transform
+        T_sl['GFTs'].append(GFT)
+        T_sl['Gfreqs'].append(Gfreq)
+        T_sl['Ahats'].append(Ahat)
+
+
+    # Visualization - Energy Analysis    
+    cluster_fig1, cluster_fig2 = cluster_visualization3d(Features_normalized, centroids, labels)
+    coeff_fig = coeff_visualization(T_og['Ahats'][-1],T_sl['Ahats'][-1],1,1)  # Biggest
+
+
+    # Save figures
+    cluster_fig1.savefig('experiments/actual/experiment_1/Cluster_1.jpg')
+    cluster_fig2.savefig('experiments/actual/experiment_1/Cluster_2.jpg')
+    means_fig.savefig('experiments/actual/experiment_1/blocks_mean_1.jpg')
+    stds_fig.savefig('experiments/actual/experiment_1/blocks_std_1.jpg')
+    coeff_fig.savefig('experiments/actual/experiment_1/coeff_vis_1.jpg')
+    # Show them
+    plt.show()

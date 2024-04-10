@@ -136,6 +136,7 @@ def cluster_visualization3d(X, centroids, labels):
     return fig_1, fig_2
 
 def block_visualization(A, params):
+    # This function does block octotree partition and clusterization features
     V = params['V']
     b = params['bsize']
     J = params['J']
@@ -202,7 +203,7 @@ def block_visualization(A, params):
 
             # Clustering
             # Add clustering logic here
-            #_,_, distance_vectors, weights = direction(Vblock,Ablock)
+            _,_, DistVecs, Weights = direction(Vblock,Ablock)
             GraphDiffsMatrix = gradient(Vblock, Ablock)
 
             # Metrics
@@ -219,7 +220,9 @@ def block_visualization(A, params):
                         'Astd':AttributeSTD,
                         'Dmatrix':GraphDiffsMatrix,
                         'Dmean':GraphDiffsMean,
-                        'Dstd':GraphDiffsSTD
+                        'Dstd':GraphDiffsSTD,
+                        'DistVecs':DistVecs,
+                        'Wblock':Weights
                             }
             
             SubBlocks.append(block_data)
@@ -272,4 +275,4 @@ def coeff_visualization(Ahat_orig, Ahat_mod, distance, cluster):
     ax.set_ylim(min(V_og) - 1, max(V_og) + 1)
     ax.axis('tight')
 
-    plt.show()
+    return fig

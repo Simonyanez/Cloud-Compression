@@ -22,9 +22,11 @@ def gradient(V, C):
 
     th = np.sqrt(3) + 0.00001  # Maximum distance threshold of points
 
-    iD = 1 / D  # Scalar inverse of matrix elements, weights are the inverse of the distance
-    iD[D > th] = 0  # Set distances greater than the threshold to 0
-    iD[D == 0] = 0  # Set null distances to 0
+    iD = np.zeros_like(D) 
+    non_zero_mask = (D > 0) & (D <= th)
+    iD[non_zero_mask] = 1 / D[non_zero_mask]
+    iD[D > th] = 0
+    iD[D == 0] = 0
 
     idx = np.where(iD != 0)[0]
     I, J = np.unravel_index(idx, D.shape)  # Identify connected nodes
@@ -41,7 +43,9 @@ def gradient(V, C):
         G_vec[i, j] = abs(YUV_block_normed[j, 0] - YUV_block_normed[i, 0])  # between nodes as a parameter for weights,
                                                                             # decreases distance, increases relevance if color change is more abrupt.
 
-    iD_aux = 1 / D_aux  # If the distance is large (< similarity) weighted by if the color change is large (> relevance)
+    iD_aux = np.zeros_like(D_aux) 
+    non_zero_mask = (D_aux > 0) & (D_aux <= th)
+    iD[non_zero_mask] = 1 / D[non_zero_mask] # If the distance is large (< similarity) weighted by if the color change is large (> relevance)
     iD_aux[D > th] = 0
     iD_aux[D == 0] = 0
     W = iD_aux.T + iD_aux
@@ -72,7 +76,9 @@ def direction(V, C, aspect_ratio=None):
 
     th = np.sqrt(3) + 0.00001
 
-    iD = 1 / D
+    iD = np.zeros_like(D) 
+    non_zero_mask = (D > 0) & (D <= th)
+    iD[non_zero_mask] = 1 / D[non_zero_mask]
     iD[D > th] = 0
     iD[D == 0] = 0
 

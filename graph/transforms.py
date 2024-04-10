@@ -47,8 +47,8 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     GFT, D = np.linalg.eig(L)
     idxSorted = np.argsort(np.diag(D))
 
-    GFT = GFT[:, idxSorted]
-    GFT[:, 0] = np.abs(GFT[:, 0])
+    GFT = GFT[idxSorted]
+    GFT = np.abs(GFT)
     GFT = GFT.T
     Gfreq = np.abs(np.diag(D))
     Gfreq[0] = np.abs(Gfreq[0])

@@ -79,7 +79,9 @@ def compute_graph_MSR(V, th=None):
     squared_norms = np.sum(V**2, axis=1)
     D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
 
-    iD = 1 / D
+    iD = np.zeros_like(D) 
+    non_zero_mask = (D > 0) & (D <= th)
+    iD[non_zero_mask] = 1 / D[non_zero_mask]
     iD[np.where(D > th)] = 0
     iD[np.where(D == 0)] = 0
 
@@ -127,9 +129,11 @@ def compute_graph_sl(V, distance_vectors, weights, th=None):
 
     squared_norms = np.sum(V**2, axis=1)
     D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
-    iD = 1 / D
-    iD[D > th] = 0
-    iD[D == 0] = 0
+    iD = np.zeros_like(D) 
+    non_zero_mask = (D > 0) & (D <= th)
+    iD[non_zero_mask] = 1 / D[non_zero_mask]
+    iD[np.where(D > th)] = 0
+    iD[np.where(D == 0)] = 0
 
     degrees = np.sum(iD, axis=1)
     degrees /= np.linalg.norm(degrees)

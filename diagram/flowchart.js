@@ -1,0 +1,1 @@
+// Suppose to make it responsive and define how the response work
