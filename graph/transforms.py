@@ -1,4 +1,5 @@
 import numpy as np
+from graph.create import *
 
 def w2l(W, idx_closest=None):
     """
@@ -25,6 +26,8 @@ def w2l(W, idx_closest=None):
 
     return L
 
+    
+
 def compute_GFT_noQ(Adj, A, idx_closest=None):
     """
     Compute the Graph Fourier Transform (GFT) without using the quality matrix.
@@ -49,13 +52,21 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
 
     GFT = GFT[idxSorted]
     GFT = np.abs(GFT)
-    GFT = GFT.T
+    GFT = np.conj(GFT.T)
     Gfreq = np.abs(np.diag(D))
     Gfreq[0] = np.abs(Gfreq[0])
-
+    print(f"Pre-shape {np.shape(A)}")
     Ahat = np.dot(GFT, A)
-
+    print(f"Post-shape {np.shape(Ahat)}")
+    print(f"Post-shape first channell {np.shape(Ahat[0])}")
     return GFT, Gfreq, Ahat
+
+def compute_iGFT_noQ(Vblock, Ablockhat):
+    W, _ = compute_graph_MSR(Vblock)
+    L = w2l(W)
+    GFT, _ = np.linalg.eig(L)
+    Ablock = np.dot(GFT.T,Ablockhat)      
+    return Vblock, Ablock
 
 def compute_GFT(Adj, Q):
     """
