@@ -5,7 +5,7 @@ if(nargin > 2)
 else
     L = w2l(Adj);
 end
-[GFT,D] = eig(L);
+[GFT,D] = eig(L);       % GFT is right eigenvectors in columns D is diagonal matrix with eigenvalues
 [Gfreq, idxSorted ] = sort( diag(D), 'ascend' );
 GFT = GFT(:, idxSorted);
 GFT(:,1)=abs(GFT(:,1));

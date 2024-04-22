@@ -26,8 +26,6 @@ def w2l(W, idx_closest=None):
 
     return L
 
-    
-
 def compute_GFT_noQ(Adj, A, idx_closest=None):
     """
     Compute the Graph Fourier Transform (GFT) without using the quality matrix.
@@ -47,26 +45,32 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     else:
         L = w2l(Adj)
 
-    GFT, D = np.linalg.eig(L)
-    idxSorted = np.argsort(np.diag(D))
+    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
+    idxSorted = np.argsort(D)      # Order of the eigenvalues
 
-    GFT = GFT[idxSorted]
-    GFT = np.abs(GFT)
-    GFT = np.conj(GFT.T)
-    Gfreq = np.abs(np.diag(D))
+    GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order
+    GFT[:,0] = np.abs(GFT[:,0])
+    GFT = GFT.T
+    Gfreq = np.sort(D)
+
     Gfreq[0] = np.abs(Gfreq[0])
-    print(f"Pre-shape {np.shape(A)}")
+
     Ahat = np.dot(GFT, A)
-    print(f"Post-shape {np.shape(Ahat)}")
-    print(f"Post-shape first channell {np.shape(Ahat[0])}")
     return GFT, Gfreq, Ahat
 
-def compute_iGFT_noQ(Vblock, Ablockhat):
-    W, _ = compute_graph_MSR(Vblock)
+def compute_iGFT_noQ(Vblock, Ahat_val):
+    W, edge = compute_graph_MSR(Vblock)
     L = w2l(W)
-    GFT, _ = np.linalg.eig(L)
-    Ablock = np.dot(GFT.T,Ablockhat)      
-    return Vblock, Ablock
+    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
+    idxSorted = np.argsort(D)      # Order of the eigenvalues
+    GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order
+    GFT[:,0] = np.abs(GFT[:,0])
+    GFT = GFT.T
+
+    GFT_inv = np.linalg.inv(GFT)
+
+    Arec = np.dot(GFT_inv, Ahat_val)
+    return Vblock, Arec
 
 def compute_GFT(Adj, Q):
     """

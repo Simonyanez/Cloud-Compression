@@ -1,5 +1,6 @@
 # Full Import
 import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 
@@ -30,30 +31,22 @@ if __name__ == "__main__":
     step = 64
     SubBlocks = block_visualization(C,params) 
 
-    # Typical GFT
-    T_og = {'GFTs': [], 'Gfreqs' : [], 'Ahats'  : [], 'Vblocks' : [] }
-    for Block in SubBlocks:
+    error_1 = []
+    
+    for i,Block in enumerate(SubBlocks): 
         Vblock = Block['Vblock']
         Cblock = Block['Ablock']
-        W,edge = compute_graph_MSR(Vblock)
-        GFT, Gfreq, Ahat = compute_GFT_noQ(W,Cblock)        # Cblock is just for getting Ahat
-        T_og['GFTs'].append(GFT)
-        T_og['Gfreqs'].append(Gfreq)
-        T_og['Ahats'].append(Ahat)
-        T_og['Vblocks'].append(Vblock)
+        W,_ = compute_graph_MSR(Vblock)
+        _, _, Ahat = compute_GFT_noQ(W,Cblock)        # Cblock is just for getting Ahat
+        if i == 10:
+            fig1 = hist_plot(Ahat,"Value distribution")
+        _, Arec = compute_iGFT_noQ(Vblock, Ahat)
+        mse = np.square(Cblock - Arec).mean(axis=None)
+        error_1.append(mse)
 
-    # Inverse GFT
-
-    RecBlocks = {'Vblock':[], 'Ablock':[]}
-    _,_,Ahat_vals,Vblocks = T_og.values()
-    for id,Ahat_val in enumerate(Ahat_vals):
-        Vblock = Vblocks[id]
-        Vblock, Arec = compute_iGFT_noQ(Vblock, Ahat_val)
-        RecBlocks['Vblock'].append(Vblock)
-        RecBlocks['Ablock'].append(Arec)
-
+    fig2 = hist_plot(error_1,"MSE between Original and Recovered")
+    plt.show()
     
 
-    # Concatenate
     # print(f"Shape for {np.shape(RecBlocks['Vblock'][0])}")
     # print(f"Shape for {np.shape(RecBlocks['Ablock'][0])}")
