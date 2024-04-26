@@ -69,6 +69,7 @@ def direction(V, C, aspect_ratio=None):
         numpy.ndarray: Distance vectors.
         numpy.ndarray: Weights.
     """
+    # Structural graph construction
     N = V.shape[0]
 
     squared_norms = np.sum(V**2, axis=1)
@@ -86,14 +87,18 @@ def direction(V, C, aspect_ratio=None):
     I, J = np.unravel_index(idx, D.shape)
     edge = np.column_stack((I, J))
 
+    # Attribute information
     YUV_block_double = C.astype(float) / 256
     c_len = C.shape[0]
+
+    # Vector of color difference between connected nodes
     G_vec = np.zeros((c_len, c_len))
     for id in range(len(J)):
         i = I[id]
         j = J[id]
         G_vec[i, j] = YUV_block_double[j, 0] - YUV_block_double[i, 0]
 
+    # Matrix to store direction
     distance_vectors = np.zeros((G_vec.shape[0], 3))
     distance_indexes = np.zeros((G_vec.shape[0], 2))
     weights = np.zeros(G_vec.shape[0])

@@ -58,6 +58,7 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     Ahat = np.dot(GFT, A)
     return GFT, Gfreq, Ahat
 
+
 def compute_iGFT_noQ(Vblock, Ahat_val):
     W, edge = compute_graph_MSR(Vblock)
     L = w2l(W)
