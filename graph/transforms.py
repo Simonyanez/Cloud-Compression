@@ -20,7 +20,7 @@ def w2l(W, idx_closest=None):
         pass  # Handle negative weights differently if needed
 
     if idx_closest is not None:
-        C[np.ix_(idx_closest, idx_closest)] = 2
+        C[np.ix_(idx_closest, idx_closest)] = 1
 
     L = C + np.diag(np.sum(W, axis=1)) - W + np.diag(np.diag(W))
 
@@ -48,14 +48,14 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
     idxSorted = np.argsort(D)      # Order of the eigenvalues
 
-    GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order
+    GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order first less
     GFT[:,0] = np.abs(GFT[:,0])
-    GFT = GFT.T
+    #GFT = GFT.T
     Gfreq = np.sort(D)
 
     Gfreq[0] = np.abs(Gfreq[0])
 
-    Ahat = np.dot(GFT, A)
+    Ahat = np.dot(GFT.T, A)
     return GFT, Gfreq, Ahat
 
 

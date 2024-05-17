@@ -35,6 +35,7 @@ class StructuralEncoder:
         end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
         
         indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
+        indexes = sorted(indexes, key=lambda x: x[1]-x[0], reverse=True)
         return indexes
 
     def structural_graph(self,index_pair):
@@ -108,6 +109,7 @@ class DirectionalEncoder:
         A = clr.RGBtoYUV(A)  
         self.V = V
         self.A = A
+        self.indexes = None
     
     def block_indexes(self,block_size):    # Stores indexes for later access
         # Assumes point cloud is morton ordered
@@ -124,69 +126,115 @@ class DirectionalEncoder:
         end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
         
         indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
-        return indexes
-    
-    def block_visualization(self,index_pair):
-        first_point, last_point = index_pair
+        indexes = sorted(indexes, key=lambda x: x[1]-x[0],reverse=True)
+        self.indexes = indexes
+
+    def Y_visualization(self,iter):
+        Vblock,Ablock = self.get_block(iter)
+        _,vis_fig = visual.Yvisualization(Vblock,Ablock,1,1,"Normal")
+        return vis_fig 
+
+    def std_sorted_indexes(self):
+        indexes = self.indexes
+        stds = np.zeros(len(indexes))
+        for i in range(len(indexes)):
+            _, Ablock = self.get_block(i)
+            # Normalize Ablock
+            mean_Ablock = np.mean(Ablock, axis=0)
+            std_Ablock = np.std(Ablock, axis=0)
+            # Avoid division by zero or close to zero
+            epsilon = 1e-8  # Small epsilon value
+            # Calculate normalized Ablock
+            Ablock_normalized = (Ablock - mean_Ablock) / (std_Ablock + epsilon)
+            channel_std = np.std(Ablock_normalized, axis=0)
+            stds[i] = np.sqrt(np.sum(channel_std ** 2))
+        order = np.argsort(stds)
+        return order
+
+    def get_block(self,iter):
+        first_point, last_point = self.indexes[iter]
         Vblock = self.V[first_point:last_point + 1, :] 
         Ablock = self.A[first_point:last_point + 1, :] 
+        return Vblock,Ablock
+    
+    def block_visualization(self,iter):
+        Vblock,Ablock = self.get_block(iter)
         _,vis_fig = visual.visualization(Vblock,Ablock,1,1,"Normal")
         return vis_fig 
-    def directional_graph(self,index_pair):
-        first_point, last_point = index_pair
-        Vblock = self.V[first_point:last_point + 1, :] 
-        Ablock = self.A[first_point:last_point + 1, :] 
+    
+    def get_direction(self,iter):
+        Vblock,Ablock = self.get_block(iter)
         _, _, distance_vectors, weights = pt.direction(Vblock, Ablock)
-        print(f"This is distance vectors and weights sizes {np.shape(distance_vectors),np.shape(weights)}")
+        return Vblock, distance_vectors, weights
+    
+    def find_borders(self,iter):
+        """
+        Find the place where the borders of the graph are based
+        in the degree of graph
+        """
+        Vblock,Ablock = self.get_block(iter)
+        W, _ = cr.compute_graph_MSR(Vblock)
+        DegreeVector = np.sum(W, axis=1)
+        sorted_indices = np.argsort(DegreeVector)
+        first_threshold = int(0.2 * len(sorted_indices))
+        borders_idx = sorted_indices[:first_threshold]
+        y_values,border_fig = visual.border_visualization(Vblock, Ablock, borders_idx)
+        return W, borders_idx,border_fig,y_values
+    
+    def direction_visualization(self,iter):
+        Vblock,distance_vectors,_ = self.get_direction(iter)
+        dir_fig = visual.direction_visualization(Vblock,distance_vectors)
+        return dir_fig
+    
+    def directional_graph(self,iter):
+        Vblock, distance_vectors, weights = self.get_direction(iter)
         W, edge, idx_closest = cr.compute_graph_sl(Vblock,distance_vectors,weights)
         return W,edge, idx_closest
     
-    def gft_transform(self,index_pair):
-        W,_,idx_closest= self.directional_graph(index_pair)
-        first_point, last_point = index_pair
-        Ablock = self.A[first_point:last_point + 1, :] 
+    def gft_transform(self,iter,W,idx):
+        Vblock,Ablock = self.get_block(iter)
 
-        GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_closest)
-
+        GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx)
+        if not idx is None:
+            y_values,selected_fig = visual.border_visualization(Vblock, Ablock, idx)
         return GFT, Gfreq, Ablockhat
     
-    def energy_block(self, index_pair):
-        _, _, Ablockhat = self.gft_transform(index_pair)
-        Y = abs(Ablockhat[:, 0])
-        U = abs(Ablockhat[:, 1])
-        V = abs(Ablockhat[:, 2])
-        
+    def component_projection(self,iter,base,version,y_values):
+        Vblock,Ablock = self.get_block(iter)
+        base_fig = visual.component_visualization(Vblock, base, version,y_values)
+        return base_fig
+    
+    def energy_block(self, Ablockhat, version):
+        # Example data
+        Y = abs(Ablockhat[:10, 0])
+        U = abs(Ablockhat[:10, 1])
+        V = abs(Ablockhat[:10, 2])
+
         # Create scatter plot
-        # Create subplots
         fig, axs = plt.subplots(3, 1, figsize=(8, 18))  # Create 3 subplots vertically
-        
-        # Plot Y in the first subplot
-        axs[0].scatter(range(len(Y)), Y, c='r', label='Y')  # Red color for Y
-        axs[0].set_title('Y Channel')
-        axs[0].set_xlabel('Index')
-        axs[0].set_ylabel('Magnitude')
-        
-        # Plot U in the second subplot
-        axs[1].scatter(range(len(U)), U, c='g', label='U')  # Green color for U
-        axs[1].set_title('U Channel')
-        axs[1].set_xlabel('Index')
-        axs[1].set_ylabel('Magnitude')
-        
-        # Plot V in the third subplot
-        axs[2].scatter(range(len(V)), V, c='b', label='V')  # Blue color for V
-        axs[2].set_title('V Channel')
-        axs[2].set_xlabel('Index')
-        axs[2].set_ylabel('Magnitude')
-        
+
+        fig.suptitle(f'Energy {version} first 10', fontsize=16)  # Add supertitle above subplots
+
+        # Plot each channel in a subplot
+        for ax, channel, color, label in zip(axs, [Y, U, V], ['r', 'g', 'b'], ['Y', 'U', 'V']):
+            ax.scatter(range(len(channel)), channel, c=color, label=label)  # Scatter plot for the channel
+            ax.set_title(f'{label} Channel')
+            ax.set_xlabel('Index')
+            ax.set_ylabel('Magnitude')
+            
+            # Annotate each point with its value
+            for i, mag in enumerate(channel):
+                ax.annotate(f'{mag:.2f}', (i, mag), textcoords="offset points", xytext=(0,10), ha='center')
+
         plt.tight_layout()  # Adjust layout to prevent overlap
         return fig
 
 def energy_comparison(Coeffs_1, Coeffs_2):  
     # Comparing just the first 5 coefficients DC and 4 AC
     if np.shape(Coeffs_1)[0]>5:
-        Y_diff = np.absolute(Coeffs_1[:5,0]) - np.absolute(Coeffs_2[:5,0])
-        U_diff = np.absolute(Coeffs_1[:5,1]) - np.absolute(Coeffs_2[:5,1])
-        V_diff = np.absolute(Coeffs_1[:5,2]) - np.absolute(Coeffs_2[:5,2])
+        Y_diff = np.absolute(Coeffs_1[:1,0]) - np.absolute(Coeffs_2[:1,0])
+        U_diff = np.absolute(Coeffs_1[:1,1]) - np.absolute(Coeffs_2[:1,1])
+        V_diff = np.absolute(Coeffs_1[:1,2]) - np.absolute(Coeffs_2[:1,2])
     else:
         Y_diff = np.absolute(Coeffs_1[:,0]) - np.absolute(Coeffs_2[:,0])
         U_diff = np.absolute(Coeffs_1[:,1]) - np.absolute(Coeffs_2[:,1])
@@ -198,37 +246,18 @@ if __name__ == "__main__":
     V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")  
     structural_encoder = StructuralEncoder(V,C_rgb)
     directional_encoder = DirectionalEncoder(V,C_rgb)
-    indexes = structural_encoder.block_indexes(block_size = 16)
-    indexes_2 = directional_encoder.block_indexes(block_size = 16)
-    assert indexes == indexes_2, "Los índices difieren"
-    Y_diffs = np.zeros(len(indexes))
-    U_diffs = np.zeros(len(indexes))
-    V_diffs = np.zeros(len(indexes))
-    for i,index in enumerate(indexes):
-        _, _, Ablockhat_1 = structural_encoder.gft_transform(index)
-        _, _, Ablockhat_2 = directional_encoder.gft_transform(index)
-        (Y_diffs[i],
-        U_diffs[i],
-        V_diffs[i]
-                    ) = energy_comparison(Ablockhat_1,Ablockhat_2) 
+    structural_encoder.block_indexes(block_size = 16)
+    directional_encoder.block_indexes(block_size = 16)
+
+    print(f"Total number of blocks {len(directional_encoder.indexes)}")
+    fig_1 = directional_encoder.block_visualization(3300)
+    fig_2 = directional_encoder.direction_visualization(3300)
+    plt.show()
+
     
-    indexes_range = np.array(list(range(1, len(indexes) + 1)))
-    plt.hist(Y_diffs)
-    plt.show()
-    plt.hist(U_diffs)  
-    plt.show()
-    plt.hist(V_diffs)  
-    plt.show()
 
-    # Five most different coefficients
-    improved_blocks_index = np.argsort(Y_diffs)
-    best_five = improved_blocks_index[-5:]
 
-    for best in best_five:
-        index = indexes[best]
-        fig = directional_encoder.block_visualization(index)
-        plt.show()
-        #fig = structural_encoder.energy_block(indexes[14])
+
 
 
     

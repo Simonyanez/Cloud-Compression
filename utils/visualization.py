@@ -3,10 +3,27 @@ import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import Normalize
 from graph.properties import block_indices
 from utils.color import YUVtoRGB
 from graph.properties import direction,gradient
 from graph.create import compute_graph_sl
+
+def min_max_normalize(vector_values):
+    """
+    Perform min-max normalization on a vector.
+
+    Args:
+        vector_values (numpy.ndarray): 1D array of vector values.
+
+    Returns:
+        numpy.ndarray: Min-max normalized vector.
+    """
+    min_val = np.min(vector_values)
+    max_val = np.max(vector_values)
+    normalized_values = (vector_values - min_val) / (max_val - min_val)
+    return normalized_values
 
 def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
     """
@@ -64,7 +81,7 @@ def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
     ax.set_xlabel('X-axis')
     ax.set_ylabel('Y-axis')
     ax.set_zlabel('Z-axis')
-    ax.set_title(f'3D Point Cloud Plot with Custom Colors - STD: {round(Astd,2)} Mean: {round(Amean,2)} Method {method}')
+    ax.set_title(f'Color change direction by node for block with {len(Vblock[:, 0])} points')
     
     # Set view angle
     ax.view_init(elev=60, azim=30)
@@ -276,3 +293,234 @@ def coeff_visualization(Ahat_orig, Ahat_mod, distance, cluster):
     ax.axis('tight')
 
     return fig
+
+
+def direction_visualization(Vblock, distance_vectors):
+    x = Vblock[:, 0]
+    y = Vblock[:, 1]
+    z = Vblock[:, 2]
+    u = distance_vectors[:, 0]
+    v = distance_vectors[:, 1]
+    w = distance_vectors[:, 2]
+    
+    # Calculate magnitudes
+    magnitudes = np.linalg.norm(distance_vectors, axis=1)
+    
+    # Check for zero magnitudes to avoid division by zero
+    zero_magnitudes = magnitudes == 0
+    if np.any(zero_magnitudes):
+        # Replace zero magnitudes with small values to avoid division by zero
+        magnitudes[zero_magnitudes] = 1e-6
+    
+    # Normalize vectors
+    u_unit = u / magnitudes
+    v_unit = v / magnitudes
+    w_unit = w / magnitudes
+    
+    # Calculate mean vector
+    r = np.mean(distance_vectors, axis=0)
+    r_norm = np.linalg.norm(r)
+    
+    # Check for zero mean vector to avoid division by zero
+    if r_norm == 0:
+        r_norm = 1e-6  # Replace zero norm with small value to avoid division by zero
+    
+    r = r / r_norm
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.quiver(x, y, z, u_unit, v_unit, w_unit)
+    ax.quiver(np.mean(Vblock[:,1]),np.mean(Vblock[:,2]),np.mean(Vblock[:,3]), r[0], r[1], r[2], color='r', linewidth=6, arrow_length_ratio=0.1)
+    ax.set_xlabel('X-axis')
+    ax.set_ylabel('Y-axis')
+    ax.set_zlabel('Z-axis')
+    ax.set_title(f'Color change direction by node for block with {len(Vblock[:, 0])} points')
+    ax.grid(True)
+    ax.set_xlim([np.min(x) - 1, np.max(x) + 1])
+    ax.set_ylim([np.min(y) - 1, np.max(y) + 1])
+    ax.set_zlim([np.min(z) - 1, np.max(z) + 1])
+    return fig
+
+def border_visualization(Vblock, Ablock, borders_idx):
+    """
+    Visualization of 3D point cloud with custom colors.
+    
+    Args:
+        Vblock (numpy.ndarray): Nx3 array of point cloud coordinates.
+        Ablock (numpy.ndarray): Nx3 array of attributes (e.g., colors).
+        borders_idx (numpy.ndarray): Indices of border points.
+        
+    Returns:
+        aspect_ratio (tuple): Aspect ratio of the plot.
+        fig (matplotlib.figure.Figure): The resulting figure object.
+    """
+    # Extract coordinates
+    X_block, Y_block, Z_block = Vblock[:, 0], Vblock[:, 1], Vblock[:, 2]
+    
+    # Calculate mean coordinates
+    X_mean, Y_mean, Z_mean = np.mean(Vblock, axis=0)
+    
+    # Convert YUV attributes to RGB
+    RGB_block = Ablock / 255.0
+    
+    # Create a figure
+    fig = plt.figure()
+    # Set axis properties
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
+    ax.grid(True, color='gray', linestyle='-', linewidth=0.5)
+    plt.gca().set_facecolor('black')
+    # Scatter plot with RGB attributes
+    y_values = Ablock[:, 0]/255.0
+    sc = ax.scatter3D(X_block, Y_block, Z_block, c=y_values, cmap='inferno', s=50, alpha=0.8)
+    
+    cb = plt.colorbar(sc)
+    cb.set_label('Y values', color="white")
+    # Customize colorbar ticks
+    cb.ax.yaxis.set_tick_params(color='white')  # Set tick color
+    cb.outline.set_edgecolor('white') 
+    # Set colorbar tick labels color
+    cb.ax.tick_params(colors='white')
+    # Set colorbar tick values color
+    cb.ax.yaxis.offsetText.set_color('white')
+
+    # Overlay additional points (e.g., mean)
+    ax.scatter3D(X_mean, Y_mean, Z_mean, c='white', s=100, edgecolors='black')
+    
+    # Add borders
+    border_points = Vblock[borders_idx]
+    ax.scatter3D(border_points[:, 0], border_points[:, 1], border_points[:, 2], color='cyan', s=150, alpha=0.1, edgecolors='black')
+
+    # Annotate index positions
+    for idx, (x, y, z) in zip(borders_idx, border_points):
+        ax.text(x, y, z + 0.3, str(idx), color='cyan')
+    
+    # Set axis labels and title
+    ax.set_xlabel('X-axis', color='white')
+    ax.set_ylabel('Y-axis', color='white')
+    ax.set_zlabel('Z-axis', color='white')
+    ax.set_title(f'Block with {len(Vblock)} points and border points', color='white')
+    
+    # Set view angle
+    ax.view_init(elev=30, azim=45)
+
+    # Set background color
+    fig.set_facecolor('black')
+    
+
+    
+    return y_values, fig
+
+def component_visualization(Vblock, base,version,reference_base=None):
+    """
+    Visualization of 3D point cloud with base colors.
+    
+    Args:
+        Vblock (numpy.ndarray): Nx3 array of point cloud coordinates.
+        Ablock (numpy.ndarray): Nx3 array of attributes (e.g., colors).
+        im_num (int): Image number.
+        method (str): Method used for visualization.
+        *varargin: Additional optional arguments, e.g., 'GFT' and GFT data.
+        
+    Returns:
+        aspect_ratio (tuple): Aspect ratio of the plot.
+    """
+    # Extract coordinates
+    X_block, Y_block, Z_block = Vblock[:, 0], Vblock[:, 1], Vblock[:, 2]
+
+    # Calculate mean coordinates
+    X_mean, Y_mean, Z_mean = np.mean(Vblock, axis=0)
+
+
+    # Create a figure
+    fig_1 = plt.figure()
+
+    # Set axis properties
+    ax_1 = fig_1.add_subplot(111, projection='3d')
+    ax_1.set_box_aspect([1, 1, 1])  # Equal aspect ratio
+    ax_1.grid(True)
+    abs_base = np.abs(base)
+        
+    norm = Normalize(vmin=np.min(base), vmax=np.max(base))
+    # Scatter plot with RGB attributes
+    sc = ax_1.scatter3D(X_block, Y_block, Z_block, c=base, cmap='inferno', norm=norm,s=50, alpha=0.8)
+
+    # Overlay additional points (e.g., mean)
+    ax_1.scatter3D(X_mean, Y_mean, Z_mean, c='black', s=50)
+    plt.gca().set_facecolor('black')
+    
+    cb = plt.colorbar(sc)
+    cb.set_label('Y values', color="white")
+    # Customize colorbar ticks
+    cb.ax.yaxis.set_tick_params(color='white')  # Set tick color
+    cb.outline.set_edgecolor('white') 
+    # Set colorbar tick labels color
+    cb.ax.tick_params(colors='white')
+    # Set colorbar tick values color
+    cb.ax.yaxis.offsetText.set_color('white')
+    # Set axis labels and title
+    ax_1.set_xlabel('X-axis',color="white")
+    ax_1.set_ylabel('Y-axis',color='white')
+    ax_1.set_zlabel('Z-axis', color='white')
+    ax_1.set_title(f'Base colormap projection for block with {len(Vblock[:, 0])} points and {version} method',color="white")
+
+    # Set view angle
+    ax_1.view_init(elev=60, azim=30)
+    fig_1.set_facecolor('black')
+
+
+    return fig_1
+
+def Yvisualization(Vblock,Ablock):
+    """
+    Visualization of 3D point cloud with custom colors.
+    
+    Args:
+        Vblock (numpy.ndarray): Nx3 array of point cloud coordinates.
+        Ablock (numpy.ndarray): Nx3 array of attributes (e.g., colors).
+        im_num (int): Image number.
+        method (str): Method used for visualization.
+        *varargin: Additional optional arguments, e.g., 'GFT' and GFT data.
+        
+    Returns:
+        aspect_ratio (tuple): Aspect ratio of the plot.
+    """
+    # Extract coordinates
+    X_block, Y_block, Z_block = Vblock[:, 0], Vblock[:, 1], Vblock[:, 2]
+    
+    # Calculate mean coordinates
+    X_mean, Y_mean, Z_mean = np.mean(Vblock, axis=0)
+    
+    # Convert YUV attributes to RGB
+    Y = Ablock[0]/255.0
+    
+    # Create a figure
+    fig = plt.figure()
+    
+    # Set axis properties
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_box_aspect([1, 1, 1])  # Equal aspect ratio
+    ax.grid(True)
+    
+    
+    # Scatter plot with RGB attributes
+    ax.scatter3D(X_block, Y_block, Z_block, c=Y, s=20)
+    
+    # Overlay additional points (e.g., mean)
+    ax.scatter3D(X_mean, Y_mean, Z_mean, c='black', s=50)
+
+    # Set axis labels and title
+    ax.set_xlabel('X-axis')
+    ax.set_ylabel('Y-axis')
+    ax.set_zlabel('Z-axis')
+    ax.set_title(f'Color change direction by node for block with {len(Vblock[:, 0])} points')
+    
+    # Set view angle
+    ax.view_init(elev=60, azim=30)
+
+    #plt.show()
+
+    # Get aspect ratio
+    aspect_ratio = ax.get_box_aspect()
+    
+    return aspect_ratio,fig
