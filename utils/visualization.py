@@ -393,7 +393,7 @@ def border_visualization(Vblock, Ablock, borders_idx):
 
     # Annotate index positions
     for idx, (x, y, z) in zip(borders_idx, border_points):
-        ax.text(x, y, z + 0.3, str(idx), color='cyan')
+        ax.text(x, y, z + 0.01, str(idx), color='white')
     
     # Set axis labels and title
     ax.set_xlabel('X-axis', color='white')
@@ -524,3 +524,15 @@ def Yvisualization(Vblock,Ablock):
     aspect_ratio = ax.get_box_aspect()
     
     return aspect_ratio,fig
+
+def base_plot(base,choosed_weights=None):
+    fig, ax = plt.subplots()
+    ax.plot(base, marker='o', linestyle='-')
+    ax.set_xlabel('Index')
+    ax.set_ylabel('Value')
+    ax.set_title('Base Plot')
+    # Adding a LaTeX formatted title with dynamic values
+    title = r'Base Plot $\alpha={}$ $\beta={}$'.format(choosed_weights[0], choosed_weights[1])
+    ax.set_title(title)
+    ax.grid(True)
+    return fig

@@ -1,7 +1,7 @@
 import numpy as np
 from graph.create import *
 
-def w2l(W, idx_closest=None):
+def w2l(W, idx_closest_map=None):
     """
     Convert weight matrix to Laplacian matrix.
 
@@ -19,9 +19,10 @@ def w2l(W, idx_closest=None):
         # raise ValueError('W is not a valid weight matrix')
         pass  # Handle negative weights differently if needed
 
-    if idx_closest is not None:
-        C[np.ix_(idx_closest, idx_closest)] = 1
-
+    if idx_closest_map is not None:
+        for idx in idx_closest_map.keys():
+            #C[np.ix_(idx, idx)] = idx_closest_map[idx]
+            C[idx,idx] = idx_closest_map[idx]
     L = C + np.diag(np.sum(W, axis=1)) - W + np.diag(np.diag(W))
 
     return L
