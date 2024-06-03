@@ -191,12 +191,15 @@ class DirectionalEncoder:
         W, edge, idx_closest = cr.compute_graph_sl(Vblock,distance_vectors,weights)
         return W,edge, idx_closest
     
-    def gft_transform(self,iter,W,idx):
+    def gft_transform(self,iter,W,idx_map):
         Vblock,Ablock = self.get_block(iter)
-
-        GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx)
-        if not idx is None:
-            y_values,selected_fig = visual.border_visualization(Vblock, Ablock, idx)
+        if not idx_map is None:
+            GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
+            idx = list(idx_map.keys())
+            print(idx)
+            _,_ = visual.border_visualization(Vblock, Ablock, idx)
+        else:
+            GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
         return GFT, Gfreq, Ablockhat
     
     def component_projection(self,iter,base,version,y_values):
@@ -204,31 +207,57 @@ class DirectionalEncoder:
         base_fig = visual.component_visualization(Vblock, base, version,y_values)
         return base_fig
     
+    # def energy_block(self, Ablockhat, version):
+    #     # Example data
+    #     Y = abs(Ablockhat[:10, 0])
+    #     U = abs(Ablockhat[:10, 1])
+    #     V = abs(Ablockhat[:10, 2])
+
+    #     # Create scatter plot
+    #     fig, axs = plt.subplots(3, 1, figsize=(10, 15))  # Create 3 subplots vertically
+
+    #     fig.suptitle(f'Energy {version} first 10', fontsize=20, y=1.02)  # Add supertitle above subplots with more space
+
+    #     # Plot each channel in a subplot
+    #     for i, (ax, channel, color, label) in enumerate(zip(axs, [Y, U, V], ['r', 'g', 'b'], ['Y', 'U', 'V'])):
+    #         ax.scatter(range(len(channel)), channel, c=color, label=label)  # Scatter plot for the channel
+    #         ax.set_title(f'{label} Channel', fontsize=16, pad=10)  # Add padding to the title
+    #         ax.set_xlabel('Index', fontsize=14, labelpad=10)  # Add padding to the xlabel
+    #         ax.set_ylabel('Magnitude', fontsize=14, labelpad=10)  # Add padding to the ylabel
+
+    #         # Annotate each point with its value
+    #         for j, mag in enumerate(channel):
+    #             # Alternate the vertical offset to reduce overlap
+    #             offset = 10 if j % 2 == 0 else -10
+    #             ax.annotate(f'{mag:.2f}', (j, mag), textcoords="offset points", xytext=(0, offset), ha='center')
+
+    #     plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent overlap, leaving space for the suptitle
+    #     return fig
     def energy_block(self, Ablockhat, version):
         # Example data
         Y = abs(Ablockhat[:10, 0])
-        U = abs(Ablockhat[:10, 1])
-        V = abs(Ablockhat[:10, 2])
 
         # Create scatter plot
-        fig, axs = plt.subplots(3, 1, figsize=(8, 18))  # Create 3 subplots vertically
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6))  # Slightly increase the figure size
 
-        fig.suptitle(f'Energy {version} first 10', fontsize=16)  # Add supertitle above subplots
+        # Add supertitle above subplot
+        fig.suptitle(f'Energy {version} first 10', fontsize=20, y=0.95)  
 
-        # Plot each channel in a subplot
-        for ax, channel, color, label in zip(axs, [Y, U, V], ['r', 'g', 'b'], ['Y', 'U', 'V']):
-            ax.scatter(range(len(channel)), channel, c=color, label=label)  # Scatter plot for the channel
-            ax.set_title(f'{label} Channel')
-            ax.set_xlabel('Index')
-            ax.set_ylabel('Magnitude')
-            
-            # Annotate each point with its value
-            for i, mag in enumerate(channel):
-                ax.annotate(f'{mag:.2f}', (i, mag), textcoords="offset points", xytext=(0,10), ha='center')
+        # Plot the Y channel in the subplot
+        ax.scatter(range(len(Y)), Y, c='r', label='Y')  # Scatter plot for the Y channel
+        ax.set_title('Y Channel', fontsize=16, pad=20)  # Add more padding to the title
+        ax.set_xlabel('Index', fontsize=14, labelpad=10)  # Add padding to the xlabel
+        ax.set_ylabel('Magnitude', fontsize=14, labelpad=10)  # Add padding to the ylabel
 
-        plt.tight_layout()  # Adjust layout to prevent overlap
+        # Annotate each point with its value
+        for i, mag in enumerate(Y):
+            # Alternate the vertical offset to reduce overlap
+            offset = 10 if i % 2 == 0 else -10
+            ax.annotate(f'{mag:.2f}', (i, mag), textcoords="offset points", xytext=(0, offset), ha='center')
+
+        plt.tight_layout(rect=[0, 0, 1, 0.90])  # Adjust layout to prevent overlap, leaving space for the suptitle
         return fig
-
+    
 def energy_comparison(Coeffs_1, Coeffs_2):  
     # Comparing just the first 5 coefficients DC and 4 AC
     if np.shape(Coeffs_1)[0]>5:

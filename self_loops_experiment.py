@@ -14,9 +14,11 @@ trial = sorted_indexes[-100]
 W, border_positions, border_fig, y_values = directional_encoder.find_borders(trial)
 
 # Add weights to specific border
-choosed_positions = [261,264,263,256,254,253,243,238,235,234,201,198,184]#[116,118,115,111,112,110,97,96,95,92,91,43,45,42,39]#[116,118,115]#117,89,0
-c_vals = [0.2,0.5,1,2]
-GFT, Gfreq, Ablockhat = directional_encoder.gft_transform(trial,W,choosed_positions)
+#choosed_positions = [261,264,263,256,254,253,243,238,235,234,201,198,184]#[116,118,115,111,112,110,97,96,95,92,91,43,45,42,39]#[116,118,115]#117,89,0
+choosed_positions = [39,42,45,43,91,92,95,96,97,110,111,112,115,116,118,125,128]
+choosed_weights = [1.2]*len(choosed_positions)
+idx_map = dict(zip(choosed_positions,choosed_weights))
+GFT, Gfreq, Ablockhat = directional_encoder.gft_transform(trial,W,idx_map)
 nGFT, _, nAblockhat = directional_encoder.gft_transform(trial,W,None)
 energy_fig = directional_encoder.energy_block(Ablockhat,"self-looped")
 energy_fig_2 = directional_encoder.energy_block(nAblockhat,"strctural")
