@@ -411,7 +411,7 @@ def border_visualization(Vblock, Ablock, borders_idx):
     
     return y_values, fig
 
-def component_visualization(Vblock, base,version,reference_base=None):
+def component_visualization(Vblock, base,version,c_value=None):
     """
     Visualization of 3D point cloud with base colors.
     
@@ -462,10 +462,10 @@ def component_visualization(Vblock, base,version,reference_base=None):
     ax_1.set_xlabel('X-axis',color="white")
     ax_1.set_ylabel('Y-axis',color='white')
     ax_1.set_zlabel('Z-axis', color='white')
-    ax_1.set_title(f'Base colormap projection for block with {len(Vblock[:, 0])} points and {version} method',color="white")
+    ax_1.set_title(f'Base colormap projection {version} method added weight {c_value}',color="white")
 
     # Set view angle
-    ax_1.view_init(elev=60, azim=30)
+    ax_1.view_init(elev=30, azim=220)
     fig_1.set_facecolor('black')
 
 

@@ -197,14 +197,14 @@ class DirectionalEncoder:
             GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
             idx = list(idx_map.keys())
             print(idx)
-            _,_ = visual.border_visualization(Vblock, Ablock, idx)
+            #_,_ = visual.border_visualization(Vblock, Ablock, idx)
         else:
             GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
         return GFT, Gfreq, Ablockhat
     
-    def component_projection(self,iter,base,version,y_values):
+    def component_projection(self,iter,base,version,c_value):
         Vblock,Ablock = self.get_block(iter)
-        base_fig = visual.component_visualization(Vblock, base, version,y_values)
+        base_fig = visual.component_visualization(Vblock, base, version,c_value)
         return base_fig
     
     # def energy_block(self, Ablockhat, version):
@@ -233,7 +233,7 @@ class DirectionalEncoder:
 
     #     plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent overlap, leaving space for the suptitle
     #     return fig
-    def energy_block(self, Ablockhat, version):
+    def energy_block(self, Ablockhat,version, c = None):
         # Example data
         Y = abs(Ablockhat[:10, 0])
 
@@ -241,7 +241,7 @@ class DirectionalEncoder:
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))  # Slightly increase the figure size
 
         # Add supertitle above subplot
-        fig.suptitle(f'Energy {version} first 10', fontsize=20, y=0.95)  
+        fig.suptitle(f'Energy {version} first 10 weight {c}', fontsize=20, y=0.95)  
 
         # Plot the Y channel in the subplot
         ax.scatter(range(len(Y)), Y, c='r', label='Y')  # Scatter plot for the Y channel
