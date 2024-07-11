@@ -150,6 +150,52 @@ def direction(V, C, aspect_ratio=None):
 
     return G_vec, edge, distance_vectors, weights
 
+def simple_direction(YUV, W, edges):
+    Y = YUV[:, 0]
+    edges_dict = {}
+    for edge_i, edge_j in zip(edges[0], edges[1]):
+        if edge_i not in edges_dict:
+            edges_dict[edge_i] = [edge_j]
+        else:
+            edges_dict[edge_i].append(edge_j)
+
+    direction_dict = {}
+    for i, J in edges_dict.items():
+        if i < len(Y):  # Ensure i is within bounds
+            max_diff = 0
+            best_j = None
+            for j in J:
+                if j < len(Y):  # Ensure j is within bounds
+                    # Normalizations 
+                    # Y[i] > Y[j] then i decrease in j direction
+                    diff = (Y[i] - Y[j]) * W[i, j] / 255*2
+                    if diff > max_diff:
+                        max_diff, best_j = diff, j
+            
+            direction_dict[i] = best_j
+
+    return direction_dict
+
+def find_most_pointed_to(direction_dict):
+    count_dict = {}
+    for i, j in direction_dict.items():
+        if j is not None:
+            if j not in count_dict:
+                count_dict[j] = 1
+            else:
+                count_dict[j] += 1
+
+    return count_dict
+
+
+def sort_most_pointed(count_dict,Y):
+    # Filter out None values
+    filtered_dict = {k: v for k, v in count_dict.items() if v is not None}
+    
+    # Sort nodes by count in descending order
+    sorted_nodes = sorted(filtered_dict, key=lambda k: filtered_dict[k] * (1 / Y[k]), reverse=True)
+    return sorted_nodes
+
 def block_indices(V, bsize):
     # V is Nx3, a point cloud, each row are the xyz coordinates of a point, 
     # each coordinate x,y,z is an integer

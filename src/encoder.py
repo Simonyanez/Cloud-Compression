@@ -35,14 +35,48 @@ class StructuralEncoder:
         end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
         
         indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
-        indexes = sorted(indexes, key=lambda x: x[1]-x[0], reverse=True)
-        return indexes
+        self.indexes = sorted(indexes, key=lambda x: x[1]-x[0], reverse=True)
+        return self.indexes
 
-    def structural_graph(self,index_pair):
-        first_point, last_point = index_pair
+    def std_sorted_indexes(self):
+        indexes = self.indexes
+        stds = np.zeros(len(indexes))
+        for i in range(len(indexes)):
+            _, Ablock = self.get_block(i)
+            # Normalize Ablock
+            mean_Ablock = np.mean(Ablock, axis=0)
+            std_Ablock = np.std(Ablock, axis=0)
+            # Avoid division by zero or close to zero
+            epsilon = 1e-8  # Small epsilon value
+            # Calculate normalized Ablock
+            Ablock_normalized = (Ablock - mean_Ablock) / (std_Ablock + epsilon)
+            channel_std = np.std(Ablock_normalized, axis=0)
+            stds[i] = np.sqrt(np.sum(channel_std ** 2))
+        order = np.argsort(stds)
+        return order
+    
+    def get_block(self,iter):
+        first_point, last_point = self.indexes[iter]
         Vblock = self.V[first_point:last_point + 1, :] 
-        W, edge = cr.compute_graph_MSR(Vblock)
-        return W,edge
+        Ablock = self.A[first_point:last_point + 1, :] 
+        return Vblock,Ablock
+    
+    def block_visualization(self,iter):
+        Vblock,Ablock = self.get_block(iter)
+        _,vis_fig = visual.visualization(Vblock,Ablock,1,1,"Normal")
+        return vis_fig 
+    
+    def graph_visualization(self,iter,idx_map=None):
+        _,Ablock = self.get_block(iter)
+        W,edges = self.structural_graph(iter)
+        net = visual.graph_visualization(edges,W,Ablock,idx_map=idx_map)
+        return net
+    
+    def structural_graph(self,iter):
+        first_point, last_point = self.indexes[iter]
+        Vblock = self.V[first_point:last_point + 1, :] 
+        W, edges = cr.compute_graph_MSR(Vblock)
+        return W,edges
     
     def gft_transform(self,index_pair):
         W,_= self.structural_graph(index_pair)
@@ -162,6 +196,35 @@ class DirectionalEncoder:
         _,vis_fig = visual.visualization(Vblock,Ablock,1,1,"Normal")
         return vis_fig 
     
+    def simple_direction_visualization(self,iter):
+        Vblock,Ablock = self.get_block(iter)
+        W,edges = self.structural_graph(iter)
+        direction_dict = pt.simple_direction(Ablock,W,edges)
+        count_dict = pt.find_most_pointed_to(direction_dict)
+        dir_fig = visual.plot_vector_field(Vblock,Ablock,W,edges)
+        count_fig,sorted_nodes = visual.plot_count_dict(count_dict,Ablock[:,0])
+        sorted_nodes = pt.sort_most_pointed(count_dict)
+        return dir_fig, count_fig, sorted_nodes
+    
+    def simple_direction_sort(self,iter):
+        _,Ablock = self.get_block(iter)
+        W,edges = self.structural_graph(iter)
+        direction_dict = pt.simple_direction(Ablock,W,edges)
+        count_dict = pt.find_most_pointed_to(direction_dict)
+        sorted_nodes = pt.sort_most_pointed(count_dict,Ablock[:,0])
+        return sorted_nodes
+    
+    def structural_graph(self,iter):
+        first_point, last_point = self.indexes[iter]
+        Vblock = self.V[first_point:last_point + 1, :] 
+        W, edges = cr.compute_graph_MSR(Vblock)
+        return W,edges
+    
+    def node_positions(self,iter,nodes):
+        Vblock,Ablock = self.get_block(iter)
+        _,nodes_fig = visual.border_visualization(Vblock, Ablock, nodes)
+        return nodes_fig
+    
     def get_direction(self,iter):
         Vblock,Ablock = self.get_block(iter)
         _, _, distance_vectors, weights = pt.direction(Vblock, Ablock)
@@ -196,7 +259,6 @@ class DirectionalEncoder:
         if not idx_map is None:
             GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
             idx = list(idx_map.keys())
-            print(idx)
             #_,_ = visual.border_visualization(Vblock, Ablock, idx)
         else:
             GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
@@ -257,6 +319,7 @@ class DirectionalEncoder:
 
         plt.tight_layout(rect=[0, 0, 1, 0.90])  # Adjust layout to prevent overlap, leaving space for the suptitle
         return fig
+    
     
 def energy_comparison(Coeffs_1, Coeffs_2):  
     # Comparing just the first 5 coefficients DC and 4 AC

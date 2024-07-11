@@ -2,12 +2,14 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
 
+
 import matplotlib.pyplot as plt
+from pyvis.network import Network
 from matplotlib import cm
 from matplotlib.colors import Normalize
 from graph.properties import block_indices
 from utils.color import YUVtoRGB
-from graph.properties import direction,gradient
+from graph.properties import direction,gradient,simple_direction
 from graph.create import compute_graph_sl
 
 def min_max_normalize(vector_values):
@@ -81,7 +83,7 @@ def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
     ax.set_xlabel('X-axis')
     ax.set_ylabel('Y-axis')
     ax.set_zlabel('Z-axis')
-    ax.set_title(f'Color change direction by node for block with {len(Vblock[:, 0])} points')
+    ax.set_title(f'Scatter plot of block')
     
     # Set view angle
     ax.view_init(elev=60, azim=30)
@@ -536,3 +538,129 @@ def base_plot(base,choosed_weights=None):
     ax.set_title(title)
     ax.grid(True)
     return fig
+
+def rgb2hex(r,g,b):
+    return "#{:02x}{:02x}{:02x}".format(r,g,b)
+
+def graph_visualization(edges,Adj,YUV,idx_map = None):
+    RGB = YUVtoRGB(YUV)
+    R = RGB[:,0]
+    G = RGB[:,1]
+    B = RGB[:,2]
+    # Create a Network object
+    net = Network()
+
+    # Set to keep track of added nodes
+    added_nodes = set()
+    # Add nodes and edges to the network
+    for i, edge_i in enumerate(edges[0]):
+        edge_j = int(edges[1][i])
+        edge_i = int(edge_i)
+        # Add node i if not already added
+        if edge_i not in added_nodes:
+            hex_y = rgb2hex(R[edge_i],G[edge_i],B[edge_i])
+            net.add_node(edge_i, label=f'Node {edge_i}',color = hex_y)
+            added_nodes.add(edge_i)
+
+        # Add node j if not already added
+        if edge_j not in added_nodes:
+            hex_y = rgb2hex(R[edge_j],G[edge_j],B[edge_j])
+            net.add_node(edge_j, label=f'Node {edge_j}',color = hex_y)
+            added_nodes.add(edge_j)
+
+        # Add the edge between node i and node j
+        net.add_edge(edge_i, edge_j, title=Adj[edge_i,edge_j],value = Adj[edge_i,edge_j])
+    
+    if idx_map:
+        for node, weight in idx_map.items():
+            net.add_edge(node,node,title=weight,value = weight)
+    return net
+
+def plot_vector_field(V,A, W, edges):
+    direction_dict = simple_direction(A, W, edges)
+    
+    # Extract the coordinates
+    X = V[:, 0]
+    Y = V[:, 1]
+    Z = V[:, 2]
+
+    
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot vectors
+    for i, j in direction_dict.items():
+        if j is not None:
+            ax.quiver(X[i], Y[i], Z[i], X[j] - X[i], Y[j] - Y[i], Z[j] - Z[i], color='b')
+
+    # Plot points
+    #ax.scatter(X, Y, Z, c='r', marker='o')
+
+    # Set labels
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    plt.title('Simple Vector Field')
+
+    return fig
+
+def plot_count_dict(count_dict,Y):
+    # Filter out None values
+    filtered_dict = {k: v for k, v in count_dict.items() if v is not None}
+    
+    # Sort nodes by count in descending order
+    sorted_nodes = sorted(filtered_dict, key=lambda k: filtered_dict[k] * (1 / Y[k]), reverse=True)
+    
+
+    nodes = list(filtered_dict.keys())
+    counts = list(filtered_dict.values())
+    
+    fig = plt.figure(figsize=(10, 5))
+    plt.bar(nodes, counts, color='blue')
+    plt.xlabel('Node')
+    plt.ylabel('Count')
+    plt.title('Number of Points to Each Node')
+    
+    return fig,sorted_nodes
+
+def plot_DC_difference_with_annotation(list1, list2):
+    assert len(list1) == len(list2), "Lists must have the same length"
+    x = np.arange(len(list1))  # Create an array of indices
+    
+    # Calculate differences
+    differences = np.array(list1) - np.array(list2)
+    
+    # Calculate mean and standard deviation for highlighting outliers
+    mean_diff = np.mean(differences)
+    std_diff = np.std(differences)
+    
+    fig = plt.figure(figsize=(10, 6))
+    
+    # Color code for bars
+    colors = ['green' if diff >= 0 else 'red' for diff in differences]
+    
+    # Plot the differences with capped bars
+    max_bar_height = mean_diff + 2 * std_diff
+    min_bar_height = mean_diff - 2 * std_diff
+    capped_differences = np.clip(differences, min_bar_height, max_bar_height)
+    bars = plt.bar(x, capped_differences, color=colors)
+    
+    # Annotate extreme values outside the capped range
+    for i, diff in enumerate(differences):
+        if diff > max_bar_height or diff < min_bar_height:
+            plt.text(x[i], diff, f'{diff:.2f}', ha='center', va='bottom', fontsize=9, color=colors[i])
+    
+    plt.xlabel('Index')
+    plt.ylabel('Difference')
+    plt.ylim((-100,100))
+    plt.title('Difference between Lists with Annotations')
+    plt.grid(True)
+    
+    return fig
+
+if __name__ == "__main__":
+    list1 = [10, 15, 20, 25, 30, 50, 100, 200, 300]
+    list2 = [5, 12, 18, 22, 28, 45, 90, 180, 290]
+    fig = plot_DC_difference_with_annotation(list1, list2)
+    plt.show()
