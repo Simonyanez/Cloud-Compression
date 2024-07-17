@@ -199,18 +199,18 @@ class DirectionalEncoder:
     def simple_direction_visualization(self,iter):
         Vblock,Ablock = self.get_block(iter)
         W,edges = self.structural_graph(iter)
-        direction_dict = pt.simple_direction(Ablock,W,edges)
-        count_dict = pt.find_most_pointed_to(direction_dict)
+        direction_dict,normalization_dict = pt.simple_direction(Ablock,W,edges)
+        count_dict = pt.find_most_pointed_to(direction_dict,normalization_dict)
         dir_fig = visual.plot_vector_field(Vblock,Ablock,W,edges)
         count_fig,sorted_nodes = visual.plot_count_dict(count_dict,Ablock[:,0])
-        sorted_nodes = pt.sort_most_pointed(count_dict)
+        sorted_nodes = pt.sort_most_pointed(count_dict,Ablock[:,0])
         return dir_fig, count_fig, sorted_nodes
     
     def simple_direction_sort(self,iter):
         _,Ablock = self.get_block(iter)
         W,edges = self.structural_graph(iter)
-        direction_dict = pt.simple_direction(Ablock,W,edges)
-        count_dict = pt.find_most_pointed_to(direction_dict)
+        direction_dict,normalization_dict = pt.simple_direction(Ablock,W,edges)
+        count_dict = pt.find_most_pointed_to(direction_dict,normalization_dict)
         sorted_nodes = pt.sort_most_pointed(count_dict,Ablock[:,0])
         return sorted_nodes
     

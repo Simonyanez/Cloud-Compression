@@ -1,4 +1,4 @@
-import pandas as pd
+
 from src.encoder import *
 import matplotlib.pyplot as plt
 from utils.color import YUVtoRGB
@@ -26,8 +26,15 @@ for index in sorted_indexes:
     #     DC_components_sl.append(0)
     #     DC_components_nr.append(0)
 
-fig = visual.plot_DC_difference_with_annotation(DC_components_sl,DC_components_nr)
+fig, differences = visual.plot_DC_difference_with_annotation(DC_components_sl,DC_components_nr)
 
+# Create a dictionary with index as key and difference as value
+differences_dict = {index: value for index, value in enumerate(differences)}
+
+# Sort the dictionary by value
+sorted_differences = dict(sorted(differences_dict.items(), key=lambda item: item[1]))
+for key in sorted_differences.keys():
+    print(f"Current key: {key} \n Value {sorted_differences[key]}")
 
 # Show the sub graph of sorted nodes
 plt.show()

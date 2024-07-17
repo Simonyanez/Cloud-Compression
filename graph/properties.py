@@ -160,6 +160,7 @@ def simple_direction(YUV, W, edges):
             edges_dict[edge_i].append(edge_j)
 
     direction_dict = {}
+    normalization_dict = {}
     for i, J in edges_dict.items():
         if i < len(Y):  # Ensure i is within bounds
             max_diff = 0
@@ -171,12 +172,15 @@ def simple_direction(YUV, W, edges):
                     diff = (Y[i] - Y[j]) * W[i, j] / 255*2
                     if diff > max_diff:
                         max_diff, best_j = diff, j
-            
+
+            # Representing the count of nodes conected to best j
+            if best_j is not None:          
+                normalization_dict[best_j] = len(edges_dict[best_j])
             direction_dict[i] = best_j
 
-    return direction_dict
+    return direction_dict, normalization_dict
 
-def find_most_pointed_to(direction_dict):
+def find_most_pointed_to(direction_dict,normalization_dict):
     count_dict = {}
     for i, j in direction_dict.items():
         if j is not None:
@@ -184,7 +188,10 @@ def find_most_pointed_to(direction_dict):
                 count_dict[j] = 1
             else:
                 count_dict[j] += 1
-
+    
+    # Normalization
+    for k in count_dict.keys():
+        count_dict[k] = count_dict[k] / normalization_dict[k]
     return count_dict
 
 

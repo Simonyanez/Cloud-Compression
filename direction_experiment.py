@@ -1,4 +1,3 @@
-import pandas as pd
 from src.encoder import *
 import matplotlib.pyplot as plt
 from utils.color import YUVtoRGB
@@ -11,7 +10,7 @@ indexes = directional_encoder.block_indexes(block_size = 16)
 sorted_indexes = directional_encoder.std_sorted_indexes()
 trial = sorted_indexes[-100]
 dir_fig, count_fig, sorted_nodes = directional_encoder.simple_direction_visualization(trial)
-choosed_positions = sorted_nodes[0:20]
+choosed_positions = sorted_nodes[0:15]
 nodes_fig = directional_encoder.node_positions(trial,choosed_positions)
 
 W,edges = directional_encoder.structural_graph(trial)

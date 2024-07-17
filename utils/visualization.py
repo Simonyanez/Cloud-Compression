@@ -577,7 +577,7 @@ def graph_visualization(edges,Adj,YUV,idx_map = None):
     return net
 
 def plot_vector_field(V,A, W, edges):
-    direction_dict = simple_direction(A, W, edges)
+    direction_dict,_ = simple_direction(A, W, edges)
     
     # Extract the coordinates
     X = V[:, 0]
@@ -638,13 +638,14 @@ def plot_DC_difference_with_annotation(list1, list2):
     fig = plt.figure(figsize=(10, 6))
     
     # Color code for bars
-    colors = ['green' if diff >= 0 else 'red' for diff in differences]
     
     # Plot the differences with capped bars
     max_bar_height = mean_diff + 2 * std_diff
     min_bar_height = mean_diff - 2 * std_diff
     capped_differences = np.clip(differences, min_bar_height, max_bar_height)
-    bars = plt.bar(x, capped_differences, color=colors)
+    sorted_cap_diff = sorted(capped_differences)
+    colors = ['green' if diff >= 0 else 'red' for diff in sorted_cap_diff]
+    bars = plt.bar(x, sorted_cap_diff, color=colors)
     
     # Annotate extreme values outside the capped range
     for i, diff in enumerate(differences):
@@ -657,7 +658,7 @@ def plot_DC_difference_with_annotation(list1, list2):
     plt.title('Difference between Lists with Annotations')
     plt.grid(True)
     
-    return fig
+    return fig, differences
 
 if __name__ == "__main__":
     list1 = [10, 15, 20, 25, 30, 50, 100, 200, 300]
