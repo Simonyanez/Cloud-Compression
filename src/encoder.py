@@ -163,9 +163,15 @@ class DirectionalEncoder:
         indexes = sorted(indexes, key=lambda x: x[1]-x[0],reverse=True)
         self.indexes = indexes
 
+    def get_block(self,iter):
+        first_point, last_point = self.indexes[iter]
+        Vblock = self.V[first_point:last_point + 1, :] 
+        Ablock = self.A[first_point:last_point + 1, :] 
+        return Vblock,Ablock
+    
     def Y_visualization(self,iter):
         Vblock,Ablock = self.get_block(iter)
-        _,vis_fig = visual.Yvisualization(Vblock,Ablock,1,1,"Normal")
+        _,vis_fig = visual.Yvisualization(Vblock,Ablock)
         return vis_fig 
 
     def std_sorted_indexes(self):
@@ -185,11 +191,7 @@ class DirectionalEncoder:
         order = np.argsort(stds)
         return order
 
-    def get_block(self,iter):
-        first_point, last_point = self.indexes[iter]
-        Vblock = self.V[first_point:last_point + 1, :] 
-        Ablock = self.A[first_point:last_point + 1, :] 
-        return Vblock,Ablock
+    
     
     def block_visualization(self,iter):
         Vblock,Ablock = self.get_block(iter)
@@ -203,7 +205,7 @@ class DirectionalEncoder:
         count_dict = pt.find_most_pointed_to(direction_dict)
         dir_fig = visual.plot_vector_field(Vblock,Ablock,W,edges)
         count_fig,sorted_nodes = visual.plot_count_dict(count_dict,Ablock[:,0])
-        sorted_nodes = pt.sort_most_pointed(count_dict)
+        sorted_nodes = pt.sort_most_pointed(count_dict,Ablock[:,0])
         return dir_fig, count_fig, sorted_nodes
     
     def simple_direction_sort(self,iter):
@@ -254,16 +256,35 @@ class DirectionalEncoder:
         W, edge, idx_closest = cr.compute_graph_sl(Vblock,distance_vectors,weights)
         return W,edge, idx_closest
     
+    
     def gft_transform(self,iter,W,idx_map):
         Vblock,Ablock = self.get_block(iter)
         if not idx_map is None:
             GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
             idx = list(idx_map.keys())
-            #_,_ = visual.border_visualization(Vblock, Ablock, idx)
+            _,_ = visual.border_visualization(Vblock, Ablock, idx)
         else:
             GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
         return GFT, Gfreq, Ablockhat
     
+    def igft_transform(self,iter,W,idx_map,Ablockhat):
+        Vblock,Ablock = self.get_block(iter)
+        if not idx_map is None:
+            GFT_inv, Ablockrec = tf.compute_iGFT_noQ(W,Ablockhat,idx_closest=idx_map)
+            idx = list(idx_map.keys())
+            _,_ = visual.border_visualization(Vblock, Ablock, idx)
+        else:
+            GFT_inv, Ablockrec = tf.compute_iGFT_noQ(W,Ablockhat,idx_closest=idx_map)
+        return GFT_inv, Ablockrec
+        
+    def dynamic_transform(self,iter,W,idx_map):
+        _,_,Ablockhat = self.gft_transform(iter,W,idx_map)
+        _,_,nAblockhat = self.gft_transform(iter,W,None)
+        if np.abs(Ablockhat[0:0]) > np.abs(nAblockhat[0:0]):
+            return Ablockhat,0
+        else:
+            return nAblockhat,1
+        
     def component_projection(self,iter,base,version,c_value):
         Vblock,Ablock = self.get_block(iter)
         base_fig = visual.component_visualization(Vblock, base, version,c_value)
@@ -303,7 +324,8 @@ class DirectionalEncoder:
         fig, ax = plt.subplots(1, 1, figsize=(10, 6))  # Slightly increase the figure size
 
         # Add supertitle above subplot
-        fig.suptitle(f'Energy {version} first 10 weight {c}', fontsize=20, y=0.95)  
+
+        fig.suptitle(f'Energy {version} first 10 bases', fontsize=20, y=0.95)  
 
         # Plot the Y channel in the subplot
         ax.scatter(range(len(Y)), Y, c='r', label='Y')  # Scatter plot for the Y channel

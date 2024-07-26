@@ -52,3 +52,9 @@ def YUVtoRGB(YUV):
     RGB = np.uint8(255 * np.clip(RGB, 0, 1))
 
     return RGB
+
+if __name__ == "__main__":
+    Crec = np.random.randint(0, 256, (5, 3), dtype=np.uint8)
+    Crgb_rec = YUVtoRGB(Crec)
+    #Crgb_rec= Crgb_rec.astype(np.float64)
+    print(type(Crgb_rec[0][0]))
