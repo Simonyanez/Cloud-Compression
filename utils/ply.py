@@ -68,13 +68,13 @@ def ply_readMVUB(filename):
 
 def ply_write(filename, V, C, F=None):
     """
-    Write the mesh to a ply file.
+    Write the mesh to a ply file with integer vertex coordinates and colors.
 
     Args:
     filename (str): Name of ply file in current directory.
-    V (ndarray): Nx3 matrix of 3D coordinates of total N vertices.
-    C (ndarray): Nx3 matrix of R,G,B colors on the N vertices.
-    F (ndarray, optional): Mx3 matrix of vertex indices of M triangles.
+    V (ndarray): Nx3 matrix of 3D coordinates of total N vertices (integers).
+    C (ndarray): Nx3 matrix of R,G,B colors on the N vertices (integers).
+    F (ndarray, optional): Mx3 matrix of vertex indices of M triangles (integers).
 
     Returns:
     None
@@ -86,9 +86,9 @@ def ply_write(filename, V, C, F=None):
         fid.write('ply\n')
         fid.write('format ascii 1.0\n')
         fid.write(f'element vertex {N}\n')
-        fid.write('property float x\n')
-        fid.write('property float y\n')
-        fid.write('property float z\n')
+        fid.write('property int x\n')
+        fid.write('property int y\n')
+        fid.write('property int z\n')
         fid.write('property uchar red\n')
         fid.write('property uchar green\n')
         fid.write('property uchar blue\n')
@@ -97,12 +97,8 @@ def ply_write(filename, V, C, F=None):
             fid.write('property list uchar int vertex_index\n')
         fid.write('end_header\n')
         
-        if F is not None:
-            for i in range(N):
-                fid.write(f'{V[i, 0]:.6f} {V[i, 1]:.6f} {V[i, 2]:.6f} {C[i, 0]} {C[i, 1]} {C[i, 2]}\n')
-        else:
-            for i in range(N):
-                fid.write(f'{V[i, 0]:.6f} {V[i, 1]:.6f} {V[i, 2]:.6f} {C[i, 0]} {C[i, 1]} {C[i, 2]}\n')
+        for i in range(N):
+            fid.write(f'{V[i, 0]} {V[i, 1]} {V[i, 2]} {C[i, 0]} {C[i, 1]} {C[i, 2]}\n')
 
         if F is not None:
             for i in range(M):

@@ -401,7 +401,7 @@ def border_visualization(Vblock, Ablock, borders_idx):
     ax.set_xlabel('X-axis', color='white')
     ax.set_ylabel('Y-axis', color='white')
     ax.set_zlabel('Z-axis', color='white')
-    ax.set_title(f'Block with {len(Vblock)} points and border points', color='white')
+    ax.set_title(f'Selected nodes', color='white')
     
     # Set view angle
     ax.view_init(elev=30, azim=45)
@@ -412,6 +412,13 @@ def border_visualization(Vblock, Ablock, borders_idx):
 
     
     return y_values, fig
+
+def normalize_base(base):
+    # Custom normalization to map base values to [0, 1]
+    base_min = np.min(base)
+    base_max = np.max(base)
+    normalized_base = (base - base_min) / (base_max - base_min)
+    return normalized_base
 
 def component_visualization(Vblock, base,version,c_value=None):
     """
@@ -441,18 +448,16 @@ def component_visualization(Vblock, base,version,c_value=None):
     ax_1 = fig_1.add_subplot(111, projection='3d')
     ax_1.set_box_aspect([1, 1, 1])  # Equal aspect ratio
     ax_1.grid(True)
-    abs_base = np.abs(base)
-        
-    norm = Normalize(vmin=np.min(base), vmax=np.max(base))
+    base_normalized = normalize_base(base)
     # Scatter plot with RGB attributes
-    sc = ax_1.scatter3D(X_block, Y_block, Z_block, c=base, cmap='inferno', norm=norm,s=50, alpha=0.8)
+    sc = ax_1.scatter3D(X_block, Y_block, Z_block, c=base_normalized, cmap='inferno', vmin=0,vmax=1,s=50, alpha=0.8)
 
     # Overlay additional points (e.g., mean)
     ax_1.scatter3D(X_mean, Y_mean, Z_mean, c='black', s=50)
     plt.gca().set_facecolor('black')
     
     cb = plt.colorbar(sc)
-    cb.set_label('Y values', color="white")
+    cb.set_label('Min-max normalized values', color="white")
     # Customize colorbar ticks
     cb.ax.yaxis.set_tick_params(color='white')  # Set tick color
     cb.outline.set_edgecolor('white') 
@@ -464,7 +469,7 @@ def component_visualization(Vblock, base,version,c_value=None):
     ax_1.set_xlabel('X-axis',color="white")
     ax_1.set_ylabel('Y-axis',color='white')
     ax_1.set_zlabel('Z-axis', color='white')
-    ax_1.set_title(f'Base colormap projection {version} method added weight {c_value}',color="white")
+    ax_1.set_title(f'Base colormap {version} method',color="white")
 
     # Set view angle
     ax_1.view_init(elev=30, azim=220)
@@ -515,7 +520,7 @@ def Yvisualization(Vblock,Ablock):
     ax.set_xlabel('X-axis')
     ax.set_ylabel('Y-axis')
     ax.set_zlabel('Z-axis')
-    ax.set_title(f'Color change direction by node for block with {len(Vblock[:, 0])} points')
+    ax.set_title(f'Luminiscence Channel Visualization')
     
     # Set view angle
     ax.view_init(elev=60, azim=30)
@@ -601,7 +606,7 @@ def plot_vector_field(V,A, W, edges):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    plt.title('Simple Vector Field')
+    plt.title('Decreasing Graph Directions')
 
     return fig
 
@@ -620,7 +625,7 @@ def plot_count_dict(count_dict,Y):
     plt.bar(nodes, counts, color='blue')
     plt.xlabel('Node')
     plt.ylabel('Count')
-    plt.title('Number of Points to Each Node')
+    plt.title('Count of Nodes pointing to Node')
     
     return fig,sorted_nodes
 
@@ -652,10 +657,10 @@ def plot_DC_difference_with_annotation(list1, list2):
         if diff > max_bar_height or diff < min_bar_height:
             plt.text(x[i], diff, f'{diff:.2f}', ha='center', va='bottom', fontsize=9, color=colors[i])
     
-    plt.xlabel('Index')
-    plt.ylabel('Difference')
+    plt.xlabel('Block Index')
+    plt.ylabel('Difference (positive is better)')
     plt.ylim((-100,100))
-    plt.title('Difference between Lists with Annotations')
+    plt.title('Difference between DC components directional vs structural method')
     plt.grid(True)
     
     return fig, differences

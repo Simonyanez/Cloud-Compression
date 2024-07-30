@@ -1,5 +1,6 @@
 import numpy as np
 from graph.create import *
+from scipy.linalg import eigh
 
 def w2l(W, idx_closest_map=None):
     """
@@ -46,7 +47,7 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     else:
         L = w2l(Adj)
 
-    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
+    D, GFT = eigh(L) # D eigen values and GFT eigenvectors
     idxSorted = np.argsort(D)      # Order of the eigenvalues
 
     GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order first less
@@ -60,10 +61,13 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     return GFT, Gfreq, Ahat
 
 
-def compute_iGFT_noQ(Vblock, Ahat_val):
-    W, edge = compute_graph_MSR(Vblock)
-    L = w2l(W)
-    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
+def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
+    if idx_closest is not None:
+        L = w2l(Adj, idx_closest)
+    else:
+        L = w2l(Adj)
+
+    D, GFT = eigh(L) # D eigen values and GFT eigenvectors
     idxSorted = np.argsort(D)      # Order of the eigenvalues
     GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order
     GFT[:,0] = np.abs(GFT[:,0])
@@ -72,7 +76,7 @@ def compute_iGFT_noQ(Vblock, Ahat_val):
     GFT_inv = np.linalg.inv(GFT)
 
     Arec = np.dot(GFT_inv, Ahat_val)
-    return Vblock, Arec
+    return GFT_inv, Arec
 
 def compute_GFT(Adj, Q):
     """
