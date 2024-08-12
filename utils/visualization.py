@@ -53,7 +53,7 @@ def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
     
     # Create a figure
     fig = plt.figure()
-    fig.set_facecolor([0.7, 0.7, 0.7])
+    #fig.set_facecolor([0.7, 0.7, 0.7])
     
     # Set axis properties
     ax = fig.add_subplot(111, projection='3d')
@@ -77,7 +77,7 @@ def visualization(Vblock, Ablock, Amean, Astd, method, *varargin):
         ax.scatter3D(X_block, Y_block, Z_block, c=RGB_block_double, s=20)
     
     # Overlay additional points (e.g., mean)
-    ax.scatter3D(X_mean, Y_mean, Z_mean, c='black', s=100)
+    #ax.scatter3D(X_mean, Y_mean, Z_mean, c='black', s=100)
     
     # Set axis labels and title
     ax.set_xlabel('X-axis')
@@ -420,7 +420,7 @@ def normalize_base(base):
     normalized_base = (base - base_min) / (base_max - base_min)
     return normalized_base
 
-def component_visualization(Vblock, base,version,c_value=None):
+def component_visualization(Vblock, base,version,num_nodes,c_value=None):
     """
     Visualization of 3D point cloud with base colors.
     
@@ -453,27 +453,27 @@ def component_visualization(Vblock, base,version,c_value=None):
     sc = ax_1.scatter3D(X_block, Y_block, Z_block, c=base_normalized, cmap='inferno', vmin=0,vmax=1,s=50, alpha=0.8)
 
     # Overlay additional points (e.g., mean)
-    ax_1.scatter3D(X_mean, Y_mean, Z_mean, c='black', s=50)
-    plt.gca().set_facecolor('black')
+    ax_1.scatter3D(X_mean, Y_mean, Z_mean, c='white', s=50)
+    plt.gca().set_facecolor('white')
     
     cb = plt.colorbar(sc)
-    cb.set_label('Min-max normalized values', color="white")
+    cb.set_label('Min-max normalized values', color="black")
     # Customize colorbar ticks
-    cb.ax.yaxis.set_tick_params(color='white')  # Set tick color
-    cb.outline.set_edgecolor('white') 
+    cb.ax.yaxis.set_tick_params(color='black')  # Set tick color
+    cb.outline.set_edgecolor('black') 
     # Set colorbar tick labels color
-    cb.ax.tick_params(colors='white')
+    cb.ax.tick_params(colors='black')
     # Set colorbar tick values color
-    cb.ax.yaxis.offsetText.set_color('white')
+    cb.ax.yaxis.offsetText.set_color('black')
     # Set axis labels and title
-    ax_1.set_xlabel('X-axis',color="white")
-    ax_1.set_ylabel('Y-axis',color='white')
-    ax_1.set_zlabel('Z-axis', color='white')
-    ax_1.set_title(f'Base colormap {version} method',color="white")
+    ax_1.set_xlabel('X-axis',color="black")
+    ax_1.set_ylabel('Y-axis',color='black')
+    ax_1.set_zlabel('Z-axis', color='black')
+    ax_1.set_title(f'Base colormap {version} method for {num_nodes} points',color="black")
 
     # Set view angle
     ax_1.view_init(elev=30, azim=220)
-    fig_1.set_facecolor('black')
+    fig_1.set_facecolor('white')
 
 
     return fig_1
@@ -606,7 +606,7 @@ def plot_vector_field(V,A, W, edges):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    plt.title('Decreasing Graph Directions')
+    plt.title('Decreasing Y Channel Graph Directions')
 
     return fig
 

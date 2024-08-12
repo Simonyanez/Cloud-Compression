@@ -7,14 +7,14 @@ V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")
 
 # Find positions
 directional_encoder = DirectionalEncoder(V,C_rgb)
-indexes = directional_encoder.block_indexes(block_size = 16)
+indexes = directional_encoder.block_indexes(block_size = 4)
 sorted_indexes = directional_encoder.std_sorted_indexes()
 DC_components_sl = []
 DC_components_nr = []
 for index in sorted_indexes:
     # try:
     sorted_nodes = directional_encoder.simple_direction_sort(index)
-    choosed_positions = sorted_nodes[0:int(len(sorted_nodes)*0.05)]
+    choosed_positions = sorted_nodes[:16]
     W,edges = directional_encoder.structural_graph(index)
     choosed_weights = [1.2]*len(choosed_positions)
     idx_map = dict(zip(choosed_positions,choosed_weights))

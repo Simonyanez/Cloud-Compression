@@ -12,6 +12,7 @@ import graph.properties as pt
 import utils.color as clr
 import utils.ply as ply
 import utils.visualization as visual
+from utils.encode_rlgr import *
 
 # Product Class
 class StructuralEncoder:
@@ -139,12 +140,12 @@ class StructuralEncoder:
         return fig
 
 class DirectionalEncoder:
-    def __init__(self,V,A) -> None:
+    def __init__(self,V,A,plots_flag = False) -> None:
         A = clr.RGBtoYUV(A)  
         self.V = V
         self.A = A
         self.indexes = None
-        self.plots = False
+        self.plots = plots_flag
     
     def block_indexes(self,block_size):    # Stores indexes for later access
         # Assumes point cloud is morton ordered
@@ -302,14 +303,51 @@ class DirectionalEncoder:
         else:
             return nAblockhat,1
         
-    def component_projection(self,iter,base,version,c_value):
+    def component_projection(self,iter,base,version,num_nodes,c_value):
         Vblock,Ablock = self.get_block(iter)
         if self.plots:
-            base_fig = visual.component_visualization(Vblock, base, version,c_value)
+            base_fig = visual.component_visualization(Vblock, base, version,num_nodes,c_value)
             return base_fig
         else:
             print("Plots are desactivated")
     
+    def quantize(self,qstep,Coeff):
+        Coeff_quant = np.round(Coeff/qstep)
+        return Coeff_quant
+
+    def PSNR(self,N,Coeff,Coeff_quant,qstep):
+        # Extract the first column of Coeff_quant
+        Coeff_dequant = Coeff_quant*qstep
+        Coeff_dequant_Y = Coeff_dequant[:, 0]
+
+        # Calculate the norm (Euclidean distance) between Y and Coeff_quant_Y
+        norm_value = np.linalg.norm(Coeff - Coeff_dequant_Y)
+
+        # Calculate PSNR
+        psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
+        return psnr_Y
+    
+    def RLGR(self,Coeff_quant,indexes):
+        N = Coeff_quant[:,0].shape[0]
+        mask_lo = np.zeros((N), dtype=bool)
+        for start_end_tuple in indexes:
+            mask_lo[start_end_tuple[0]] = True
+        mask_hi = np.logical_not(mask_lo)
+
+        Coeff_quant_lo = Coeff_quant[mask_lo, :]  # DC values
+        Coeff_quant_hi = Coeff_quant[mask_hi, :]  # "high" pass values
+        # Concatenate
+        Coeff_quant_sorted = np.concatenate((Coeff_quant_lo, Coeff_quant_hi))
+        
+        # Code Y, U, V separately 
+        numbits_Y = encode_rlgr(Coeff_quant_sorted[:, 0], os.path.join('res', 'bitstream_Y.bin'))
+        numbits_U = encode_rlgr(Coeff_quant_sorted[:, 1], os.path.join('res', 'bitstream_U.bin'))
+        numbits_V = encode_rlgr(Coeff_quant_sorted[:, 2], os.path.join('res', 'bitstream_V.bin'))
+
+        # Bit count
+        bs_size = numbits_Y + numbits_U + numbits_V
+        
+        return bs_size
     # def energy_block(self, Ablockhat, version):
     #     # Example data
     #     Y = abs(Ablockhat[:10, 0])

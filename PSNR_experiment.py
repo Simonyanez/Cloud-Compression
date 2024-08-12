@@ -8,17 +8,17 @@ import rlgr
 def calculate_psnr(Y, Coeff_quant, N,qstep):
     # Extract the first column of Coeff_quant
     Coeff_dequant = Coeff_quant*qstep
-    Coeff_quant_col1 = Coeff_dequant[:, 0]
+    Coeff_dequant_col1 = Coeff_dequant[:, 0]
 
     # Calculate the norm (Euclidean distance) between Y and Coeff_quant_col1
-    norm_value = np.linalg.norm(Y - Coeff_quant_col1)
+    norm_value = np.linalg.norm(Y - Coeff_dequant_col1)
 
     # Calculate PSNR
     psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
     
     return psnr_Y
 
-def get_coefficients(V,C_rgb,block_size,self_loop_weight,point_fraction):
+def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,point_fraction=None):
     directional_encoder = DirectionalEncoder(V,C_rgb)
     directional_encoder.block_indexes(block_size = block_size) 
     indexes = directional_encoder.indexes
@@ -26,15 +26,19 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,point_fraction):
     nCoeff = np.zeros(C_rgb.shape)
     dCoeff = np.zeros(C_rgb.shape)
     N = V.shape[0]
+    print(f"Number of points {N}")
     count = 0
     dynamic_overhead_estimate = 0
     overhead_estimate = 0
+    
     for iteration,start_end_tuple in enumerate(indexes):
         # NOTE: Original implementation avoid one points blocks
-
+        
         sorted_nodes = directional_encoder.simple_direction_sort(iteration)
-        #choosed_positions = sorted_nodes[0:int(len(sorted_nodes)*point_fraction)]
-        choosed_positions = sorted_nodes[:2]
+        if point_fraction is not None:
+            choosed_positions = sorted_nodes[0:int(len(sorted_nodes)*point_fraction)]
+        else:
+            choosed_positions = sorted_nodes[:number_of_points]
         W,edges = directional_encoder.structural_graph(iteration)
         choosed_weights = [self_loop_weight]*len(choosed_positions)
         
@@ -43,20 +47,27 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,point_fraction):
         #decision.append(block_decision)
         GFT, Gfreq, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map)
         nGFT, nGfreq, nAblockhat = directional_encoder.gft_transform(iteration,W,None)      
+        Ablockconstructed = np.zeros(Ablockhat.shape)
+        # Get Y components
         Coeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockhat
         nCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
         k_choosed_pos = len(choosed_positions)
         N_block = Ablockhat[:,0].shape[0]
         overhead_estimate += k_choosed_pos*np.log2(N_block)
         if abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]):
-            dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockhat
+            # We get coefficients for the Y channel
+            Ablockconstructed[:,0] = Ablockhat[:,0]
+            # Different coefficients for the U and V channels
+            Ablockconstructed[:,1:2] = nAblockhat[:,1:2]
+            dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockconstructed
             dynamic_overhead_estimate += k_choosed_pos*np.log2(N_block)
             count+=1
+
         else:
             dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
         
 
-    print(f"{count} blocks used adaptative method in this iteration")
+    print(f"{count} blocks used adaptative method in this iteration representing {count*100/len(indexes)} % of total")
     return Coeff,nCoeff,dCoeff,indexes,count,overhead_estimate, dynamic_overhead_estimate
 
 def sort_gft_coeffs(Ahat,indexes):
@@ -89,11 +100,11 @@ def code_YUV(Coeff_quant_sorted,bitstream_directory = ''):
     
     # Code Y, U, V separately 
     numbits_Y = encode_rlgr(Coeff_quant_sorted[:, 0], os.path.join(bitstream_directory, 'bitstream_Y.bin'))
-    #numbits_U = encode_rlgr(Coeff_quant_sorted[:, 1], os.path.join(bitstream_directory, 'bitstream_U.bin'))
-    #numbits_V = encode_rlgr(Coeff_quant_sorted[:, 2], os.path.join(bitstream_directory, 'bitstream_V.bin'))
+    numbits_U = encode_rlgr(Coeff_quant_sorted[:, 1], os.path.join(bitstream_directory, 'bitstream_U.bin'))
+    numbits_V = encode_rlgr(Coeff_quant_sorted[:, 2], os.path.join(bitstream_directory, 'bitstream_V.bin'))
 
     # Bit count
-    bs_size = numbits_Y #+ numbits_U + numbits_V
+    bs_size = numbits_Y + numbits_U + numbits_V
     
     return bs_size
 
@@ -122,18 +133,19 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
 
 if __name__ == "__main__":
     ply_file = "res/longdress_vox10_1051.ply"
-    steps = [1,2,4,8,16,32,64,128,256]
+    steps = [8,12,16,20,26,32,40,52,64,78,90,128,256]
     block_sizes = [4,8,16]
-    point_fractions = [0.05]#,0.2,0.5]
+    #point_fractions = [0.05]#,0.2,0.5]
+    num_of_points=[1,2,4,8,16]
     weights = [1.2]#,1.6,2.0]
     V,C_rgb,_ = ply.ply_read8i(ply_file)
     N = V.shape[0]
     data = []
     for bsize in block_sizes:
-        for point_fraction in point_fractions:
+        for num in num_of_points:
             for weight in weights:
-                print(f"========================================================= \n Block size {bsize}, fraction percentage: {point_fraction} and self-loop weight {weight} \n =========================================================")
-                Coeff,nCoeff,dCoeff,indexes,count,overhead_estimate,dynamic_overhead_estimate = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,point_fraction=point_fraction)
+                print(f"========================================================= \n Block size {bsize}, number of points: {num} and self-loop weight {weight} \n =========================================================")
+                Coeff,nCoeff,dCoeff,indexes,count,overhead_estimate,dynamic_overhead_estimate = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
                 if count == 0:
                     print("Since no block was considered for adaptative method, then there is no use in iterate weights")
                     break
@@ -144,7 +156,7 @@ if __name__ == "__main__":
                     nbpv = bs_nCoeffs/N
                     dbpv =(bs_dCoeffs)/N
                     print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y and bpv = {PSNR_Y,bpv} \n Structural method PSNR_Y and bpv = {nPSNR_Y,nbpv} \n Dynamic method PSNR_Y and bpv = {dPSNR_Y,dbpv} \n =========================================================")
-                    data.append([bsize, point_fraction, weight, step, PSNR_Y,bpv, nPSNR_Y,nbpv, dPSNR_Y,dbpv,overhead_estimate,dynamic_overhead_estimate])
+                    data.append([bsize, num, weight, step, PSNR_Y,bpv, nPSNR_Y,nbpv, dPSNR_Y,dbpv,overhead_estimate,dynamic_overhead_estimate])
 
     # Create DataFrame
     df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y", "Adaptative bpv","nPSNR_Y","Structural bpv", "dPSNR_Y","Dynamic bpv","Overhead Estimate","Dynamic Overhead Estimate"])
