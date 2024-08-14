@@ -3,15 +3,22 @@ import pandas as pd
 from utils.bj_delta import *
 
 def extract_info(subdata):
-    nPSNR_Y = subdata['nPSNR_Y']
-    nbpv = subdata['Structural bpv']
-    dPSNR_Y = subdata['dPSNR_Y']
-    dbpv = subdata['Dynamic bpv']
+    """
+    Extract PSNR and bpv data from subdata and calculate Bjontegaard Delta metrics.
+    """
+    nPSNR_Y = subdata['N PSNR All'].values
+    print(nPSNR_Y)
+    nbpv = subdata['Average N Bits'].values
+    dPSNR_Y = subdata['D PSNR All'].values
+    dbpv = subdata['Average D Bits'].values
     bd_psnr = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y, mode=0)
-    bd_rate = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y,  mode=1)
-    return nPSNR_Y, nbpv, dPSNR_Y, dbpv,bd_psnr,bd_rate
+    bd_rate = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y, mode=1)
+    return nPSNR_Y, nbpv, dPSNR_Y, dbpv, bd_psnr, bd_rate
 
 def PSNR_vs_bpv_plot(data):
+    """
+    Plot PSNR vs. bpv for different block sizes and point fractions.
+    """
     bsizes = [4, 8, 16]
     num_of_points = [1, 2, 4, 8, 16]
     markers = ['o', 's', '^']  # Different markers for each block size
@@ -20,18 +27,25 @@ def PSNR_vs_bpv_plot(data):
     for num in num_of_points:
         plt.figure(figsize=(10, 6))
         for i, bsize in enumerate(bsizes):
+            # Filter data based on block size
             block_data = data[data['Block Size'] == bsize]
-            blockpoint_data = block_data[block_data['Point Fraction'] == num]
-            nPSNR_Y, nbpv, dPSNR_Y, dbpv, bd_psnr,bd_rate = extract_info(blockpoint_data)
-            print(f"For size block {bsize} and {num} number of points:\n Bjontegaard Gain: {bd_psnr,bd_rate}")
-            # Optionally plot dPSNR_Y vs. dbpv if available
+            if block_data.empty:
+                print(f"No data for Block Size {bsize}")
+                continue
+            
+            # Extract information
+            nPSNR_Y, nbpv, dPSNR_Y, dbpv, bd_psnr, bd_rate = extract_info(block_data)
+            print(f"For Block Size {bsize} and Point Fraction {num}:")
+            print(f"  Bjontegaard PSNR Gain: {bd_psnr}")
+            print(f"  Bjontegaard Rate Gain: {bd_rate}")
+
+            # Plot Dynamic and Structural metrics
             if len(dPSNR_Y) > 0 and len(dbpv) > 0:
                 plt.plot(dbpv, dPSNR_Y, marker=markers[i], color=colors[i], linestyle='--', label=f'Dynamic - Block Size {bsize}', alpha=0.7)
-            # Plot PSNR vs. bpv
             plt.plot(nbpv, nPSNR_Y, marker=markers[i], color=colors[i], linestyle='-', label=f'Structural - Block Size {bsize}', alpha=0.3)
         
-        # Plot customization
-        plt.title(f'PSNR vs. bpv for {num} self-looped nodes - single frame')
+        # Customize and show plot
+        plt.title(f'PSNR vs. bpv - 10 Frames')
         plt.xlabel('bpv')
         plt.ylabel('PSNR_Y')
         plt.grid(True)
@@ -41,5 +55,7 @@ def PSNR_vs_bpv_plot(data):
         plt.show()
 
 if __name__ == "__main__":
-    data = pd.read_csv('results_og.csv')
+    # Load data from CSV
+    data = pd.read_csv('results.csv')
+    # Generate and display plots
     PSNR_vs_bpv_plot(data)

@@ -161,4 +161,4 @@ if __name__ == "__main__":
     df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y", "Adaptative bpv","nPSNR_Y","Structural bpv", "dPSNR_Y","Dynamic bpv"])
 
     # Save the DataFrame to a CSV file (optional)
-    df.to_csv("results.csv", index=False)
+    df.to_csv("results_og.csv", index=False)

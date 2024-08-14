@@ -1,1 +1,3 @@
-
+[submodule "PyRLGR"]
+	path = PyRLGR
+	url = https://github.com/IENT/PyRLGR
