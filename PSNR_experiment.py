@@ -30,7 +30,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
     count = 0
     dynamic_overhead_estimate = 0
     overhead_estimate = 0
-    
+    decision_bs = len(indexes)
     for iteration,start_end_tuple in enumerate(indexes):
         # NOTE: Original implementation avoid one points blocks
         
@@ -68,7 +68,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
         
 
     print(f"{count} blocks used adaptative method in this iteration representing {count*100/len(indexes)} % of total")
-    return Coeff,nCoeff,dCoeff,indexes,count,overhead_estimate, dynamic_overhead_estimate
+    return Coeff,nCoeff,dCoeff,indexes,count,decision_bs
 
 def sort_gft_coeffs(Ahat,indexes):
     N = Ahat[:,0].shape[0]
@@ -145,21 +145,20 @@ if __name__ == "__main__":
         for num in num_of_points:
             for weight in weights:
                 print(f"========================================================= \n Block size {bsize}, number of points: {num} and self-loop weight {weight} \n =========================================================")
-                Coeff,nCoeff,dCoeff,indexes,count,overhead_estimate,dynamic_overhead_estimate = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
+                Coeff,nCoeff,dCoeff,indexes,count,decision_estimate = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
                 if count == 0:
                     print("Since no block was considered for adaptative method, then there is no use in iterate weights")
                     break
                 for step in steps:
                     PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs = quantize_PSNR_bs(Coeff,nCoeff,dCoeff,step,indexes)
-                    print(f"Overhead estimation Adaptative:{overhead_estimate} Dynamic:{dynamic_overhead_estimate}")
                     bpv = (bs_Coeffs)/N
                     nbpv = bs_nCoeffs/N
-                    dbpv =(bs_dCoeffs)/N
+                    dbpv =(bs_dCoeffs+decision_estimate)/N
                     print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y and bpv = {PSNR_Y,bpv} \n Structural method PSNR_Y and bpv = {nPSNR_Y,nbpv} \n Dynamic method PSNR_Y and bpv = {dPSNR_Y,dbpv} \n =========================================================")
-                    data.append([bsize, num, weight, step, PSNR_Y,bpv, nPSNR_Y,nbpv, dPSNR_Y,dbpv,overhead_estimate,dynamic_overhead_estimate])
+                    data.append([bsize, num, weight, step, PSNR_Y,bpv, nPSNR_Y,nbpv, dPSNR_Y,dbpv])
 
     # Create DataFrame
-    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y", "Adaptative bpv","nPSNR_Y","Structural bpv", "dPSNR_Y","Dynamic bpv","Overhead Estimate","Dynamic Overhead Estimate"])
+    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y", "Adaptative bpv","nPSNR_Y","Structural bpv", "dPSNR_Y","Dynamic bpv"])
 
     # Save the DataFrame to a CSV file (optional)
     df.to_csv("results.csv", index=False)

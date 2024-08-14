@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from utils.bj_delta import *
 
-
-
 def extract_info(subdata):
     PSNR_Y = subdata['PSNR_Y']
     bpv = subdata['Structural bpv']
@@ -33,7 +31,7 @@ def PSNR_vs_bpv_plot(data):
             plt.plot(bpv, PSNR_Y, marker=markers[i], color=colors[i], linestyle='-', label=f'Structural - Block Size {bsize}', alpha=0.3)
         
         # Plot customization
-        plt.title(f'PSNR vs. bpv for {num} self-looped nodes')
+        plt.title(f'PSNR vs. bpv for {num} self-looped nodes - single frame')
         plt.xlabel('bpv')
         plt.ylabel('PSNR_Y')
         plt.grid(True)
