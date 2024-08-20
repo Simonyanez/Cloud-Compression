@@ -348,32 +348,62 @@ class DirectionalEncoder:
         bs_size = numbits_Y + numbits_U + numbits_V
         
         return bs_size
-    # def energy_block(self, Ablockhat, version):
-    #     # Example data
-    #     Y = abs(Ablockhat[:10, 0])
-    #     U = abs(Ablockhat[:10, 1])
-    #     V = abs(Ablockhat[:10, 2])
+    
+    def get_coefficients(self, mode=2, sl_num = 2, sl_weight = 1.2):
+        '''
+        mode = 0 is the Structural Method
+        mode = 1 is the Adaptative Method
+        mode = 2 is the Dynamic Method
+        '''
+        indexes = self.indexes
+        A_shape = self.A.shape
+        aCoeff = np.zeros(A_shape)
+        nCoeff = np.zeros(A_shape)
+        dCoeff = np.zeros(A_shape)
+        N = A_shape[0]
+        for iteration,start_end_tuple in enumerate(indexes):
 
-    #     # Create scatter plot
-    #     fig, axs = plt.subplots(3, 1, figsize=(10, 15))  # Create 3 subplots vertically
+            # Best nodes for self-loops considering direction of change and Y channel
+            sorted_nodes = self.simple_direction_sort(iteration)
 
-    #     fig.suptitle(f'Energy {version} first 10', fontsize=20, y=1.02)  # Add supertitle above subplots with more space
+            # We get the Adjancency matrix from structural implementation
+            W,_ = self.structural_graph
+            _, _, nAblockhat = self.gft_transform(iteration,W,None)      
+            nCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
 
-    #     # Plot each channel in a subplot
-    #     for i, (ax, channel, color, label) in enumerate(zip(axs, [Y, U, V], ['r', 'g', 'b'], ['Y', 'U', 'V'])):
-    #         ax.scatter(range(len(channel)), channel, c=color, label=label)  # Scatter plot for the channel
-    #         ax.set_title(f'{label} Channel', fontsize=16, pad=10)  # Add padding to the title
-    #         ax.set_xlabel('Index', fontsize=14, labelpad=10)  # Add padding to the xlabel
-    #         ax.set_ylabel('Magnitude', fontsize=14, labelpad=10)  # Add padding to the ylabel
+            if mode != 0:
+                # Choosed nodes to apply self-loops
+                choosed_positions = sorted_nodes[:sl_num]
+                choosed_weights = [sl_weight]*len(choosed_positions)
+                idx_map = dict(zip(choosed_positions,choosed_weights))
+                _, _, Ablockhat = self.gft_transform(iteration,W,idx_map)
+                aCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockhat
+                DC_criteria = abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]) 
+            
+            if mode == 1:
+                return aCoeff
+            
+            if mode == 2:
+                if DC_criteria:
+                    # Reconstruction of coefficients by criteria
+                    dAblockhat = np.zeros(Ablockhat.shape)
 
-    #         # Annotate each point with its value
-    #         for j, mag in enumerate(channel):
-    #             # Alternate the vertical offset to reduce overlap
-    #             offset = 10 if j % 2 == 0 else -10
-    #             ax.annotate(f'{mag:.2f}', (j, mag), textcoords="offset points", xytext=(0, offset), ha='center')
+                    # We get coefficients for the Y channel
+                    dAblockhat[:,0] = Ablockhat[:,0]
 
-    #     plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent overlap, leaving space for the suptitle
-    #     return fig
+                    # Different coefficients for the U and V channels
+                    dAblockhat[:,1:2] = nAblockhat[:,1:2]
+                    
+                    # We save the dynamic coefficients
+                    dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = dAblockhat
+                else:
+                    # We save the structural coefficients
+                    dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
+                return dCoeff
+            
+            return nCoeff
+
+
     def energy_block(self, Ablockhat,version, c = None):
         # Example data
         Y = abs(Ablockhat[:10, 0])
