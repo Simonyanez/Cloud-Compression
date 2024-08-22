@@ -154,11 +154,11 @@ if __name__ == "__main__":
                     bpv = (bs_Coeffs)/N
                     nbpv = bs_nCoeffs/N
                     dbpv =(bs_dCoeffs+decision_estimate)/N
-                    print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y and bpv = {PSNR_Y,bpv} \n Structural method PSNR_Y and bpv = {nPSNR_Y,nbpv} \n Dynamic method PSNR_Y and bpv = {dPSNR_Y,dbpv} \n =========================================================")
-                    data.append([bsize, num, weight, step, PSNR_Y,bpv, nPSNR_Y,nbpv, dPSNR_Y,dbpv])
+                    print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y,bitstream and bpv = {PSNR_Y,bs_Coeffs,bpv} \n Structural method PSNR_Y,bitstream and bpv = {nPSNR_Y,bs_nCoeffs,nbpv} \n Dynamic method PSNR_Y,bitstream and bpv = {dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv} \n =========================================================")
+                    data.append([bsize, num, weight, step, PSNR_Y,bs_Coeffs,bpv, nPSNR_Y,bs_nCoeffs,nbpv, dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv])
 
     # Create DataFrame
-    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y", "Adaptative bpv","nPSNR_Y","Structural bpv", "dPSNR_Y","Dynamic bpv"])
+    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y","Adaptative bitsteam", "Adaptative bpv","nPSNR_Y","Structural bitsteam","Structural bpv", "dPSNR_Y","Dynamic bitsteam","Dynamic bpv"])
 
     # Save the DataFrame to a CSV file (optional)
-    df.to_csv("results_og.csv", index=False)
+    df.to_csv("PSNR_experiment.csv", index=False)

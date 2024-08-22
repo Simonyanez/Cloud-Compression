@@ -236,5 +236,5 @@ if __name__ == "__main__":
             data['D PSNR All'].append(dpsnr_all[bsize])
     
     df = pd.DataFrame(data)
-    df.to_csv('results.csv', index=False)
-    print("Results saved to 'results.csv'.")
+    df.to_csv('PSNR_all_frames.csv', index=False)
+    print("Results saved to 'PSNR_all_frames.csv'.")
