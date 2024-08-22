@@ -158,7 +158,7 @@ if __name__ == "__main__":
                     data.append([bsize, num, weight, step, PSNR_Y,bs_Coeffs,bpv, nPSNR_Y,bs_nCoeffs,nbpv, dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv])
 
     # Create DataFrame
-    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y","Adaptative bitsteam", "Adaptative bpv","nPSNR_Y","Structural bitsteam","Structural bpv", "dPSNR_Y","Dynamic bitsteam","Dynamic bpv"])
+    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y","Adaptative bitstream", "Adaptative bpv","nPSNR_Y","Structural bitstream","Structural bpv", "dPSNR_Y","Dynamic bitstream","Dynamic bpv"])
 
     # Save the DataFrame to a CSV file (optional)
     df.to_csv("PSNR_experiment.csv", index=False)

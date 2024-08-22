@@ -367,7 +367,7 @@ class DirectionalEncoder:
             sorted_nodes = self.simple_direction_sort(iteration)
 
             # We get the Adjancency matrix from structural implementation
-            W,_ = self.structural_graph
+            W,_ = self.structural_graph(iteration)
             _, _, nAblockhat = self.gft_transform(iteration,W,None)      
             nCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
 

@@ -1,7 +1,8 @@
 from src.encoder import *
 import matplotlib.pyplot as plt
 from utils.color import YUVtoRGB
-from scipy.interpolate import UnivariateSpline
+from scipy.stats import norm
+from scipy.optimize import curve_fit
 import pandas as pd
 
 if __name__ == "__main__":
@@ -41,8 +42,11 @@ if __name__ == "__main__":
                 first_five_or_less = [position_i for position_i in sorted_nodes[:5]]
                 sl_in_morton_positions[iteration,:len(first_five_or_less)] = first_five_or_less 
 
+        # Data preparation for the plotting
         cmap = plt.get_cmap('tab10')
         fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+
+        count = sl_in_morton_positions.shape[0]  # Number of blocks
 
         for i in range(sl_in_morton_positions.shape[1]):
             first_sl_by_morton_position = sl_in_morton_positions[:, i]
@@ -50,42 +54,46 @@ if __name__ == "__main__":
             
             if first_sl_by_morton_position.size > 0:
                 # Histogram
-                counts, bins = np.histogram(first_sl_by_morton_position, bins='auto', density=True)
+                counts, bins = np.histogram(first_sl_by_morton_position, bins=int(np.max(first_sl_by_morton_position)), density=True)
                 bin_centers = 0.5 * (bins[1:] + bins[:-1])
                 
-                # Calculate PDF from histogram
-                pdf = counts / np.sum(counts)
-                
-                # Plot histogram on the upper subplot
-                axes[0].stairs(counts, bins, color=cmap(i % 10), label=f'Position {i+1}')
-                
-                # Spline fitting
-                spline = UnivariateSpline(bin_centers, counts, s=1)
-                x_spline = np.linspace(0, np.max(first_sl_by_morton_position), 500)
-                y_spline = spline(x_spline)
-                
-                # Normalize the spline curve
-                y_spline /= np.trapz(y_spline, x_spline)
-                
-                axes[1].plot(x_spline, y_spline, color=cmap(i % 10), linestyle='--', label=f'Spline Fit Position {i+1}')
+                # Plot histogram on the upper subplot with bars visible
+                axes[0].hist(first_sl_by_morton_position, bins=bins,histtype='step',alpha=0.6, color=cmap(i % 10), label=f'Position {i+1}', density=True)
+
+                # Gaussian fitting
+                def gaussian(x, mu, sigma, amplitude):
+                    return amplitude * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
+
+                try:
+                    params, _ = curve_fit(gaussian, bin_centers, counts, p0=[np.mean(first_sl_by_morton_position), np.std(first_sl_by_morton_position), 1], maxfev=2000)
+                    x_values = np.linspace(0, np.max(first_sl_by_morton_position), 500)
+                    fitted_curve = gaussian(x_values, *params)
+                    
+                    # Normalize the fitted Gaussian curve
+                    fitted_curve /= np.trapz(fitted_curve, x_values)
+                    
+                    axes[1].plot(x_values, fitted_curve, color=cmap(i % 10), linestyle='--', label=f'Gaussian Fit Position {i+1}')
+                except RuntimeError as e:
+                    print(f"Gaussian fitting failed for position {i+1}: {e}")
                 
                 # Calculate entropy
-                # Use histogram counts to estimate entropy
+                pdf = counts / np.sum(counts)
                 non_zero_pdf = pdf[pdf > 0]  # Avoid log(0)
                 entropy = -np.sum(non_zero_pdf * np.log(non_zero_pdf))
                 print(f'Entropy for position {i+1}: {entropy}')
                 print(f'All Blocks Bits Estimation for position {i+1}: {entropy*count}')
                 data.append([bsize,i+1,entropy,entropy*count])
 
-        # Add labels and a legend
-        axes[0].set_ylabel('Density (Histogram)')
-        axes[1].set_ylabel('Density (Spline Fit)')
-        axes[1].set_xlabel('Morton Position')
+                # Add labels and a legend
+                axes[0].set_ylabel('Density (Histogram)')
+                axes[1].set_ylabel('Density (Gaussian Fit)')
+                axes[1].set_xlabel('Morton Position')
+
+                axes[0].set_title(f'Histograms of First 5 Self-Loops Morton Positions \n Block Size {bsize}')
+                axes[1].set_title('Gaussian Fit to Histogram')
+
+                axes[0].legend()
         
-        axes[0].set_title(f'Histograms of First 5 Morton Positions in each Block \n Block Size {bsize}')
-        axes[1].set_title('Spline Fit to Histogram')
-        
-        axes[0].legend()
         plt.show()
 
     df = pd.DataFrame(data=data,columns=["Block Size","Self-Loop Priority","Entropy","Overhead Stimation"])
