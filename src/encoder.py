@@ -3,6 +3,8 @@ sys.path.append('/home/simao/Repositories/Cloud-Compression')
 # for path in sys.path:
 #     print(path)
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')  # or 'Qt5Agg'
@@ -225,6 +227,26 @@ class DirectionalEncoder:
         sorted_nodes = pt.sort_most_pointed(count_dict,Ablock[:,0])
         return sorted_nodes
     
+    def pearson_correlation_matrix(self,iter):
+        sorted_nodes = self.simple_direction_sort(iter)
+        Vblock,_ = self.get_block(iter)
+        sorted_positions = []
+        how_many = 5
+        for node in sorted_nodes[:how_many]:
+            node_position = Vblock[node]
+            sorted_positions.append(node_position)
+
+        # Convert to a DataFrame
+        df = pd.DataFrame(sorted_positions, columns=['X', 'Y', 'Z'])
+
+        # Calculate the Pearson correlation matrix
+        correlation_matrix = df.corr(method='pearson')
+        print(f"Actually using only {how_many} nodes")
+        #if self.plots:
+        #    sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+        #    plt.title('Pearson Correlation Matrix')
+        return correlation_matrix
+
     def structural_graph(self,iter):
         first_point, last_point = self.indexes[iter]
         Vblock = self.V[first_point:last_point + 1, :] 

@@ -131,21 +131,42 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
     bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res')
     return PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs 
 
+def extract_overhead(entropy_data, num_of_points, bsize):
+    # Initialize the overhead sum to 0
+    overhead_sum = 0
+
+    # Filter the DataFrame for the given block size
+    block_entropy = entropy_data[entropy_data['Block Size'] == bsize]
+    
+    # Loop through each number from 1 to num_of_points (inclusive)
+    for num in range(1, num_of_points + 1):
+        # Filter for the current self-loop priority
+        self_loop_estimate = block_entropy[block_entropy['Self-Loop Priority'] == num]
+        
+        # Add the 'Overhead Stimation' value to the overhead_sum
+        overhead_sum += self_loop_estimate['Overhead Stimation'].sum()  # sum() is used here in case there are multiple matches
+    
+    return overhead_sum
+
+
 if __name__ == "__main__":
     ply_file = "res/longdress_vox10_1051.ply"
+    V,C_rgb,_ = ply.ply_read8i(ply_file)
+    N = V.shape[0]
     steps = [8,12,16,20,26,32,40,52,64,78,90,128,256]
     block_sizes = [4,8,16]
     #point_fractions = [0.05]#,0.2,0.5]
-    num_of_points=[1,2,4,8,16]
+    num_of_points=[1,2,4]
     weights = [1.2]#,1.6,2.0]
-    V,C_rgb,_ = ply.ply_read8i(ply_file)
-    N = V.shape[0]
     data = []
+    entropy_analysis = pd.read_csv('entropy_analysis.csv')
     for bsize in block_sizes:
         for num in num_of_points:
             for weight in weights:
                 print(f"========================================================= \n Block size {bsize}, number of points: {num} and self-loop weight {weight} \n =========================================================")
                 Coeff,nCoeff,dCoeff,indexes,count,decision_estimate = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
+                entropy_overhead_estimation = extract_overhead(entropy_analysis,num,bsize)
+                print(f"Overhead stimate {entropy_overhead_estimation}")
                 if count == 0:
                     print("Since no block was considered for adaptative method, then there is no use in iterate weights")
                     break
@@ -153,8 +174,8 @@ if __name__ == "__main__":
                     PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs = quantize_PSNR_bs(Coeff,nCoeff,dCoeff,step,indexes)
                     bpv = (bs_Coeffs)/N
                     nbpv = bs_nCoeffs/N
-                    dbpv =(bs_dCoeffs+decision_estimate)/N
-                    print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y,bitstream and bpv = {PSNR_Y,bs_Coeffs,bpv} \n Structural method PSNR_Y,bitstream and bpv = {nPSNR_Y,bs_nCoeffs,nbpv} \n Dynamic method PSNR_Y,bitstream and bpv = {dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv} \n =========================================================")
+                    dbpv =(bs_dCoeffs+decision_estimate+entropy_overhead_estimation)/N
+                    print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y,bitstream and bpv = {PSNR_Y,bs_Coeffs,bpv} \n Structural method PSNR_Y,bitstream and bpv = {nPSNR_Y,bs_nCoeffs,nbpv} \n Dynamic method PSNR_Y,bitstream and bpv = {dPSNR_Y,bs_dCoeffs+decision_estimate+entropy_overhead_estimation,dbpv} \n =========================================================")
                     data.append([bsize, num, weight, step, PSNR_Y,bs_Coeffs,bpv, nPSNR_Y,bs_nCoeffs,nbpv, dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv])
 
     # Create DataFrame

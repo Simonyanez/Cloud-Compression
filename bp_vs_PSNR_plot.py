@@ -10,10 +10,10 @@ def extract_info(subdata):
     bd_psnr = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y, mode=0)
     bd_rate = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y,  mode=1)
     return nPSNR_Y, nbpv, dPSNR_Y, dbpv,bd_psnr,bd_rate
-
+    
 def PSNR_vs_bpv_plot(data):
     bsizes = [4, 8, 16]
-    num_of_points = [1, 2, 4, 8, 16]
+    num_of_points = [1, 2, 4]
     markers = ['o', 's', '^']  # Different markers for each block size
     colors = ['blue', 'green', 'red']  # Different colors for each block size
 
@@ -41,5 +41,5 @@ def PSNR_vs_bpv_plot(data):
         plt.show()
 
 if __name__ == "__main__":
-    data = pd.read_csv('results_og.csv')
+    data = pd.read_csv('PSNR_experiment.csv')
     PSNR_vs_bpv_plot(data)
