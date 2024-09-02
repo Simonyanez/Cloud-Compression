@@ -5,6 +5,7 @@ from utils.color import YUVtoRGB
 import os
 import pandas as pd
 import rlgr
+import time
 def calculate_norm(Y,Coeff_quant,N,qstep):
         # Extract the first column of Coeff_quant
     Coeff_dequant = Coeff_quant*qstep
@@ -119,7 +120,7 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
     Coeff_quant = np.round(Coeff/qstep)
     nCoeff_quant = np.round(nCoeff/qstep)
     dCoeff_quant = np.round(dCoeff/qstep)
-    # PSNR
+    # PSNR inner value
     Frame_val = calculate_norm(Y,Coeff_quant,N,qstep)
     nFrame_val = calculate_norm(nY,nCoeff_quant,N,qstep)
     dFrame_val = calculate_norm(dY,dCoeff_quant,N,qstep)
@@ -133,27 +134,29 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
     bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res')
     return Frame_val,bs_Coeffs,nFrame_val,bs_nCoeffs, dFrame_val,bs_dCoeffs 
 
-if __name__ == "__main__":
-    base_path = "/home/simao/Documents/longdress/longdress/Ply"
+def main():
+    base_path = "/home/simao/Documents/longdress/Ply"
     ply_list = [os.path.join(base_path, file) for file in os.listdir(base_path) if file.endswith('.ply')]
 
     print(f"Found {len(ply_list)} PLY files.")
 
     num_of_points = 16
     weight = 1.2
-    steps = [8, 12, 16, 20, 26, 32, 40, 52, 64, 78, 90, 128, 256]
+    steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 52, 64, 78, 90, 128, 256]
     block_sizes = [4, 8, 16]
 
     bits_all_frames = {4: [0]*len(steps), 8: [0]*len(steps), 16: [0]*len(steps)}
     nbits_all_frames = {4: [0]*len(steps), 8: [0]*len(steps), 16: [0]*len(steps)}
     dbits_all_frames = {4: [0]*len(steps), 8: [0]*len(steps), 16: [0]*len(steps)}
-    innerpsnr_all_frames = {4: 0, 8: 0, 16: 0}
-    ninnerpsnr_all_frames = {4: 0, 8: 0, 16: 0}
-    dinnerpsnr_all_frames = {4: 0, 8: 0, 16: 0}
+    innerpsnr_all_frames = {4: [0]*len(steps), 8: [0]*len(steps), 16: [0]*len(steps)}
+    ninnerpsnr_all_frames = {4: [0]*len(steps), 8: [0]*len(steps), 16: [0]*len(steps)}
+    dinnerpsnr_all_frames = {4: [0]*len(steps), 8: [0]*len(steps), 16: [0]*len(steps)}
     N_tot = 0
-    T = len(ply_list[:10])
+    num_of_frames = 106
+    T = len(ply_list[:num_of_frames])
 
-    for idx, ply_file in enumerate(ply_list[:10]):
+    for idx, ply_file in enumerate(ply_list[:num_of_frames]):
+        start_time = time.time()
         print(f"Processing file {idx + 1}/{T}: {ply_file}")
         V, C_rgb, _ = ply.ply_read8i(ply_file)
         #V = cp.asarray(V)
@@ -178,31 +181,31 @@ if __name__ == "__main__":
                 bits_all_frames[bsize][i] += bs_Coeffs
                 nbits_all_frames[bsize][i] += bs_nCoeffs
                 dbits_all_frames[bsize][i] += (bs_dCoeffs + decision_estimate)
-                innerpsnr_all_frames[bsize] += Frame_val
-                ninnerpsnr_all_frames[bsize] += nFrame_val
-                dinnerpsnr_all_frames[bsize] += dFrame_val
+                innerpsnr_all_frames[bsize][i] += Frame_val
+                ninnerpsnr_all_frames[bsize][i] += nFrame_val
+                dinnerpsnr_all_frames[bsize][i] += dFrame_val
 
                 if i % (len(steps) // 4) == 0:
                     print(f"      Step {step}:")
-                    print(f"        Bits: {bs_Coeffs}, N Bits: {bs_nCoeffs}, D Bits: {bs_dCoeffs}")
-                    print(f"        Inner Value: {Frame_val}, N Inner Value: {nFrame_val}, D Inner Value: {dFrame_val}")
-    
+                    print(f"        A Bits: {bs_Coeffs}, N Bits: {bs_nCoeffs}, D Bits: {bs_dCoeffs}")
+                    print(f"        A Inner Value: {Frame_val}, N Inner Value: {nFrame_val}, D Inner Value: {dFrame_val}")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        
+        print(f"Execution time for {idx+1} frame: {elapsed_time:.6f} seconds.")
+        if idx == 0:
+            total_estimated_time = elapsed_time * num_of_frames
+            print(f"Estimated total execution time {total_estimated_time:.6f}")
+
     print("Calculating averages...")
     avg_bits_all_frames = {bsize: [x / N_tot for x in bits_all_frames[bsize]] for bsize in block_sizes}
     avg_nbits_all_frames = {bsize: [x / N_tot for x in nbits_all_frames[bsize]] for bsize in block_sizes}
     avg_dbits_all_frames = {bsize: [x / N_tot for x in dbits_all_frames[bsize]] for bsize in block_sizes}
-    avg_innerpsnr_all_frames = {bsize: x / T for bsize, x in innerpsnr_all_frames.items()}
-    avg_ninnerpsnr_all_frames = {bsize: x / T for bsize, x in ninnerpsnr_all_frames.items()}
-    avg_dinnerpsnr_all_frames = {bsize: x / T for bsize, x in dinnerpsnr_all_frames.items()}
+    avg_psnr_all_frames = {bsize: [calculate_psnr(x / T) for x in innerpsnr_all_frames[bsize]] for bsize in block_sizes}
+    avg_npsnr_all_frames = {bsize: [calculate_psnr(x / T) for x in innerpsnr_all_frames[bsize]] for bsize in block_sizes}
+    avg_dpsnr_all_frames = {bsize: [calculate_psnr(x / T) for x in innerpsnr_all_frames[bsize]] for bsize in block_sizes}
     
-    print("Calculating PSNR values...")
-    psnr_all = {}
-    npsnr_all = {}
-    dpsnr_all = {}
-    for bsize in block_sizes:
-        psnr_all[bsize] = calculate_psnr([avg_innerpsnr_all_frames[bsize]])
-        npsnr_all[bsize] = calculate_psnr([avg_ninnerpsnr_all_frames[bsize]])
-        dpsnr_all[bsize] = calculate_psnr([avg_dinnerpsnr_all_frames[bsize]])
+
     
     print("Processing complete.")
     
@@ -210,31 +213,33 @@ if __name__ == "__main__":
     data = {
         'Block Size': [],
         'Step': [],
-        'Average Bits': [],
+        'Average A Bits': [],
         'Average N Bits': [],
         'Average D Bits': [],
-        'Average Inner PSNR': [],
-        'Average N Inner PSNR': [],
-        'Average D Inner PSNR': [],
-        'PSNR All': [],
-        'N PSNR All': [],
-        'D PSNR All': []
+        'Average A PSNR': [],
+        'Average N PSNR': [],
+        'Average D PSNR': [],
     }
 
     for bsize in block_sizes:
         for i, step in enumerate(steps):
             data['Block Size'].append(bsize)
             data['Step'].append(step)
-            data['Average Bits'].append(avg_bits_all_frames[bsize][i])
+            data['Average A Bits'].append(avg_bits_all_frames[bsize][i])
             data['Average N Bits'].append(avg_nbits_all_frames[bsize][i])
             data['Average D Bits'].append(avg_dbits_all_frames[bsize][i])
-            data['Average Inner PSNR'].append(avg_innerpsnr_all_frames[bsize])
-            data['Average N Inner PSNR'].append(avg_ninnerpsnr_all_frames[bsize])
-            data['Average D Inner PSNR'].append(avg_dinnerpsnr_all_frames[bsize])
-            data['PSNR All'].append(psnr_all[bsize])
-            data['N PSNR All'].append(npsnr_all[bsize])
-            data['D PSNR All'].append(dpsnr_all[bsize])
-    
+            data['Average A PSNR'].append(avg_psnr_all_frames[bsize][i])
+            data['Average N PSNR'].append(avg_npsnr_all_frames[bsize][i])
+            data['Average D PSNR'].append(avg_dpsnr_all_frames[bsize][i])
+
     df = pd.DataFrame(data)
     df.to_csv('PSNR_all_frames.csv', index=False)
     print("Results saved to 'PSNR_all_frames.csv'.")
+
+def check_csv(csv_path):
+    all_frames = pd.read_csv(csv_path)
+    print(all_frames.head(20))
+
+if __name__ == "__main__":
+    main()
+    check_csv("PSNR_all_frames.csv")
