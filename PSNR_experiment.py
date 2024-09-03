@@ -1,9 +1,11 @@
 from src.encoder import *
 import matplotlib.pyplot as plt
 from utils.color import YUVtoRGB
+from utils.morton import morton3D_64_encode
+from utils.encode_octree import octree_byte_count
 import os
 import pandas as pd
-import rlgr
+import rlgr 
 
 def calculate_psnr(Y, Coeff_quant, N,qstep):
     # Extract the first column of Coeff_quant
@@ -20,7 +22,8 @@ def calculate_psnr(Y, Coeff_quant, N,qstep):
 
 def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,point_fraction=None):
     directional_encoder = DirectionalEncoder(V,C_rgb)
-    directional_encoder.block_indexes(block_size = block_size) 
+    directional_encoder.block_indexes(block_size = block_size)
+     
     indexes = directional_encoder.indexes
     Coeff = np.zeros(C_rgb.shape)
     nCoeff = np.zeros(C_rgb.shape)
@@ -28,12 +31,12 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
     N = V.shape[0]
     print(f"Number of points {N}")
     count = 0
-    dynamic_overhead_estimate = 0
-    overhead_estimate = 0
     decision_bs = len(indexes)
+    choosed_count = 0
+    V_choosed = None
     for iteration,start_end_tuple in enumerate(indexes):
         # NOTE: Original implementation avoid one points blocks
-        
+        Vblock,_ = directional_encoder.get_block(iteration)    
         sorted_nodes = directional_encoder.simple_direction_sort(iteration)
         if point_fraction is not None:
             choosed_positions = sorted_nodes[0:int(len(sorted_nodes)*point_fraction)]
@@ -45,30 +48,33 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
         idx_map = dict(zip(choosed_positions,choosed_weights))
         #Ablockhat,block_decision = directional_encoder.dynamic_transform(iteration,W,idx_map)
         #decision.append(block_decision)
-        GFT, Gfreq, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map)
-        nGFT, nGfreq, nAblockhat = directional_encoder.gft_transform(iteration,W,None)      
+        _, _, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map)
+        _, _, nAblockhat = directional_encoder.gft_transform(iteration,W,None)      
         Ablockconstructed = np.zeros(Ablockhat.shape)
         # Get Y components
         Coeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockhat
         nCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
-        k_choosed_pos = len(choosed_positions)
-        N_block = Ablockhat[:,0].shape[0]
-        overhead_estimate += k_choosed_pos*np.log2(N_block)
         if abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]):
+            choosed_count += len(choosed_positions)
+            if V_choosed is None:
+                V_choosed = Vblock[choosed_positions]
+            else:
+                V_choosed = np.concatenate([V_choosed,Vblock[choosed_positions]])
+                
             # We get coefficients for the Y channel
             Ablockconstructed[:,0] = Ablockhat[:,0]
             # Different coefficients for the U and V channels
             Ablockconstructed[:,1:2] = nAblockhat[:,1:2]
             dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockconstructed
-            dynamic_overhead_estimate += k_choosed_pos*np.log2(N_block)
             count+=1
 
         else:
             dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
-        
-
+    V_choosed = V_choosed.astype(np.uint64)    
+    octree_nbits,octree_bs = octree_byte_count(V_choosed,10)
+    print(f"Octree coding total: {octree_nbits} \n Octree coding per position: {octree_nbits/choosed_count} \n Morton Code raw: {octree_bs}")
     print(f"{count} blocks used adaptative method in this iteration representing {count*100/len(indexes)} % of total")
-    return Coeff,nCoeff,dCoeff,indexes,count,decision_bs
+    return Coeff,nCoeff,dCoeff,indexes,count,decision_bs, octree_nbits
 
 def sort_gft_coeffs(Ahat,indexes):
     N = Ahat[:,0].shape[0]
@@ -164,7 +170,7 @@ if __name__ == "__main__":
         for num in num_of_points:
             for weight in weights:
                 print(f"========================================================= \n Block size {bsize}, number of points: {num} and self-loop weight {weight} \n =========================================================")
-                Coeff,nCoeff,dCoeff,indexes,count,decision_estimate = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
+                Coeff,nCoeff,dCoeff,indexes,count,decision_estimate, morton_bs = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
                 entropy_overhead_estimation = extract_overhead(entropy_analysis,num,bsize)
                 print(f"Overhead stimate {entropy_overhead_estimation}")
                 if count == 0:
@@ -174,7 +180,8 @@ if __name__ == "__main__":
                     PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs = quantize_PSNR_bs(Coeff,nCoeff,dCoeff,step,indexes)
                     bpv = (bs_Coeffs)/N
                     nbpv = bs_nCoeffs/N
-                    dbpv =(bs_dCoeffs+decision_estimate+entropy_overhead_estimation)/N
+                    #dbpv =(bs_dCoeffs+decision_estimate+entropy_overhead_estimation)/N
+                    dbpv =(bs_dCoeffs+decision_estimate+morton_bs)/N
                     print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y,bitstream and bpv = {PSNR_Y,bs_Coeffs,bpv} \n Structural method PSNR_Y,bitstream and bpv = {nPSNR_Y,bs_nCoeffs,nbpv} \n Dynamic method PSNR_Y,bitstream and bpv = {dPSNR_Y,bs_dCoeffs+decision_estimate+entropy_overhead_estimation,dbpv} \n =========================================================")
                     data.append([bsize, num, weight, step, PSNR_Y,bs_Coeffs,bpv, nPSNR_Y,bs_nCoeffs,nbpv, dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv])
 

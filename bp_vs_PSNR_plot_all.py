@@ -6,10 +6,10 @@ def extract_info(subdata):
     """
     Extract PSNR and bpv data from subdata and calculate Bjontegaard Delta metrics.
     """
-    nPSNR_Y = subdata['N PSNR All'].values
+    nPSNR_Y = subdata['Average N PSNR'].values
     print(nPSNR_Y)
     nbpv = subdata['Average N Bits'].values
-    dPSNR_Y = subdata['D PSNR All'].values
+    dPSNR_Y = subdata['Average D PSNR'].values
     dbpv = subdata['Average D Bits'].values
     bd_psnr = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y, mode=0)
     bd_rate = bj_delta(nbpv, nPSNR_Y, dbpv, dPSNR_Y, mode=1)
@@ -20,7 +20,7 @@ def PSNR_vs_bpv_plot(data):
     Plot PSNR vs. bpv for different block sizes and point fractions.
     """
     bsizes = [4, 8, 16]
-    num_of_points = [1, 2, 4, 8, 16]
+    num_of_points = [16]
     markers = ['o', 's', '^']  # Different markers for each block size
     colors = ['blue', 'green', 'red']  # Different colors for each block size
 
@@ -45,7 +45,7 @@ def PSNR_vs_bpv_plot(data):
             plt.plot(nbpv, nPSNR_Y, marker=markers[i], color=colors[i], linestyle='-', label=f'Structural - Block Size {bsize}', alpha=0.3)
         
         # Customize and show plot
-        plt.title(f'PSNR vs. bpv - 10 Frames')
+        plt.title(f'PSNR vs. bpv - Longdress All Frames')
         plt.xlabel('bpv')
         plt.ylabel('PSNR_Y')
         plt.grid(True)
@@ -56,6 +56,6 @@ def PSNR_vs_bpv_plot(data):
 
 if __name__ == "__main__":
     # Load data from CSV
-    data = pd.read_csv('results.csv')
+    data = pd.read_csv('PSNR_all_frames.csv')
     # Generate and display plots
     PSNR_vs_bpv_plot(data)
