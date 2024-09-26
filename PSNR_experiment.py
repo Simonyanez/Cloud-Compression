@@ -51,7 +51,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
         _, _, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map)
         _, _, nAblockhat = directional_encoder.gft_transform(iteration,W,None)      
         Ablockconstructed = np.zeros(Ablockhat.shape)
-        # Get Y components
+        # Get Y coefficients 
         Coeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockhat
         nCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
         if abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]):
@@ -64,7 +64,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
             # We get coefficients for the Y channel
             Ablockconstructed[:,0] = Ablockhat[:,0]
             # Different coefficients for the U and V channels
-            Ablockconstructed[:,1:2] = nAblockhat[:,1:2]
+            Ablockconstructed[:,1:3] = nAblockhat[:,1:3]
             dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockconstructed
             count+=1
 
@@ -160,9 +160,9 @@ if __name__ == "__main__":
     V,C_rgb,_ = ply.ply_read8i(ply_file)
     N = V.shape[0]
     steps = [8,12,16,20,26,32,40,52,64,78,90,128,256]
-    block_sizes = [4,8,16]
+    block_sizes = [4]#,8,16]
     #point_fractions = [0.05]#,0.2,0.5]
-    num_of_points=[1,2,4]
+    num_of_points=[1,2]#,4]
     weights = [1.2]#,1.6,2.0]
     data = []
     entropy_analysis = pd.read_csv('entropy_analysis.csv')

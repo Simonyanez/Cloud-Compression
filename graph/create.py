@@ -78,13 +78,11 @@ def compute_graph_MSR(V, th=None):
     # Compute Euclidean Distance Matrix (EDM)
     squared_norms = np.sum(V**2, axis=1)
     D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
-
     iD = np.zeros_like(D) 
     non_zero_mask = (D > 0) & (D <= th)
     iD[non_zero_mask] = 1 / D[non_zero_mask]
     iD[np.where(D > th)] = 0
     iD[np.where(D == 0)] = 0
-
     W = iD.T + iD
 
     idx = np.nonzero(iD)
@@ -202,3 +200,10 @@ def compute_graph_unit(V,th=None):
     edge = np.column_stack((I, J))
 
     return W, edge
+
+if __name__ == "__main__":
+    V = np.array([[1,1,1],[1,2,1],[1,3,2]])
+    print(f"Input V \n {V}")
+    W, edge = compute_graph_MSR(V)
+    print(f"Resulting W: \n {W}")
+    print(f"Resulting edges: \n {edge}")

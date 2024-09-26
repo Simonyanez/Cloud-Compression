@@ -1,3 +1,11 @@
+
+# Importing Parent Folder to Path
+import os
+main_folder = os.getcwd()
+import sys
+sys.path.insert(0, main_folder)
+
+# Other imports
 import numpy as np
 from graph.create import *
 from scipy.linalg import eigh
@@ -24,8 +32,12 @@ def w2l(W, idx_closest_map=None):
         for idx in idx_closest_map.keys():
             #C[np.ix_(idx, idx)] = idx_closest_map[idx]
             C[idx,idx] = idx_closest_map[idx]
-    L = C + np.diag(np.sum(W, axis=1)) - W + np.diag(np.diag(W))
 
+    D = np.diag(np.sum(W, axis=0))
+
+    # Be careful that C = np.diag(np.diag(W)) if the self-loops are originally at the structure of the graph
+
+    L = C + D - W + np.diag(np.diag(W))
     return L
 
 def compute_GFT_noQ(Adj, A, idx_closest=None):
@@ -47,17 +59,18 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
     else:
         L = w2l(Adj)
 
+    # L is normalized by the way it's build
     D, GFT = eigh(L) # D eigen values and GFT eigenvectors
     idxSorted = np.argsort(D)      # Order of the eigenvalues
 
     GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order first less
     GFT[:,0] = np.abs(GFT[:,0])
-    #GFT = GFT.T
+    GFT = GFT.T         # Because the matrix that do the transform is this one
     Gfreq = np.sort(D)
 
     Gfreq[0] = np.abs(Gfreq[0])
 
-    Ahat = np.dot(GFT.T, A)
+    Ahat = np.matmul(GFT, A)      # @ is a shortcut for matmul, yet i dont like it
     return GFT, Gfreq, Ahat
 
 
@@ -75,7 +88,7 @@ def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
 
     GFT_inv = np.linalg.inv(GFT)
 
-    Arec = np.dot(GFT_inv, Ahat_val)
+    Arec = np.matmul(GFT_inv, Ahat_val)
     return GFT_inv, Arec
 
 def compute_GFT(Adj, Q):
@@ -103,3 +116,12 @@ def compute_GFT(Adj, Q):
     Gfreq[0] = np.abs(Gfreq[0])
 
     return GFT, Gfreq
+
+
+if __name__ == "__main__":
+    W = np.array([[0,1,2],[5,0,9],[6,4,0]])
+    print(f"This is the W matrix \n {W}")
+    L = w2l(W)
+    print(f"This is the resulting L matrix \n {L}")
+    A = [1,2,4]
+    print(A[1:3])

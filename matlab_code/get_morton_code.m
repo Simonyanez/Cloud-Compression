@@ -11,6 +11,7 @@ function [ M ] = get_morton_code( V, J )
   tt = [1;2;4];
 
   for i=1:J
+    %xyz -> zyx and 
     M = M + fliplr(bitget(V,i,'uint64')) * tt;
     tt = tt*8;
   end
