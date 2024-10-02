@@ -42,7 +42,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
             choosed_positions = sorted_nodes[0:int(len(sorted_nodes)*point_fraction)]
         else:
             choosed_positions = sorted_nodes[:number_of_points]
-        W,edges = directional_encoder.structural_graph(iteration)
+        W,_ = directional_encoder.structural_graph(iteration)
         choosed_weights = [self_loop_weight]*len(choosed_positions)
         
         idx_map = dict(zip(choosed_positions,choosed_weights))
