@@ -75,8 +75,8 @@ class StructuralEncoder:
         net = visual.graph_visualization(edges,W,Ablock,idx_map=idx_map)
         return net
     
-    def structural_graph(self,iter):
-        first_point, last_point = self.indexes[iter]
+    def structural_graph(self,index_pair):
+        first_point, last_point = index_pair
         Vblock = self.V[first_point:last_point + 1, :] 
         W, edges = cr.compute_graph_MSR(Vblock)
         return W,edges
@@ -470,22 +470,18 @@ if __name__ == "__main__":
     V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")  
     structural_encoder = StructuralEncoder(V,C_rgb)
     directional_encoder = DirectionalEncoder(V,C_rgb)
-    structural_encoder.block_indexes(block_size = 16)
-    directional_encoder.block_indexes(block_size = 16)
+    indexes = structural_encoder.block_indexes(block_size = 4)
+    directional_encoder.block_indexes(block_size = 4)
+    W, edge, idx_closest = directional_encoder.directional_graph(14)
+    GFT,Gfreq,Ablockhat =directional_encoder.gft_transform(14,W, None)
+    #directional_encoder.energy_block(Ablockhat,"structural")
 
-    print(f"Total number of blocks {len(directional_encoder.indexes)}")
-    fig_1 = directional_encoder.block_visualization(3300)
-    fig_2 = directional_encoder.direction_visualization(3300)
-    plt.show()
-
-    
-
-
+    print(Ablockhat)
 
 
 
     
-    #fig = directional_encoder.energy_block(indexes[14])
+    #fig = structural_encoder.energy_block(indexes[14])
     #plt.show()
 
     

@@ -10,13 +10,13 @@ import rlgr
 def calculate_psnr(Y, Coeff_quant, N,qstep):
     # Extract the first column of Coeff_quant
     Coeff_dequant = Coeff_quant*qstep
-    Coeff_dequant_col1 = Coeff_dequant[:, 0]
+    Coeff_dequant_Y = Coeff_dequant[:, 0]
 
-    # Calculate the norm (Euclidean distance) between Y and Coeff_quant_col1
-    norm_value = np.linalg.norm(Y - Coeff_dequant_col1)
-
+    # Calculate the norm (Euclidean distance) between Y and Coeff_quant_Y
+    norm_value = np.linalg.norm(Y - Coeff_dequant_Y)
+    inner_value = (norm_value ** 2) / ((255 ** 2) * N )
     # Calculate PSNR
-    psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
+    psnr_Y = -10 * np.log10(inner_value)
     
     return psnr_Y
 
@@ -76,23 +76,42 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
     print(f"{count} blocks used adaptative method in this iteration representing {count*100/len(indexes)} % of total")
     return Coeff,nCoeff,dCoeff,indexes,count,decision_bs, octree_nbits
 
-def sort_gft_coeffs(Ahat,indexes):
+def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     N = Ahat[:,0].shape[0]
     mask_lo = np.zeros((N), dtype=bool)
     for start_end_tuple in indexes:
+        # This implies that the Ahat is sorted by coefficient
         mask_lo[start_end_tuple[0]] = True
     mask_hi = np.logical_not(mask_lo)
 
     Ahat_lo = Ahat[mask_lo, :]  # DC values
     Ahat_hi = Ahat[mask_hi, :]  # "high" pass values
+    
+    #print(f"Size checkers {mask_hi.shape, mask_lo.shape,Ahat.shape}")
+    #print(f"Number of points {np.sum(mask_hi),np.sum(mask_lo),np.sum(mask_hi)+np.sum(mask_lo)}")
     # Concatenate
     Ahat_sort = np.concatenate((Ahat_lo, Ahat_hi))
+    
+    if plot:
+        # Plotting
+        plt.figure(figsize=(10, 6))
+        plt.scatter((Ahat_lo[:, 0]), (Ahat_lo[:, 1]), label='Ahat_lo', alpha=0.5, color='blue')
+        plt.scatter((Ahat_hi[:, 0]), (Ahat_hi[:, 1]), label='Ahat_hi', alpha=0.5, color='red')
+        
+        plt.title(f'Distribution of Ahat_lo and Ahat_hi for qstep = {qstep} ')
+        plt.xlabel('First Coefficient')
+        plt.ylabel('Second Coefficient')
+        plt.legend()
+        plt.grid()
+        plt.show()
+    
     return Ahat_sort
 
 def encode_rlgr(data,filename="test.bin",is_signed=1):
     if os.path.isfile(filename):
         os.remove(filename)
-    data = data.astype(np.uint8).tolist()
+    #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation
+    data = data.astype(np.int64)
     do_write = 1
     enc = rlgr.file(filename, do_write)
 
@@ -128,9 +147,10 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
     nPSNR_Y = calculate_psnr(nY,nCoeff_quant,N,qstep)
     dPSNR_Y = calculate_psnr(dY,dCoeff_quant,N,qstep)
     # Sort hi to low
-    Coeff_quant_sorted = sort_gft_coeffs(Coeff_quant,indexes)
-    nCoeff_quant_sorted = sort_gft_coeffs(nCoeff_quant,indexes)
-    dCoeff_quant_sorted = sort_gft_coeffs(dCoeff_quant,indexes)
+    # BUG: First show bad distribution in plot
+    Coeff_quant_sorted = sort_gft_coeffs(Coeff_quant,indexes,qstep)
+    nCoeff_quant_sorted = sort_gft_coeffs(nCoeff_quant,indexes,qstep)
+    dCoeff_quant_sorted = sort_gft_coeffs(dCoeff_quant,indexes,qstep)
     # Run-Length Golomb-Rice
     bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res')
     bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res')
@@ -159,7 +179,7 @@ if __name__ == "__main__":
     ply_file = "res/longdress_vox10_1051.ply"
     V,C_rgb,_ = ply.ply_read8i(ply_file)
     N = V.shape[0]
-    steps = [8,12,16,20,26,32,40,52,64,78,90,128,256]
+    steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 64]
     block_sizes = [4]#,8,16]
     #point_fractions = [0.05]#,0.2,0.5]
     num_of_points=[1,2]#,4]

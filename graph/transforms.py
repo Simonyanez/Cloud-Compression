@@ -123,5 +123,8 @@ if __name__ == "__main__":
     print(f"This is the W matrix \n {W}")
     L = w2l(W)
     print(f"This is the resulting L matrix \n {L}")
-    A = [1,2,4]
+    A = [[4,8,1],[4,8,1],[4,8,1]]
     print(A[1:3])
+    
+    GFT, Gfreq, Ahat=compute_GFT_noQ(W,A)
+    print(Ahat)
