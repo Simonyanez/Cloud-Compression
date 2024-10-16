@@ -155,7 +155,7 @@ class DirectionalEncoder:
         assert np.all(np.floor(base_block_size) == base_block_size), "block size b should be a power of 2"
         V_coarse = np.floor(self.V / block_size) * block_size
 
-        variation = np.sum(np.abs(V_coarse[1:] - V_coarse[:-1]), axis=1)
+        variation = np.sum(np.abs(V_coarse[1:,:] - V_coarse[:-1,:]), axis=1)
 
         variation = np.concatenate(([1], variation))
 
@@ -164,7 +164,7 @@ class DirectionalEncoder:
         end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
         
         indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
-        indexes = sorted(indexes, key=lambda x: x[1]-x[0],reverse=True)
+        #indexes = sorted(indexes, key=lambda x: x[1]-x[0],reverse=True) SORT BY NUM OF POINTS
         self.indexes = indexes
 
     def get_block(self,iter):
@@ -467,7 +467,14 @@ def energy_comparison(Coeffs_1, Coeffs_2):
     return np.sum(Y_diff),np.sum(U_diff),np.sum(V_diff)
 
 if __name__ == "__main__":
-    V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")  
+    file_conditions = os.path.exists('V_longdress.npy') and os.path.exists('C_longdress.npy')
+    if file_conditions:
+        V = np.load('V_longdress.npy')
+        C_rgb = np.load('C_longdress.npy')
+    else:
+        V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")  
+        np.save('V_longdress.npy',V)
+        np.save('C_longdress.npy',C_rgb) 
     structural_encoder = StructuralEncoder(V,C_rgb)
     directional_encoder = DirectionalEncoder(V,C_rgb)
     indexes = structural_encoder.block_indexes(block_size = 4)
@@ -476,12 +483,12 @@ if __name__ == "__main__":
     GFT,Gfreq,Ablockhat =directional_encoder.gft_transform(14,W, None)
     #directional_encoder.energy_block(Ablockhat,"structural")
 
-    print(Ablockhat)
+    print(np.max(Ablockhat))
 
 
 
     
-    #fig = structural_encoder.energy_block(indexes[14])
-    #plt.show()
+    fig = structural_encoder.energy_block(indexes[14])
+    plt.show()
 
     

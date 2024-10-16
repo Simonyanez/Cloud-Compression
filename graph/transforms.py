@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, main_folder)
 
 # Other imports
+import matplotlib.pyplot as plt
 import numpy as np
 from graph.create import *
 from scipy.linalg import eigh
@@ -61,16 +62,18 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
 
     # L is normalized by the way it's build
     D, GFT = eigh(L) # D eigen values and GFT eigenvectors
-    idxSorted = np.argsort(D)      # Order of the eigenvalues
-
+    idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
     GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order first less
-    GFT[:,0] = np.abs(GFT[:,0])
-    GFT = GFT.T         # Because the matrix that do the transform is this one
+    for i in range(GFT.shape[1]):
+        if GFT[0,i] < 0:
+            GFT[:,i] =  GFT[:,i]*(-1) 
+    # GFT[:,0] = np.abs(GFT[:,0])
+    # GFT = GFT.T         # Because the matrix that do the transform is this one
     Gfreq = np.sort(D)
 
     Gfreq[0] = np.abs(Gfreq[0])
-
-    Ahat = np.matmul(GFT, A)      # @ is a shortcut for matmul, yet i dont like it
+    
+    Ahat = np.matmul(GFT.T, A)      # @ is a shortcut for matmul, yet i dont like it
     return GFT, Gfreq, Ahat
 
 
@@ -111,7 +114,7 @@ def compute_GFT(Adj, Q):
 
     GFT = GFT[:, idxSorted]
     GFT[:, 0] = np.abs(GFT[:, 0])
-    GFT = GFT.T
+    #GFT = GFT.T
     Gfreq = np.abs(np.diag(D))
     Gfreq[0] = np.abs(Gfreq[0])
 
@@ -128,3 +131,5 @@ if __name__ == "__main__":
     
     GFT, Gfreq, Ahat=compute_GFT_noQ(W,A)
     print(Ahat)
+    print(GFT)
+    plt.show()

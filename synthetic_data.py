@@ -165,13 +165,13 @@ def client_code(factory: Block_Generator, size: int) -> None:
         
         # Selected borders self-looped
         choosed_positions = [0,7]
-        choosed_weights = [0,2]
+        choosed_weights = [0,0]
         idx_map = dict(zip(choosed_positions,choosed_weights))
         GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,block.A,idx_closest=idx_map)
         _,_ = vis.border_visualization(block.V, block.A, choosed_positions)
         
         # First base plot
-        _= vis.component_visualization(block.V, GFT[:,0], "self-looped")
+        _= vis.component_visualization(block.V, GFT[:,0], "self-looped",'cg')
         print(f"This is the vector size and minmax {GFT[:,0].shape, np.min(GFT[:,0]),np.max(GFT[:,0])}")
         base_fig = vis.base_plot(GFT[:,0],choosed_weights)
 

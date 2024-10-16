@@ -1,4 +1,4 @@
-% HACER ESTEEEEE PARA MI TRANSFORMADA
+% TODO: HACER ESTEEEEE PARA MI TRANSFORMADA
 
 % Authors - Eduardo Pavez <eduardo.pavez.carvelli@gmail.com, pavezcar@usc.edu>
 % Copyright Eduardo Pavez,  University of Southern California

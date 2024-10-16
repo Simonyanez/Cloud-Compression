@@ -95,9 +95,8 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     if plot:
         # Plotting
         plt.figure(figsize=(10, 6))
-        plt.scatter((Ahat_lo[:, 0]), (Ahat_lo[:, 1]), label='Ahat_lo', alpha=0.5, color='blue')
-        plt.scatter((Ahat_hi[:, 0]), (Ahat_hi[:, 1]), label='Ahat_hi', alpha=0.5, color='red')
-        
+        plt.scatter(Ahat_lo[:, 0], Ahat_lo[:, 1], label='Ahat_lo', alpha=0.5, color='blue')
+        plt.scatter(Ahat_hi[:, 0], Ahat_hi[:, 1], label='Ahat_hi', alpha=0.5, color='red')
         plt.title(f'Distribution of Ahat_lo and Ahat_hi for qstep = {qstep} ')
         plt.xlabel('First Coefficient')
         plt.ylabel('Second Coefficient')
@@ -121,8 +120,17 @@ def encode_rlgr(data,filename="test.bin",is_signed=1):
     numbits = os.path.getsize(filename) * 8
     return numbits
 
-def code_YUV(Coeff_quant_sorted,bitstream_directory = ''):
-    
+def code_YUV(Coeff_quant_sorted,bitstream_directory = '', plot=False):
+    if plot:
+        plt.figure(figsize=(10,6))
+        plt.hist(np.abs(Coeff_quant_sorted[:,0]),bins=int(np.max(np.abs(Coeff_quant_sorted[:,0]))))
+        plt.title(f'Density distribution of Absolute Cuofficients in the Y Channel')
+        plt.xlabel('Value')
+        plt.ylabel('Count')
+        plt.yscale('log')
+        plt.grid(True,which="both", ls="-")
+        plt.show()
+
     # Code Y, U, V separately 
     numbits_Y = encode_rlgr(Coeff_quant_sorted[:, 0], os.path.join(bitstream_directory, 'bitstream_Y.bin'))
     numbits_U = encode_rlgr(Coeff_quant_sorted[:, 1], os.path.join(bitstream_directory, 'bitstream_U.bin'))
@@ -147,14 +155,13 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
     nPSNR_Y = calculate_psnr(nY,nCoeff_quant,N,qstep)
     dPSNR_Y = calculate_psnr(dY,dCoeff_quant,N,qstep)
     # Sort hi to low
-    # BUG: First show bad distribution in plot
     Coeff_quant_sorted = sort_gft_coeffs(Coeff_quant,indexes,qstep)
     nCoeff_quant_sorted = sort_gft_coeffs(nCoeff_quant,indexes,qstep)
     dCoeff_quant_sorted = sort_gft_coeffs(dCoeff_quant,indexes,qstep)
     # Run-Length Golomb-Rice
     bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res')
-    bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res')
-    bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res')
+    bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res',plot=False)
+    bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res',plot=False)
     return PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs 
 
 def extract_overhead(entropy_data, num_of_points, bsize):
@@ -177,12 +184,20 @@ def extract_overhead(entropy_data, num_of_points, bsize):
 
 if __name__ == "__main__":
     ply_file = "res/longdress_vox10_1051.ply"
-    V,C_rgb,_ = ply.ply_read8i(ply_file)
+    file_conditions = os.path.exists('V_longdress.npy') and os.path.exists('C_longdress.npy')
+
+    if file_conditions:
+        V = np.load('V_longdress.npy')
+        C_rgb = np.load('C_longdress.npy')
+    else:
+        V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")  
+        np.save('V_longdress.npy',V)
+        np.save('C_longdress.npy',C_rgb)
     N = V.shape[0]
     steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 64]
-    block_sizes = [4]#,8,16]
+    block_sizes = [4,8,16]
     #point_fractions = [0.05]#,0.2,0.5]
-    num_of_points=[1,2]#,4]
+    num_of_points=[1,2,4,8,16]#,4]
     weights = [1.2]#,1.6,2.0]
     data = []
     entropy_analysis = pd.read_csv('entropy_analysis.csv')
@@ -191,20 +206,26 @@ if __name__ == "__main__":
             for weight in weights:
                 print(f"========================================================= \n Block size {bsize}, number of points: {num} and self-loop weight {weight} \n =========================================================")
                 Coeff,nCoeff,dCoeff,indexes,count,decision_estimate, morton_bs = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
+                np.save(f'res/struct_GFT_{bsize}_exp.npy', nCoeff)
                 entropy_overhead_estimation = extract_overhead(entropy_analysis,num,bsize)
                 print(f"Overhead stimate {entropy_overhead_estimation}")
                 if count == 0:
                     print("Since no block was considered for adaptative method, then there is no use in iterate weights")
                     break
+                bits = []
                 for step in steps:
                     PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs = quantize_PSNR_bs(Coeff,nCoeff,dCoeff,step,indexes)
+                    if num == 1:
+                        bits.append(bs_nCoeffs)
                     bpv = (bs_Coeffs)/N
                     nbpv = bs_nCoeffs/N
                     #dbpv =(bs_dCoeffs+decision_estimate+entropy_overhead_estimation)/N
-                    dbpv =(bs_dCoeffs+decision_estimate+morton_bs)/N
-                    print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y,bitstream and bpv = {PSNR_Y,bs_Coeffs,bpv} \n Structural method PSNR_Y,bitstream and bpv = {nPSNR_Y,bs_nCoeffs,nbpv} \n Dynamic method PSNR_Y,bitstream and bpv = {dPSNR_Y,bs_dCoeffs+decision_estimate+entropy_overhead_estimation,dbpv} \n =========================================================")
+                    dbpv =(bs_dCoeffs+decision_estimate)/N#morton_bs)/N
+                    print(f"For block with size {bsize} and quantization step of {step} \n Adaptative method PSNR_Y,bitstream and bpv = {PSNR_Y,bs_Coeffs,bpv} \n Structural method PSNR_Y,bitstream and bpv = {nPSNR_Y,bs_nCoeffs,nbpv} \n Dynamic method PSNR_Y,bitstream and bpv = {dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv} \n =========================================================")
                     data.append([bsize, num, weight, step, PSNR_Y,bs_Coeffs,bpv, nPSNR_Y,bs_nCoeffs,nbpv, dPSNR_Y,bs_dCoeffs+decision_estimate,dbpv])
-
+                if num == 1:
+                    bits = np.array(bits)
+                    np.save(f'res/struct_GFT_{bsize}_exp_bits.npy', bits)
     # Create DataFrame
     df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y","Adaptative bitstream", "Adaptative bpv","nPSNR_Y","Structural bitstream","Structural bpv", "dPSNR_Y","Dynamic bitstream","Dynamic bpv"])
 

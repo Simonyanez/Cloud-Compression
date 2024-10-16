@@ -13,7 +13,7 @@ def extract_info(subdata):
     
 def PSNR_vs_bpv_plot(data):
     bsizes = [4, 8, 16]
-    num_of_points = [1, 2, 4]
+    num_of_points = [1, 2, 4, 8, 16]
     markers = ['o', 's', '^']  # Different markers for each block size
     colors = ['blue', 'green', 'red']  # Different colors for each block size
 
@@ -34,10 +34,10 @@ def PSNR_vs_bpv_plot(data):
         plt.title(f'PSNR vs. bpv for {num} self-looped nodes - single frame')
         plt.xlabel('bpv')
         plt.ylabel('PSNR_Y')
-        plt.grid(True)
+        plt.grid(True, which='both')
         plt.legend(title='Legend')
-        plt.ylim(20, 45)  # Adjust according to your data range
-        plt.xlim(0, 12)   # Adjust according to your data range
+        #plt.ylim(20, 45)  # Adjust according to your data range
+        #plt.xlim(0, 12)   # Adjust according to your data range
         plt.show()
 
 if __name__ == "__main__":
