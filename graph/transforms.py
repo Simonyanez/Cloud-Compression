@@ -9,7 +9,7 @@ sys.path.insert(0, main_folder)
 import matplotlib.pyplot as plt
 import numpy as np
 from graph.create import *
-from scipy.linalg import eigh
+#from scipy.linalg import eigh
 
 def w2l(W, idx_closest_map=None):
     """
@@ -61,7 +61,7 @@ def compute_GFT_noQ(Adj, A, idx_closest=None):
         L = w2l(Adj)
 
     # L is normalized by the way it's build
-    D, GFT = eigh(L) # D eigen values and GFT eigenvectors
+    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
     idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
     GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order first less
     for i in range(GFT.shape[1]):
@@ -83,7 +83,7 @@ def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
     else:
         L = w2l(Adj)
 
-    D, GFT = eigh(L) # D eigen values and GFT eigenvectors
+    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
     idxSorted = np.argsort(D)      # Order of the eigenvalues
     GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order
     GFT[:,0] = np.abs(GFT[:,0])
@@ -122,14 +122,5 @@ def compute_GFT(Adj, Q):
 
 
 if __name__ == "__main__":
-    W = np.array([[0,1,2],[5,0,9],[6,4,0]])
-    print(f"This is the W matrix \n {W}")
-    L = w2l(W)
-    print(f"This is the resulting L matrix \n {L}")
-    A = [[4,8,1],[4,8,1],[4,8,1]]
-    print(A[1:3])
-    
-    GFT, Gfreq, Ahat=compute_GFT_noQ(W,A)
-    print(Ahat)
-    print(GFT)
-    plt.show()
+    V = np.load('V_longdress.npy')
+    C_rgb = np.load('C_longdress.npy')

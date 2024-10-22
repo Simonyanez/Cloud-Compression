@@ -22,6 +22,16 @@ Coeff_b4_simon = np.load('res/struct_GFT_4_exp.npy')
 Coeff_b8_simon = np.load('res/struct_GFT_8_exp.npy')
 Coeff_b16_simon = np.load('res/struct_GFT_16_exp.npy')
 
+# Squared diff
+SQQ_b4 = (Coeff_b4_edu - Coeff_b4_simon)**2
+SQQ_b8 = (Coeff_b8_edu - Coeff_b8_simon)**2
+SQQ_b16 = (Coeff_b16_edu - Coeff_b16_simon)**2
+
+# MSE
+MSE_b4 = (SQQ_b4).mean(axis=1)
+MSE_b8 = (SQQ_b8).mean(axis=1)
+MSE_b16 = (SQQ_b16).mean(axis=1)
+
 # Get bytes (bits?)
 Bytes_b4_edu = Coeff_quant_b4_read['bytes']
 Bytes_b8_edu = Coeff_quant_b8_read['bytes']
@@ -33,6 +43,26 @@ Bits_b8_simon = np.load('res/struct_GFT_8_exp_bits.npy')
 Bits_b16_simon = np.load('res/struct_GFT_16_exp_bits.npy')
 
 steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 64]
+
+# Visualize squared diff
+
+# Print MSE
+SQQs = [SQQ_b4,SQQ_b8,SQQ_b16]
+MSEs = [MSE_b4,MSE_b8,MSE_b16]
+CHs = ['Y','U','V']
+bsizes = [4,8,16]
+for i,MSE in enumerate(MSEs):
+    print(f"Block {bsizes[i]} MSE between coefficients {MSE}")
+    print("===============================================================")
+    for j in range(3):
+        plt.figure(figsize=(15,10))
+        plt.hist(SQQs[i][:,j], bins=50)
+        plt.title(f"Mean Squared Error for {CHs[j]} Channel and Block Size {bsizes[i]}")
+        plt.xlabel("MSE")
+        plt.ylabel("Count")
+        plt.show()
+
+
 # Print byte sizes
 print("Byte sizes comparison:")
 for i, step in enumerate(steps):

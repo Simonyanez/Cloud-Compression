@@ -1,5 +1,48 @@
 import numpy as np
 
+def get_block_indexes(V, block_size):
+    # Assumes point cloud is morton ordered
+    base_block_size = np.log2(block_size) 
+    assert np.all(np.floor(base_block_size) == base_block_size), "block size b should be a power of 2"
+    V_coarse = np.floor(V / block_size) * block_size
+
+    variation = np.sum(np.abs(V_coarse[1:,:] - V_coarse[:-1,:]), axis=1)
+
+    variation = np.concatenate(([1], variation))
+
+    start_indexes = np.nonzero(variation)[0]
+    Nlevel = V.shape[0]
+    end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
+    
+    indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
+    return indexes
+
+def block_indices_v2(V, bsize):
+    """
+    V is an Nx3 numpy array representing a point cloud, where each row contains the 
+    x, y, z coordinates of a point (integers). It assumes the point cloud is morton ordered.
+    
+    Parameters:
+    V (np.ndarray): An Nx3 array of integer coordinates.
+    bsize (int): The block size for the indexing.
+    
+    Returns:
+    np.ndarray: Indices of variation in the coarse point cloud.
+    """
+    # Calculate coarse representation of V
+    V_coarse = np.floor_divide(V, bsize) * bsize
+    
+    # Calculate variation
+    variation = np.sum(np.abs(V_coarse[1:] - V_coarse[:-1]), axis=1)
+    
+    # Prepend 1 to variation
+    variation = np.insert(variation, 0, 1)
+    
+    # Find indices of non-zero variation
+    indices = np.where(variation)[0]
+    
+    return indices
+
 def bf_graph(V, C):
     N = V.shape[0]
     
@@ -202,8 +245,16 @@ def compute_graph_unit(V,th=None):
     return W, edge
 
 if __name__ == "__main__":
-    V = np.array([[1,1,1],[1,2,1],[1,3,2]])
-    print(f"Input V \n {V}")
-    W, edge = compute_graph_MSR(V)
-    print(f"Resulting W: \n {W}")
-    print(f"Resulting edges: \n {edge}")
+    V = np.load('V_longdress.npy')
+    indexes = get_block_indexes(V,4)
+    indexes_2 = block_indices_v2(V,4)
+
+    # Ensure both index lists have the same length
+    min_length = min(len(indexes), len(indexes_2))
+
+    # Compare the indexes from both methods
+    for i in range(min_length):
+        index = indexes[i]
+        index_2 = indexes_2[i]
+        if index[0] != index_2 or index[1] != indexes_2[i+1]-1:
+            print(f"Old: {index}    New: {index_2,indexes_2[i+1]}")
