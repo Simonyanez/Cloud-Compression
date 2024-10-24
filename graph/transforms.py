@@ -122,5 +122,20 @@ def compute_GFT(Adj, Q):
 
 
 if __name__ == "__main__":
+    from create import *
+    indexes = get_block_indexes(V,4)
     V = np.load('V_longdress.npy')
     C_rgb = np.load('C_longdress.npy')
+    W, edge = compute_graph_MSR(V)
+    GFT, Gfreq, Ahat = compute_GFT(W)
+    Ahat_2 = np.load('Coeff_quant.npy')
+
+    # Squared diff
+    SQQ_b4 = (Ahat - Ahat_2)**2
+    # SQQ_b8 = (Coeff_b8_edu - Coeff_b8_simon)**2
+    # SQQ_b16 = (Coeff_b16_edu - Coeff_b16_simon)**2
+
+    # MSE
+    MSE_b4 = (SQQ_b4).mean(axis=1)
+    MSE_b8 = (SQQ_b8).mean(axis=1)
+    MSE_b16 = (SQQ_b16).mean(axis=1)

@@ -17,6 +17,11 @@ def get_block_indexes(V, block_size):
     indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
     return indexes
 
+def get_block_npoints(indexes,iter):
+    index = indexes[iter]
+    npoints = index[1] - index[0] + 1
+    return npoints
+
 def block_indices_v2(V, bsize):
     """
     V is an Nx3 numpy array representing a point cloud, where each row contains the 
@@ -129,8 +134,76 @@ def compute_graph_MSR(V, th=None):
     W = iD.T + iD
 
     idx = np.nonzero(iD)
-
     I, J = np.unravel_index(idx, D.shape)
+
+    edge = np.column_stack((I, J))
+
+    return W, edge
+
+def compute_graph_MSR_v2(V, th=None):
+    """
+    Compute distance-based graph from Zhang et al., ICIP 2014.
+
+    Parameters:
+        V (numpy.ndarray): nx3 array. n points.
+        th (float): Threshold to construct the graph (optional).
+
+    Returns:
+        numpy.ndarray: Weight matrix representing the graph.
+        numpy.ndarray: Edge list.
+    """
+    N = V.shape[0]
+
+    if th is None:
+        th = np.sqrt(3) + 0.00001
+
+    # Compute Euclidean Distance Matrix (EDM)
+    squared_norms = np.sum(V**2, axis=1)
+    D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
+    iD = np.zeros_like(D) 
+    non_zero_mask = (D > 0) & (D <= th)
+    iD[non_zero_mask] = 1 / D[non_zero_mask]
+    iD[np.where(D > th)] = 0
+    iD[np.where(D == 0)] = 0
+    W = iD.T + iD
+
+    idx = np.nonzero(iD)
+
+    I = idx[0]
+    J = idx[1]
+    # I, J = np.unravel_index(idx, D.shape)
+
+    edge = np.column_stack((I, J))
+
+    return W, edge
+
+def compute_graph_MSR_v3(V, th=None):
+    # V: nx3 numpy array of points
+    # th: threshold to construct the graph
+
+    N = V.shape[0]
+
+    if th is None:
+        th = np.sqrt(3) + 0.00001
+
+    # Compute squared norms
+    squared_norms = np.sum(V**2, axis=1)
+    
+    # Compute the Euclidean distance matrix
+    D = np.sqrt(squared_norms[:, np.newaxis] + squared_norms[np.newaxis, :] - 2 * np.dot(V, V.T))
+    
+    # Inverse of distances
+    iD = np.where(D != 0, 1 / D, 0)  # Element-wise inverse, set self-connections to 0
+    iD[D > th] = 0                    # Set distances greater than threshold to 0
+
+    # Symmetric adjacency matrix
+    W = iD + iD.T
+
+    # Find non-zero entries in the adjacency matrix
+    idx = np.nonzero(iD)
+
+    # Get the indices of connected nodes
+    I, J = idx[0], idx[1]
 
     edge = np.column_stack((I, J))
 
@@ -237,14 +310,16 @@ def compute_graph_unit(V,th=None):
     W = iD.T + iD
 
     idx = np.nonzero(iD)
-
-    I, J = np.unravel_index(idx, D.shape)
+    
+    
 
     edge = np.column_stack((I, J))
 
     return W, edge
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     V = np.load('V_longdress.npy')
     indexes = get_block_indexes(V,4)
     indexes_2 = block_indices_v2(V,4)
@@ -252,9 +327,29 @@ if __name__ == "__main__":
     # Ensure both index lists have the same length
     min_length = min(len(indexes), len(indexes_2))
 
+    print(min_length)
     # Compare the indexes from both methods
     for i in range(min_length):
+        if i+1 == min_length:
+            break
         index = indexes[i]
         index_2 = indexes_2[i]
+        
         if index[0] != index_2 or index[1] != indexes_2[i+1]-1:
             print(f"Old: {index}    New: {index_2,indexes_2[i+1]}")
+        else:
+            continue
+            # print(f"Number of points of block {index[1]- index[0] + 1}")
+
+    npoints = get_block_npoints(indexes,4)
+    Vblock = V[indexes[4][0]:indexes[4][1]+1]
+    print(f"Vblock size {Vblock.shape} and number of points {npoints}")
+    W,edge = compute_graph_MSR(Vblock)
+    W_2, edge_2 = compute_graph_MSR_v2(Vblock)
+    print(edge.shape, edge_2.shape)
+
+    I = edge_2[:,0]
+    J = edge_2[:,1]
+
+    for k in range(len(I)):
+        print(f"Edge: {I[k],J[k]} \n Weight {W_2[I[k],J[k]],W_2[J[k],I[k]]} \n Position {Vblock[I[k],:], Vblock[J[k],:]}")
