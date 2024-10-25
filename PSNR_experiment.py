@@ -33,7 +33,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
     count = 0
     decision_bs = len(indexes)
     choosed_count = 0
-    V_choosed = None
+    # V_choosed = None
     for iteration,start_end_tuple in enumerate(indexes):
         # NOTE: Original implementation avoid one points blocks
         Vblock,_ = directional_encoder.get_block(iteration)    
@@ -48,32 +48,41 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
         idx_map = dict(zip(choosed_positions,choosed_weights))
         #Ablockhat,block_decision = directional_encoder.dynamic_transform(iteration,W,idx_map)
         #decision.append(block_decision)
-        _, _, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map)
-        _, _, nAblockhat = directional_encoder.gft_transform(iteration,W,None)      
+        _, _, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map,iteration)
+        _, _, nAblockhat = directional_encoder.gft_transform(iteration,W,None,iteration)      
         Ablockconstructed = np.zeros(Ablockhat.shape)
         # Get Y coefficients 
-        Coeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockhat
-        nCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
-        if abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]):
+        Coeff[start_end_tuple[0]:start_end_tuple[1],:] = Ablockhat
+        nCoeff[start_end_tuple[0]:start_end_tuple[1],:] = nAblockhat
+        if Ablockhat.ndim==1:
+            # We get coefficients for the Y channel
+            Ablockconstructed[0] = Ablockhat[0]
+            # Different coefficients for the U and V channels
+            Ablockconstructed[1:3] = nAblockhat[1:3]
+            dCoeff[start_end_tuple[0]:start_end_tuple[1],:] = Ablockconstructed
+            count+=1
+        
+        elif abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]):
             choosed_count += len(choosed_positions)
-            if V_choosed is None:
-                V_choosed = Vblock[choosed_positions]
-            else:
-                V_choosed = np.concatenate([V_choosed,Vblock[choosed_positions]])
+            # if V_choosed is None:
+            #     V_choosed = Vblock[choosed_positions]
+            # else:
+            #     V_choosed = np.concatenate([V_choosed,Vblock[choosed_positions]])
                 
             # We get coefficients for the Y channel
             Ablockconstructed[:,0] = Ablockhat[:,0]
             # Different coefficients for the U and V channels
             Ablockconstructed[:,1:3] = nAblockhat[:,1:3]
-            dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = Ablockconstructed
+            dCoeff[start_end_tuple[0]:start_end_tuple[1],:] = Ablockconstructed
             count+=1
 
         else:
-            dCoeff[start_end_tuple[0]:start_end_tuple[1]+1,:] = nAblockhat
-    V_choosed = V_choosed.astype(np.uint64)    
-    octree_nbits,octree_bs = octree_byte_count(V_choosed,10)
-    print(f"Octree coding total: {octree_nbits} \n Octree coding per position: {octree_nbits/choosed_count} \n Morton Code raw: {octree_bs}")
+            dCoeff[start_end_tuple[0]:start_end_tuple[1],:] = nAblockhat
+    # V_choosed = V_choosed.astype(np.uint64)    
+    # octree_nbits,octree_bs = octree_byte_count(V_choosed,10)
+    # print(f"Octree coding total: {octree_nbits} \n Octree coding per position: {octree_nbits/choosed_count} \n Morton Code raw: {octree_bs}")
     print(f"{count} blocks used adaptative method in this iteration representing {count*100/len(indexes)} % of total")
+    octree_nbits = 0
     return Coeff,nCoeff,dCoeff,indexes,count,decision_bs, octree_nbits
 
 def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
@@ -87,8 +96,8 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     Ahat_lo = Ahat[mask_lo, :]  # DC values
     Ahat_hi = Ahat[mask_hi, :]  # "high" pass values
     
-    #print(f"Size checkers {mask_hi.shape, mask_lo.shape,Ahat.shape}")
-    #print(f"Number of points {np.sum(mask_hi),np.sum(mask_lo),np.sum(mask_hi)+np.sum(mask_lo)}")
+    print(f"Size checkers {mask_hi.shape, mask_lo.shape,Ahat.shape}")
+    print(f"Number of points {np.sum(mask_hi),np.sum(mask_lo),np.sum(mask_hi)+np.sum(mask_lo)}")
     # Concatenate
     Ahat_sort = np.concatenate((Ahat_lo, Ahat_hi))
     
@@ -141,7 +150,7 @@ def code_YUV(Coeff_quant_sorted,bitstream_directory = '', plot=False):
     
     return bs_size
 
-def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
+def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes,bsize):
     Y = Coeff[:,0]
     nY = nCoeff[:,0]
     dY = dCoeff[:,0]
@@ -158,6 +167,8 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes):
     Coeff_quant_sorted = sort_gft_coeffs(Coeff_quant,indexes,qstep)
     nCoeff_quant_sorted = sort_gft_coeffs(nCoeff_quant,indexes,qstep)
     dCoeff_quant_sorted = sort_gft_coeffs(dCoeff_quant,indexes,qstep)
+    if qstep==1:
+        np.save(f'res/struct_GFT_{bsize}_exp.npy', nCoeff_quant_sorted)
     # Run-Length Golomb-Rice
     bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res')
     bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res',plot=False)
@@ -206,7 +217,6 @@ if __name__ == "__main__":
             for weight in weights:
                 print(f"========================================================= \n Block size {bsize}, number of points: {num} and self-loop weight {weight} \n =========================================================")
                 Coeff,nCoeff,dCoeff,indexes,count,decision_estimate, morton_bs = get_coefficients(V=V,C_rgb=C_rgb,block_size=bsize,self_loop_weight=weight,number_of_points=num)
-                np.save(f'res/struct_GFT_{bsize}_exp.npy', nCoeff)
                 entropy_overhead_estimation = extract_overhead(entropy_analysis,num,bsize)
                 print(f"Overhead stimate {entropy_overhead_estimation}")
                 if count == 0:
@@ -214,7 +224,7 @@ if __name__ == "__main__":
                     break
                 bits = []
                 for step in steps:
-                    PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs = quantize_PSNR_bs(Coeff,nCoeff,dCoeff,step,indexes)
+                    PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs = quantize_PSNR_bs(Coeff,nCoeff,dCoeff,step,indexes,bsize)
                     if num == 1:
                         bits.append(bs_nCoeffs)
                     bpv = (bs_Coeffs)/N

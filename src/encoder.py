@@ -60,8 +60,8 @@ class StructuralEncoder:
     
     def get_block(self,iter):
         first_point, last_point = self.indexes[iter]
-        Vblock = self.V[first_point:last_point + 1, :] 
-        Ablock = self.A[first_point:last_point + 1, :] 
+        Vblock = self.V[first_point:last_point, :] 
+        Ablock = self.A[first_point:last_point, :] 
         return Vblock,Ablock
     
     def block_visualization(self,iter):
@@ -77,14 +77,14 @@ class StructuralEncoder:
     
     def structural_graph(self,index_pair):
         first_point, last_point = index_pair
-        Vblock = self.V[first_point:last_point + 1, :] 
+        Vblock = self.V[first_point:last_point, :] 
         W, edges = cr.compute_graph_MSR(Vblock)
         return W,edges
     
     def gft_transform(self,index_pair):
         W,_= self.structural_graph(index_pair)
         first_point, last_point = index_pair
-        Ablock = self.A[first_point:last_point + 1, :] 
+        Ablock = self.A[first_point:last_point, :] 
 
         GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock)
         return GFT, Gfreq, Ablockhat
@@ -151,26 +151,12 @@ class DirectionalEncoder:
     
     def block_indexes(self,block_size):    # Stores indexes for later access
         # Assumes point cloud is morton ordered
-        base_block_size = np.log2(block_size) 
-        assert np.all(np.floor(base_block_size) == base_block_size), "block size b should be a power of 2"
-        V_coarse = np.floor(self.V / block_size) * block_size
-
-        variation = np.sum(np.abs(V_coarse[1:,:] - V_coarse[:-1,:]), axis=1)
-
-        variation = np.concatenate(([1], variation))
-
-        start_indexes = np.nonzero(variation)[0]
-        Nlevel = self.V.shape[0]
-        end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
-        
-        indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
-        #indexes = sorted(indexes, key=lambda x: x[1]-x[0],reverse=True) SORT BY NUM OF POINTS
-        self.indexes = indexes
+        self.indexes = cr.get_block_indexes(self.V, block_size)
 
     def get_block(self,iter):
         first_point, last_point = self.indexes[iter]
-        Vblock = self.V[first_point:last_point + 1, :] 
-        Ablock = self.A[first_point:last_point + 1, :] 
+        Vblock = self.V[first_point:last_point, :] 
+        Ablock = self.A[first_point:last_point, :] 
         return Vblock,Ablock
     
     def Y_visualization(self,iter):
@@ -249,7 +235,7 @@ class DirectionalEncoder:
 
     def structural_graph(self,iter):
         first_point, last_point = self.indexes[iter]
-        Vblock = self.V[first_point:last_point + 1, :] 
+        Vblock = self.V[first_point:last_point, :] 
         W, edges = cr.compute_graph_MSR(Vblock)
         return W,edges
     
@@ -295,10 +281,10 @@ class DirectionalEncoder:
         return W,edge, idx_closest
     
     
-    def gft_transform(self,iter,W,idx_map):
+    def gft_transform(self,iter,W,idx_map, iteration):
         Vblock,Ablock = self.get_block(iter)
         if not idx_map is None:
-            GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
+            GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map, iter = iteration)
             idx = list(idx_map.keys())
             if self.plots:
                 _,_ = visual.border_visualization(Vblock, Ablock, idx)

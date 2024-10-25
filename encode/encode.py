@@ -1,10 +1,15 @@
 import numpy as np
 import matplotlib as plt
+import os
+import rlgr
+
 def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     N = Ahat[:,0].shape[0]
     mask_lo = np.zeros((N), dtype=bool)
-    for start_end_tuple in indexes:
+    for i,start_end_tuple in enumerate(indexes):
         # This implies that the Ahat is sorted by coefficient
+        if i < 6:
+            print(start_end_tuple[0])
         mask_lo[start_end_tuple[0]] = True
     mask_hi = np.logical_not(mask_lo)
 
@@ -29,3 +34,17 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
         plt.show()
     
     return Ahat_sort
+
+def encode_rlgr(data,filename="test.bin",is_signed=1):
+    if os.path.isfile(filename):
+        os.remove(filename)
+    #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation
+    data = data.astype(np.int64)
+    do_write = 1
+    enc = rlgr.file(filename, do_write)
+
+    # Write data
+    enc.rlgrWrite(data, is_signed)
+    enc.close()
+    numbits = os.path.getsize(filename) * 8
+    return numbits

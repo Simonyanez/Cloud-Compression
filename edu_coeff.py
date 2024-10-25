@@ -17,10 +17,61 @@ Coeff_b4_edu = Coeff_b4_read['Coeff']
 Coeff_b8_edu = Coeff_b8_read['Coeff']
 Coeff_b16_edu = Coeff_b16_read['Coeff']
 
+
 # Load coefficient data from .npy files
 Coeff_b4_simon = np.load('res/struct_GFT_4_exp.npy')
 Coeff_b8_simon = np.load('res/struct_GFT_8_exp.npy')
 Coeff_b16_simon = np.load('res/struct_GFT_16_exp.npy')
+
+# Create subplots
+fig, axs = plt.subplots(3, 2, figsize=(10, 15))
+
+# Plot for Coeff_b4
+axs[0, 0].plot(Coeff_b4_edu, label='Edu Coeff b4')
+axs[0, 0].set_title('Coefficients from .mat (b4)')
+# axs[0, 0].set_xticks([])
+axs[0, 0].legend()
+
+axs[0, 1].plot(Coeff_b4_simon, label='Simon Coeff b4')
+axs[0, 1].set_title('Coefficients from .npy (b4)')
+# axs[0, 1].set_xticks([])
+axs[0, 1].legend()
+
+# Plot for Coeff_b8
+axs[1, 0].plot(Coeff_b8_edu, label='Edu Coeff b8')
+axs[1, 0].set_title('Coefficients from .mat (b8)')
+# axs[1, 0].set_xticks([])
+axs[1, 0].legend()
+
+axs[1, 1].plot(Coeff_b8_simon, label='Simon Coeff b8')
+axs[1, 1].set_title('Coefficients from .npy (b8)')
+# axs[1, 1].set_xticks([])
+axs[1, 1].legend()
+
+# Plot for Coeff_b16
+axs[2, 0].plot(Coeff_b16_edu, label='Edu Coeff b16')
+axs[2, 0].set_title('Coefficients from .mat (b16)')
+# axs[2, 0].set_xticks([])
+axs[2, 0].legend()
+
+axs[2, 1].plot(Coeff_b16_simon, label='Simon Coeff b16')
+axs[2, 1].set_title('Coefficients from .npy (b16)')
+# axs[2, 1].set_xticks([])
+axs[2, 1].legend()
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
+
+# Get rare positions 
+Ypositions_4 = np.argwhere(np.abs(Coeff_b4_simon[:,0])>400)
+np.save('res/Ypositions_4.npy',Ypositions_4)
+Ypositions_8 = np.argwhere(np.abs(Coeff_b8_simon[:,0])>400)
+np.save('res/Ypositions_8.npy',Ypositions_8)
+Ypositions_16 = np.argwhere(np.abs(Coeff_b16_simon[:,0])>400)
+np.save('res/Ypositions_16.npy',Ypositions_16)
+#====================================================================================
+
 
 # Squared diff
 SQQ_b4 = (Coeff_b4_edu - Coeff_b4_simon)**2
@@ -49,6 +100,7 @@ steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 64]
 # Print MSE
 SQQs = [SQQ_b4,SQQ_b8,SQQ_b16]
 MSEs = [MSE_b4,MSE_b8,MSE_b16]
+POSs = []
 CHs = ['Y','U','V']
 bsizes = [4,8,16]
 for i,MSE in enumerate(MSEs):
@@ -62,7 +114,7 @@ for i,MSE in enumerate(MSEs):
         plt.ylabel("Count")
         plt.show()
 
-
+        POSs.append(np.argwhere(SQQs[i][:,j]> 1e5))
 # Print byte sizes
 print("Byte sizes comparison:")
 for i, step in enumerate(steps):

@@ -1,20 +1,28 @@
 import numpy as np
 
-def get_block_indexes(V, block_size):
-    # Assumes point cloud is morton ordered
-    base_block_size = np.log2(block_size) 
-    assert np.all(np.floor(base_block_size) == base_block_size), "block size b should be a power of 2"
-    V_coarse = np.floor(V / block_size) * block_size
+def get_block_indexes(V, bsize):
+    
 
-    variation = np.sum(np.abs(V_coarse[1:,:] - V_coarse[:-1,:]), axis=1)
+    if not np.log2(bsize).is_integer():
+        raise ValueError
 
+    # Quantize coordinates
+    V_coarse = np.floor(V/bsize)*bsize
+
+    # Find block limits
+    variation = np.sum(np.abs(V_coarse[1:, :] - V_coarse[0:-1, :]), axis=1)
     variation = np.concatenate(([1], variation))
 
-    start_indexes = np.nonzero(variation)[0]
-    Nlevel = V.shape[0]
-    end_indexes = np.concatenate((start_indexes[1:] - 1, np.array([Nlevel - 1])))
-    
-    indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
+    idx_start = np.argwhere(variation)
+    idx_stop = np.row_stack((idx_start[1:], [V.shape[0]]))
+
+    idx_start = idx_start.flatten()
+    idx_stop = idx_stop.flatten()
+
+    # Number of points per block
+    num_per_block = idx_stop - idx_start
+
+    indexes = list(zip(idx_start,idx_stop))
     return indexes
 
 def get_block_npoints(indexes,iter):
