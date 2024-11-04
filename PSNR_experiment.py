@@ -88,19 +88,28 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
 def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     N = Ahat[:,0].shape[0]
     mask_lo = np.zeros((N), dtype=bool)
-    for start_end_tuple in indexes:
+    bad_count = 0
+    for b_num, start_end_tuple in enumerate(indexes):
         # This implies that the Ahat is sorted by coefficient
         mask_lo[start_end_tuple[0]] = True
+        Asubhat_hi = Ahat[start_end_tuple[0],:]
+        Asubhat_lo = Ahat[start_end_tuple[0]+1:start_end_tuple[1],:]
+        min_len = Asubhat_lo.shape[0] > 0 
+        if min_len:
+            hi_val = np.max(Asubhat_lo[:,0],) >= Asubhat_hi[0]
+            if min_len & hi_val:
+                print(f"This is the block number and tuple {b_num,start_end_tuple}")
+                bad_count+=1
     mask_hi = np.logical_not(mask_lo)
 
     Ahat_lo = Ahat[mask_lo, :]  # DC values
     Ahat_hi = Ahat[mask_hi, :]  # "high" pass values
     
-    print(f"Size checkers {mask_hi.shape, mask_lo.shape,Ahat.shape}")
-    print(f"Number of points {np.sum(mask_hi),np.sum(mask_lo),np.sum(mask_hi)+np.sum(mask_lo)}")
+    # print(f"Size checkers {mask_hi.shape, mask_lo.shape,Ahat.shape}")
+    # print(f"Number of points {np.sum(mask_hi),np.sum(mask_lo),np.sum(mask_hi)+np.sum(mask_lo)}")
     # Concatenate
     Ahat_sort = np.concatenate((Ahat_lo, Ahat_hi))
-    
+    print(f"Number of blocks with wrong behaviour {bad_count}/{len(indexes)}")
     if plot:
         # Plotting
         plt.figure(figsize=(10, 6))

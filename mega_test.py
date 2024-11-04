@@ -7,6 +7,26 @@ from graph.transforms import *
 from encode.encode import *
 import matplotlib.pyplot as plt
 
+def single_vis(V,A, iter):
+    Vblock = V[iter[0]:iter[1]]
+    Ablock = A[iter[0]:iter[1]]
+    Wblock,_ = compute_graph_MSR(Vblock)
+    GFT, Gfreqs, Ablockhat = compute_GFT_noQ(Wblock, Ablock)
+    print(Gfreqs)
+    print(GFT.T)
+    plt.matshow(GFT.T, cmap = plt.cm.Blues)
+    plt.show()
+    
+    print(Ablockhat.shape)
+    print(Ablockhat)
+    Coeff = np.zeros(A.shape)
+    Coeff[iter[0]:iter[1]] = Ablockhat
+    plt.plot(Coeff[:60000])
+    plt.show()
+    Coeff_sort = sort_gft_coeffs(Coeff,indexes,1)
+    plt.plot(Coeff_sort[:60000])
+    plt.show()
+    pass
 if __name__ == "__main__":
     Ypositions_4 = np.load('res/Ypositions_4.npy')
     print(Ypositions_4.shape)
@@ -71,10 +91,16 @@ if __name__ == "__main__":
     # Flatten Ypositions_4 to a 1D array
     Ypositions_flat = Ypositions_4.flatten()
 
-    for iter, (i, j) in enumerate(indexes):
-        # Use boolean indexing to find valid positions
-        mask = (Ypositions_flat >= i) & (Ypositions_flat < j)
-        rare_blocks.extend([iter] * np.sum(mask))
+    # All blocks
+    Coeff = np.zeros(A.shape)
+    for index in indexes:
+        Vblock = V[index[0]:index[1]]
+        Ablock = A[index[0]:index[1]]
+        Wblock,edge = compute_graph_MSR(Vblock)
+        GFT, Gfreqs, Ablockhat = compute_GFT_noQ(Wblock, Ablock)
+        Coeff[index[0]:index[1]] = Ablockhat
+    Coeff_sort, bad_blocks = sort_gft_coeffs(Coeff,indexes,1, debug=True)
 
-    print(f"This are {rare_blocks}")
-    
+    for bad_block in bad_blocks:
+        bad_iter = indexes[bad_block]
+        single_vis(V,A,bad_iter)
