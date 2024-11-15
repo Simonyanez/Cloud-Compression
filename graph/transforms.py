@@ -9,6 +9,8 @@ sys.path.insert(0, main_folder)
 import matplotlib.pyplot as plt
 import numpy as np
 from graph.create import *
+from scipy.sparse.csgraph import connected_components
+from scipy.sparse import csr_matrix
 #from scipy.linalg import eigh
 
 def w2l(W, idx_closest_map=None, iter=None):
@@ -41,6 +43,49 @@ def w2l(W, idx_closest_map=None, iter=None):
 
     L = D - W + np.diag(np.diag(W))
     return L
+
+def check_connected(W):
+    """
+    Check if Graph is connected so it can be splitted in its results
+    """
+    # Convert the adjacency matrix to a sparse matrix (for efficiency)
+    W_sparse = csr_matrix(W)
+
+    # Use connected_components to find the number of connected components and labels for each node
+    num_components, labels = connected_components(W_sparse, directed=False, return_labels=True)
+    return num_components, labels
+
+def iterative_GFT(W, A):
+    """
+    Compute the Graph Fourier Transform (GFT) iteratively for each disconnected component of the graph
+    """
+    num_components, labels = check_connected(W)
+    
+    GFT = []
+    Gfreq = []
+    Ahat = []
+    DC_pos = []  # To store the indices of nodes for each component
+    
+    for component in range(num_components):  # Loop through each component (0, 1, ..., num_components-1)
+        # Get the indices of nodes belonging to the current component
+        component_indices = np.where(labels == component)[0]
+
+        # Create the subgraph (W_curr and A_curr) for the current component
+        W_curr = W[component_indices, :][:, component_indices]  # W_curr is subgraph for the component
+        A_curr = A[component_indices, :]  # A_curr is the signal matrix for the component
+        
+        DC_pos.append(component_indices[0])
+        # # Compute GFT for this subgraph
+        GFT_curr, Gfreq_curr, Ahat_curr = compute_GFT_noQ(W_curr, A_curr)  # Assume this function is implemented
+        
+        # Append results
+        GFT.append(GFT_curr)
+        Gfreq.append(Gfreq_curr)
+        Ahat.append(Ahat_curr)
+        
+        # Store the indices for the component (for reconstruction)
+
+    return GFT, Gfreq, Ahat, DC_pos
 
 def compute_GFT_noQ(Adj, A, idx_closest=None, iter=None):
     """
@@ -134,19 +179,15 @@ def compute_GFT(Adj, Q):
 
 if __name__ == "__main__":
     from create import *
-    indexes = get_block_indexes(V,4)
+    
     V = np.load('V_longdress.npy')
     C_rgb = np.load('C_longdress.npy')
-    W, edge = compute_graph_MSR(V)
-    GFT, Gfreq, Ahat = compute_GFT(W)
-    Ahat_2 = np.load('Coeff_quant.npy')
-
-    # Squared diff
-    SQQ_b4 = (Ahat - Ahat_2)**2
-    # SQQ_b8 = (Coeff_b8_edu - Coeff_b8_simon)**2
-    # SQQ_b16 = (Coeff_b16_edu - Coeff_b16_simon)**2
-
-    # MSE
-    MSE_b4 = (SQQ_b4).mean(axis=1)
-    MSE_b8 = (SQQ_b8).mean(axis=1)
-    MSE_b16 = (SQQ_b16).mean(axis=1)
+    indexes = get_block_indexes(V,4)
+    Vblock = V[indexes[4261][0]: indexes[4261][1]]
+    Ablock = C_rgb[indexes[4261][0]: indexes[4261][1]]
+    W, edge = compute_graph_MSR(Vblock)
+    GFT, Gfreq, Ahat, DC_pos = iterative_GFT(W, Ablock)
+    for Asubhat in Ahat:
+        print(Asubhat.shape)
+    print(Ablock.shape)
+    DC_positions = np.array([sum(x) for x in zip([indexes[4261][0]] * len(DC_pos), DC_pos)])

@@ -86,8 +86,8 @@ class StructuralEncoder:
         first_point, last_point = index_pair
         Ablock = self.A[first_point:last_point, :] 
 
-        GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock)
-        return GFT, Gfreq, Ablockhat
+        GFT, Gfreq, Ablockhat, offsets = tf.iterative_GFT(W,Ablock)
+        return GFT, Gfreq, Ablockhat, offsets
     
     def quantization(self,index_pair,step):
         _,_ , Ablockhat = self.gft_transform(index_pair)
@@ -284,13 +284,13 @@ class DirectionalEncoder:
     def gft_transform(self,iter,W,idx_map, iteration):
         Vblock,Ablock = self.get_block(iter)
         if not idx_map is None:
-            GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map, iter = iteration)
+            GFT, Gfreq, Ablockhat, DC_pos = tf.iterative_GFT(W,Ablock) #,idx_closest=idx_map, iter = iteration)
             idx = list(idx_map.keys())
             if self.plots:
                 _,_ = visual.border_visualization(Vblock, Ablock, idx)
         else:
-            GFT, Gfreq, Ablockhat = tf.compute_GFT_noQ(W,Ablock,idx_closest=idx_map)
-        return GFT, Gfreq, Ablockhat
+            GFT, Gfreq, Ablockhat, DC_pos = tf.iterative_GFT(W,Ablock) #,idx_closest=idx_map)
+        return GFT, Gfreq, Ablockhat, DC_pos
     
     def igft_transform(self,iter,W,idx_map,Ablockhat):
         Vblock,Ablock = self.get_block(iter)

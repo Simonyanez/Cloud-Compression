@@ -12,21 +12,19 @@ def single_vis(V,A, iter):
     Ablock = A[iter[0]:iter[1]]
     Wblock,_ = compute_graph_MSR(Vblock)
     GFT, Gfreqs, Ablockhat = compute_GFT_noQ(Wblock, Ablock)
-    print(Gfreqs)
-    print(GFT.T)
     plt.matshow(GFT.T, cmap = plt.cm.Blues)
     plt.show()
-    
-    print(Ablockhat.shape)
-    print(Ablockhat)
+
+    _, vis_fig = visual.visualization(Vblock,Ablock,1,1,"Normal")
+    plt.show()
     Coeff = np.zeros(A.shape)
     Coeff[iter[0]:iter[1]] = Ablockhat
-    plt.plot(Coeff[:60000])
+    plt.plot(Coeff[:iter[1]+100])
     plt.show()
     Coeff_sort = sort_gft_coeffs(Coeff,indexes,1)
-    plt.plot(Coeff_sort[:60000])
+    plt.plot(Coeff_sort[:iter[1]+100])
     plt.show()
-    pass
+
 if __name__ == "__main__":
     Ypositions_4 = np.load('res/Ypositions_4.npy')
     print(Ypositions_4.shape)
@@ -54,8 +52,8 @@ if __name__ == "__main__":
             # print(f"Number of points of block {index[1]- index[0] + 1}")
     # Test block
     npoints = get_block_npoints(indexes,4)
-    Vblock = V[indexes[4][0]:indexes[4][1]]
-    Ablock = A[indexes[4][0]:indexes[4][1]]
+    Vblock = V[indexes[4261][0]:indexes[4261][1]]
+    Ablock = A[indexes[4261][0]:indexes[4261][1]]
     # print(f"Vblock size {Vblock.shape} and number of points {npoints}")
     Wblock,edge = compute_graph_MSR(Vblock)
     Wblock_2, edge_2 = compute_graph_MSR_v2(Vblock)
@@ -77,11 +75,11 @@ if __name__ == "__main__":
     print(Ablockhat.shape)
     print(Ablockhat)
     Coeff = np.zeros(A.shape)
-    Coeff[indexes[4][0]:indexes[4][1]] = Ablockhat
+    # Coeff[indexes[4][0]:indexes[4][1]] = Ablockhat
     plt.plot(Coeff[:60000])
     plt.show()
-    Coeff_sort = sort_gft_coeffs(Coeff,indexes,1)
-    plt.plot(Coeff_sort[:60000])
+    # Coeff_sort = sort_gft_coeffs(Coeff,indexes,1)
+    # plt.plot(Coeff_sort[:60000])
     plt.show()
     print(indexes[4][0])
     # print(indexes)
@@ -93,14 +91,24 @@ if __name__ == "__main__":
 
     # All blocks
     Coeff = np.zeros(A.shape)
+    DC_positions = []
     for index in indexes:
         Vblock = V[index[0]:index[1]]
         Ablock = A[index[0]:index[1]]
         Wblock,edge = compute_graph_MSR(Vblock)
-        GFT, Gfreqs, Ablockhat = compute_GFT_noQ(Wblock, Ablock)
+        GFT, Gfreqs, Ablockhat, DC_pos = iterative_GFT(Wblock, Ablock)
         Coeff[index[0]:index[1]] = Ablockhat
-    Coeff_sort, bad_blocks = sort_gft_coeffs(Coeff,indexes,1, debug=True)
+        DC_positions = DC_positions +  [sum(x) for x in zip([index[0]] * len(DC_pos), DC_pos)]
+    Coeff_sort = sort_gft_coeffs(Coeff,DC_positions,1, debug=False)
+    plt.plot(Coeff_sort)
+    plt.show()
+    # for bad_block in bad_blocks:
+    #     bad_iter = indexes[bad_block]
+    #     Vblock = V[bad_iter[0]:bad_iter[1]]
+    #     print(f"The block number {bad_block} has wrong cuofficients")
+    #     Wblock,edge = compute_graph_MSR(Vblock)
+    #     print(Wblock)
+    #     single_vis(V,A,bad_iter)
+        
 
-    for bad_block in bad_blocks:
-        bad_iter = indexes[bad_block]
-        single_vis(V,A,bad_iter)
+    
