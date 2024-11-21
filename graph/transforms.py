@@ -55,7 +55,7 @@ def check_connected(W):
     num_components, labels = connected_components(W_sparse, directed=False, return_labels=True)
     return num_components, labels
 
-def iterative_GFT(W, A):
+def iterative_GFT(W, A, V):
     """
     Compute the Graph Fourier Transform (GFT) iteratively for each disconnected component of the graph
     """
@@ -65,7 +65,9 @@ def iterative_GFT(W, A):
     Gfreq = []
     Ahat = []
     DC_pos = []  # To store the indices of nodes for each component
-    
+    U = []
+    isDC = []
+    V_new = np.zeros((num_components,3))
     for component in range(num_components):  # Loop through each component (0, 1, ..., num_components-1)
         # Get the indices of nodes belonging to the current component
         component_indices = np.where(labels == component)[0]
@@ -77,15 +79,33 @@ def iterative_GFT(W, A):
         DC_pos.append(component_indices[0])
         # # Compute GFT for this subgraph
         GFT_curr, Gfreq_curr, Ahat_curr = compute_GFT_noQ(W_curr, A_curr)  # Assume this function is implemented
-        
+        print(W_curr.shape, W_curr)
+        Utmp = np.zeros((W.shape[0],len(component_indices)))
+        print(component_indices)
+        Utmp[component_indices,:] = GFT_curr
+        U = np.concatenate([U,Utmp], axis = 1)  
+        isDCtmp = np.zeros((len(component_indices),1))
+        isDCtmp[0] = 1
+        isDC = np.concatenate([isDC, isDCtmp], axis = 0)
         # Append results
         GFT.append(GFT_curr)
         Gfreq.append(Gfreq_curr)
         Ahat.append(Ahat_curr)
+
+        # Average position of connected points per connection
+        V_new[component,:] = np.mean(V[component_indices, :], axis=0)
         
         # Store the indices for the component (for reconstruction)
+    Ahat_1 = U.T @ A
+    Ahat_low = Ahat_1[isDC,:]
+    Ahat_high = Ahat_1[np.logical_not(isDC),:]
+    Wnew = complete_graph(V_new)
 
-    return GFT, Gfreq, Ahat, DC_pos
+    GFT_new, Gfreq_new, _ = compute_GFT_noQ(Wnew, A[np.size(Wnew)])
+    Coeff = np.concatenate(GFT_new*Ahat_low,Ahat_high)
+    Gfreq = np.concatenate(Gfreq_new ,Gfreq[np.logical_not(isDC)])
+
+    return GFT_new, Gfreq, Coeff
 
 def compute_GFT_noQ(Adj, A, idx_closest=None, iter=None):
     """
@@ -186,8 +206,5 @@ if __name__ == "__main__":
     Vblock = V[indexes[4261][0]: indexes[4261][1]]
     Ablock = C_rgb[indexes[4261][0]: indexes[4261][1]]
     W, edge = compute_graph_MSR(Vblock)
-    GFT, Gfreq, Ahat, DC_pos = iterative_GFT(W, Ablock)
-    for Asubhat in Ahat:
-        print(Asubhat.shape)
-    print(Ablock.shape)
-    DC_positions = np.array([sum(x) for x in zip([indexes[4261][0]] * len(DC_pos), DC_pos)])
+    GFT, Gfreq, Ahat = iterative_GFT(W, Ablock, Vblock)
+    plt.plot(GFT)

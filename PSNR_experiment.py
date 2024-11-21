@@ -135,7 +135,7 @@ def encode_rlgr(data,filename="test.bin",is_signed=1):
     if os.path.isfile(filename):
         os.remove(filename)
     #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation
-    data = data.astype(np.int64)
+    data = data.astype(np.int16)
     do_write = 1
     enc = rlgr.file(filename, do_write)
 
