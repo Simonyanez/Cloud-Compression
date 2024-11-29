@@ -57,9 +57,13 @@ def check_connected(W):
 
 def iterative_GFT(W, A, V):
     """
-    Compute the Graph Fourier Transform (GFT) iteratively for each disconnected component of the graph
+    Compute the Graph Fourier Transform (GFT) iteratively for each disconnected component of the graph.
     """
+    
     num_components, labels = check_connected(W)
+    if num_components == 1:
+        GFT, Gfreq, Coeff = compute_GFT_noQ(W, A)
+        return GFT, Gfreq, Coeff
     
     GFT = []
     Gfreq = []
@@ -67,43 +71,58 @@ def iterative_GFT(W, A, V):
     DC_pos = []  # To store the indices of nodes for each component
     U = []
     isDC = []
-    V_new = np.zeros((num_components,3))
-    for component in range(num_components):  # Loop through each component (0, 1, ..., num_components-1)
+    V_new = np.zeros((num_components, 3))  # Assuming V has shape (n, 3) for 3D coordinates
+    Q_norm = np.zeros((num_components,num_components))
+    for pos,component in enumerate(range(num_components)):  # Loop through each component (0, 1, ..., num_components-1)
         # Get the indices of nodes belonging to the current component
         component_indices = np.where(labels == component)[0]
-
+        Q_norm[pos,pos] = len(component_indices)
         # Create the subgraph (W_curr and A_curr) for the current component
         W_curr = W[component_indices, :][:, component_indices]  # W_curr is subgraph for the component
         A_curr = A[component_indices, :]  # A_curr is the signal matrix for the component
         
         DC_pos.append(component_indices[0])
-        # # Compute GFT for this subgraph
+        
+        # Compute GFT for this subgraph
+        
         GFT_curr, Gfreq_curr, Ahat_curr = compute_GFT_noQ(W_curr, A_curr)  # Assume this function is implemented
-        print(W_curr.shape, W_curr)
-        Utmp = np.zeros((W.shape[0],len(component_indices)))
-        print(component_indices)
-        Utmp[component_indices,:] = GFT_curr
-        U = np.concatenate([U,Utmp], axis = 1)  
-        isDCtmp = np.zeros((len(component_indices),1))
-        isDCtmp[0] = 1
-        isDC = np.concatenate([isDC, isDCtmp], axis = 0)
+        
+        Utmp = np.zeros((W.shape[0], len(component_indices)))
+        Utmp[component_indices, :] = GFT_curr
+        U.append(Utmp)  # Add the subgraph GFT to the U list
+        
+        # Create isDC array, which marks the first node as DC
+        isDCtmp = np.zeros(len(component_indices), dtype=bool)
+        isDCtmp[0] = 1  # First node in the component is DC
+        isDC.append(isDCtmp)  # Append to the isDC list
+        
         # Append results
         GFT.append(GFT_curr)
         Gfreq.append(Gfreq_curr)
         Ahat.append(Ahat_curr)
 
         # Average position of connected points per connection
-        V_new[component,:] = np.mean(V[component_indices, :], axis=0)
+        V_new[component, :] = np.mean(V[component_indices, :], axis=0)
         
-        # Store the indices for the component (for reconstruction)
+        
+    # Convert lists to numpy arrays
+    U = np.concatenate(U, axis=1)  # Concatenate along axis 1 to form the full U matrix
+    isDC = np.concatenate(isDC, axis=0)  # Concatenate isDC for all components
     Ahat_1 = U.T @ A
-    Ahat_low = Ahat_1[isDC,:]
-    Ahat_high = Ahat_1[np.logical_not(isDC),:]
-    Wnew = complete_graph(V_new)
+    Ahat_low = Ahat_1[isDC, :]
+    Ahat_high = Ahat_1[np.logical_not(isDC), :]
 
-    GFT_new, Gfreq_new, _ = compute_GFT_noQ(Wnew, A[np.size(Wnew)])
-    Coeff = np.concatenate(GFT_new*Ahat_low,Ahat_high)
-    Gfreq = np.concatenate(Gfreq_new ,Gfreq[np.logical_not(isDC)])
+    # Complete graph creation
+    Wnew = complete_graph(V_new)
+    
+    # Assuming compute_GFT_noQ works and returns the appropriate GFT for Wnew
+    # A[:Wnew.shape[0]]
+    
+    GFT_new, Gfreq_new = compute_GFT(Wnew,Q_norm)  # Use Wnew's shape for A
+
+    Gfreq = np.hstack(Gfreq)
+    Coeff = np.concatenate([GFT_new.T @ Ahat_low, Ahat_high], axis=0)
+    Gfreq = np.concatenate([Gfreq_new, Gfreq[np.logical_not(isDC)]], axis=0)
 
     return GFT_new, Gfreq, Coeff
 
@@ -172,27 +191,38 @@ def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
 
 def compute_GFT(Adj, Q):
     """
-    Compute the Graph Fourier Transform (GFT).
+    Compute the Graph Fourier Transform (GFT) using the adjacency matrix and quality matrix Q.
 
     Parameters:
         Adj (numpy.ndarray): Adjacency matrix of the graph.
         Q (numpy.ndarray): Quality matrix (assumed to be a vector).
 
     Returns:
-        numpy.ndarray: Graph Fourier Transform.
+        numpy.ndarray: Graph Fourier Transform (GFT).
         numpy.ndarray: Eigenvalues of the Laplacian matrix (sorted in ascending order).
     """
-    Qm = np.diag(Q**(-1/2))  # Assume Q is a vector
-    L = np.dot(np.dot(Qm, w2l(Adj)), Qm)
+    # Qm is the diagonal matrix with 1/sqrt(Q) on the diagonal
+    Qm = np.diag(np.diag(Q ** (-1/2)))  # Q is assumed to be a vector, so Q^(-1/2) gives the inverse square root of Q
+    # Compute the Laplacian matrix using Qm
+    L_q = np.dot(np.dot(Qm, w2l(Adj)), Qm)  # Matrix multiplication
 
-    GFT, D = np.linalg.eig(L)
-    idxSorted = np.argsort(np.diag(D))
+    # Eigenvalue decomposition of the Laplacian matrix L
+    if Adj.shape[0] > 1:
+        # Compute the eigenvalues and eigenvectors
+        D, GFT = np.linalg.eigh(L_q)  # D is eigenvalues, GFT is eigenvectors
+        idxSorted = np.argsort(D)  # Sort eigenvalues in ascending order
+        GFT = GFT[:, idxSorted]  # Sort eigenvectors accordingly
 
-    GFT = GFT[:, idxSorted]
-    GFT[:, 0] = np.abs(GFT[:, 0])
-    #GFT = GFT.T
-    Gfreq = np.abs(np.diag(D))
-    Gfreq[0] = np.abs(Gfreq[0])
+        # Ensure positive eigenvectors (if necessary)
+        for i in range(GFT.shape[1]):
+            if GFT[0, i] < 0:
+                GFT[:, i] = GFT[:, i] * (-1)
+
+        # Gfreq corresponds to the eigenvalues
+        Gfreq = np.sort(D)
+    else:  # Handle the case where the graph is just a single point
+        GFT = np.array([1.0])
+        Gfreq = np.array([0.0])
 
     return GFT, Gfreq
 
@@ -203,8 +233,12 @@ if __name__ == "__main__":
     V = np.load('V_longdress.npy')
     C_rgb = np.load('C_longdress.npy')
     indexes = get_block_indexes(V,4)
-    Vblock = V[indexes[4261][0]: indexes[4261][1]]
-    Ablock = C_rgb[indexes[4261][0]: indexes[4261][1]]
+    Vblock = V[indexes[28667][0]: indexes[28667][1]]
+    Ablock = C_rgb[indexes[28667][0]: indexes[28667][1]]
+    print(Vblock.shape)
     W, edge = compute_graph_MSR(Vblock)
     GFT, Gfreq, Ahat = iterative_GFT(W, Ablock, Vblock)
-    plt.plot(GFT)
+    print(Ahat)
+    plt.matshow(GFT)
+    # plt.plot(Ahat)
+    plt.show()

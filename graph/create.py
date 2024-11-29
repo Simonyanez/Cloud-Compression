@@ -105,9 +105,14 @@ def complete_graph(V):
     squared_norms = np.sum(V**2, axis=1)  # Squared norms of each point
     D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
 
+    # Avoid division by zero: set diagonal elements of D to a small value (so we don't divide by zero)
+    np.fill_diagonal(D, np.nan)  # We don't want to divide by zero for the diagonal, set them to NaN
+
     # Compute inverse distances (edge weights)
-    iD = 1 / D
-    iD[np.where(D == 0)] = 0  # Set elements where distance is zero to zero to avoid division by zero
+    iD = np.power(D, -1)  # Equivalent to D.^(-1) in MATLAB
+
+    # Replace NaN values with zeros (to handle the division by zero)
+    iD = np.nan_to_num(iD, nan=0.0)  # NaN values become 0, so no NaN in the weight matrix
 
     # Construct weight matrix by adding transpose of inverse distances
     W = iD.T + iD
