@@ -284,12 +284,12 @@ class DirectionalEncoder:
     def gft_transform(self,iter,W,idx_map, iteration):
         Vblock,Ablock = self.get_block(iter)
         if not idx_map is None:
-            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock,Vblock) #,idx_closest=idx_map, iter = iteration)
+            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock,Vblock, iteration) #,idx_closest=idx_map, iter = iteration)
             idx = list(idx_map.keys())
             if self.plots:
                 _,_ = visual.border_visualization(Vblock, Ablock, idx)
         else:
-            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock, Vblock) #,idx_closest=idx_map)
+            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock, Vblock,iteration) #,idx_closest=idx_map)
         return GFT, Gfreq, Ablockhat
     
     def igft_transform(self,iter,W,idx_map,Ablockhat):

@@ -3,7 +3,7 @@ filename = 'longdress_vox10_1051.ply';
 [V,Crgb,J] = ply_read8i(filename);              % V lista de puntos, Crgb lista de colores, J resolución de voxel 2^10 se dividio 10 veces en cada cubo ahí un punto en cada voxel
 N = size(V,1);
 C = RGBtoYUV(Crgb); %transform to YUV
-bsize=[16]; % Tamaño de cada nivel en caso multilevel = 0. Tamaño 2 en que se dividen los bloques a lo más 2^3 8 puntos máximo. (8, 16)
+bsize=[8]; % Tamaño de cada nivel en caso multilevel = 0. Tamaño 2 en que se dividen los bloques a lo más 2^3 8 puntos máximo. (8, 16)
 param.V=V;
 param.J=J;
 param.bsize = bsize;
@@ -11,13 +11,14 @@ param.isMultiLevel=0;           % Solo una vez, setearlo a cero
 tic;
 
 step = 64;
-%C = ones(N,1);
+%C = ones(N,1);%%
 %%
 [Coeff, Gfreq, weights, Vblock, Ablock, Sorted_Blocks]  = block_visualization( C, param ); % param posee la información definida, C está el color
 % Solo tenemos el bloque de la última ejecución
 %toc;
 %Y = Coeff(:,1);
 %Coeff_quant = round(Coeff/step)*step;
+disp(length(Sorted_Blocks))
 %%
 % Extrae el 5 y 6 valor de los bloques,
 means = cellfun(@(x) x(6), Sorted_Blocks);

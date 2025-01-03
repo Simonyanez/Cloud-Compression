@@ -171,12 +171,12 @@ else
     end
 end
 end
-function [Coeff, Gfreq, weights] = RAGFT_connected_graph(W,A,Q)
+function [Coeff, Gfreq, GFT, weights] = RAGFT_connected_graph(W,A,Q)
 [ GFT, Gfreq ] = compute_GFT( W, Q );
 weights = repmat(sum(Q),size(A,1),1);
 Coeff = GFT*A;
 end
-function [Coeff, Gfreq, weights] = RAGFT_disconnected_graph(Wcurr,A,Qcurr,Vblock,numDCs,p,r)
+function [Coeff, Gfreq,GFT_new, weights] = RAGFT_disconnected_graph(Wcurr,A,Qcurr,Vblock,numDCs,p,r)
 %Wcurr = W;
 %Qcurr = Q;
 %first level

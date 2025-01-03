@@ -25,9 +25,9 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
     directional_encoder.block_indexes(block_size = block_size)
      
     indexes = directional_encoder.indexes
-    Coeff = np.zeros(C_rgb.shape)
-    nCoeff = np.zeros(C_rgb.shape)
-    dCoeff = np.zeros(C_rgb.shape)
+    Coeff = np.zeros(C_rgb.shape, dtype=np.float64)
+    nCoeff = np.zeros(C_rgb.shape, dtype=np.float64 )
+    dCoeff = np.zeros(C_rgb.shape, dtype=np.float64)
     N = V.shape[0]
     print(f"Number of points {N}")
     count = 0
@@ -67,6 +67,8 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
             
             elif abs(Ablockhat[0,0]) > abs(nAblockhat[0,0]):
                 choosed_count += len(choosed_positions)
+                if (nAblockhat[0, 0] < 0.0) or (nAblockhat[0, 1] < 0.0) or (nAblockhat[0, 2] < 0.0):
+                    print(nAblockhat[0,0],nAblockhat[0,1],nAblockhat[0,2])
                 # if V_choosed is None:
                 #     V_choosed = Vblock[choosed_positions]
                 # else:
@@ -82,7 +84,7 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
             else:
                 dCoeff[start_end_tuple[0]:start_end_tuple[1],:] = nAblockhat
         except:
-            print(iteration)
+            raise
     # V_choosed = V_choosed.astype(np.uint64)    
     # octree_nbits,octree_bs = octree_byte_count(V_choosed,10)
     # print(f"Octree coding total: {octree_nbits} \n Octree coding per position: {octree_nbits/choosed_count} \n Morton Code raw: {octree_bs}")
@@ -110,22 +112,20 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     Ahat_lo = Ahat[mask_lo, :]  # DC values
     Ahat_hi = Ahat[mask_hi, :]  # "high" pass values
     
-    # print(f"Size checkers {mask_hi.shape, mask_lo.shape,Ahat.shape}")
-    # print(f"Number of points {np.sum(mask_hi),np.sum(mask_lo),np.sum(mask_hi)+np.sum(mask_lo)}")
     # Concatenate
     Ahat_sort = np.concatenate((Ahat_lo, Ahat_hi))
     # print(f"Number of blocks with wrong behaviour {bad_count}/{len(indexes)}")
-    # if plot:
-    #     # Plotting
-    #     plt.figure(figsize=(10, 6))
-    #     plt.scatter(Ahat_lo[:, 0], Ahat_lo[:, 1], label='Ahat_lo', alpha=0.5, color='blue')
-    #     plt.scatter(Ahat_hi[:, 0], Ahat_hi[:, 1], label='Ahat_hi', alpha=0.5, color='red')
-    #     plt.title(f'Distribution of Ahat_lo and Ahat_hi for qstep = {qstep} ')
-    #     plt.xlabel('First Coefficient')
-    #     plt.ylabel('Second Coefficient')
-    #     plt.legend()
-    #     plt.grid()
-    #     plt.show()
+    if plot:
+        # Plotting
+        plt.figure(figsize=(10, 6))
+        plt.scatter(Ahat_lo[:, 0], Ahat_lo[:, 1], label='Ahat_lo', alpha=0.5, color='blue')
+        plt.scatter(Ahat_hi[:, 0], Ahat_hi[:, 1], label='Ahat_hi', alpha=0.5, color='red')
+        plt.title(f'Distribution of Ahat_lo and Ahat_hi for qstep = {qstep} ')
+        plt.xlabel('First Coefficient')
+        plt.ylabel('Second Coefficient')
+        plt.legend()
+        plt.grid()
+        plt.show()
     
     return Ahat_sort
 
@@ -184,7 +184,7 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes,bsize):
     if qstep==1:
         np.save(f'res/struct_GFT_{bsize}_exp.npy', nCoeff_quant_sorted)
     # Run-Length Golomb-Rice
-    bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res', plot=True)
+    bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res')
     bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res',plot=False)
     bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res',plot=False)
     return PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs 

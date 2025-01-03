@@ -13,8 +13,6 @@ function [indices]=block_indices(V,bsize)
 
     indices=find(variation);
 
-  
-
 
 end
 

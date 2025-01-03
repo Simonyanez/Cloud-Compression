@@ -1,4 +1,4 @@
-function [ GFT, Gfreq ] = compute_GFT( Adj, Q )
+function [ GFT, Gfreq, L ] = compute_GFT( Adj, Q )
 %UNTITLED4 Summary of this function goes here
 %   Detailed explanation goes here
 

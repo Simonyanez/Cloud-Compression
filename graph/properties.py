@@ -153,7 +153,7 @@ def direction(V, C, aspect_ratio=None):
 def simple_direction(YUV, W, edges):
     Y = YUV[:, 0]
     edges_dict = {}
-    for edge_i, edge_j in zip(edges[0], edges[1]):
+    for edge_i, edge_j in edges:
         if edge_i not in edges_dict:
             edges_dict[edge_i] = [edge_j]
         else:

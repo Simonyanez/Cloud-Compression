@@ -133,8 +133,8 @@ axis([min(x)-1 max(x)+1 min(y)-1 max(y)+1 min(z)-1 max(z)+1]); % Customize the l
 
 % Show plot
 hold off;
-else
-    disp('No aspect ratio entry. Skipping plotting...');
+%else
+    % disp('No aspect ratio entry. Skipping plotting...');
 end
   
   %iD_aux = D_aux.^(-1);         % Si la distancia es grande (< similitud) ponderado por si el cambio de color es grande (> relevancia)

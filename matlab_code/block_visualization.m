@@ -77,14 +77,19 @@ for level=L:-1:1   % Esto será un loop de una iteración
     ni = end_indices - start_indices +1;  %Cantidad de puntos por bloque
     %unchanged =  find(ni==1);%indices of blocks with single point
     to_change = find(ni ~=1); %indices of blocks that have more than 1 point
-    disp("Cantidad de bloques con más de un punto")
+    one_points = find(ni == 1)
+    disp("Cantidad de bloques con más de un punto");
+    disp(length(to_change));
+    disp("Cantidad de bloques con un punto")
+    disp(length(one_points))
+    save('number_of_points.mat', "ni")
     tc_size = size(to_change);
     Acurr_hat = Acurr;
     Qout=Qin;                       % Para la primera iteración es la identidad para todos los Q
     Gfreq_curr = zeros(size(Qin));
     Sorted_Blocks = cell(1,tc_size(1));  % No ordenados todavía
     %
-    for currblock = 1:tc_size(1)         % Cuántos bloques se iterarán
+    for currblock = 1:length(ni)         % Cuántos bloques se iterarán
         
     first_point = start_indices(currblock);
     last_point  = end_indices(currblock);
@@ -93,10 +98,11 @@ for level=L:-1:1   % Esto será un loop de una iteración
     Ablock =Acurr(first_point:last_point,:);
     
     %Clustering
-    [W_orig,~] = compute_graph_MSR(Vblock);
+    [W_orig,edge] = compute_graph_MSR(Vblock);
     [G_vec, W_mod, edge] = gradient(Vblock, Ablock);
     [~, ~, distance_vectors,weights] = direction(Vblock, Ablock);
     [W_sl, ~, dot_products, ~, idx_closest] = compute_graph_sl(Vblock,distance_vectors,weights);
+    block_data_save{currblock} = {ni(currblock),edge, W_orig, Ablock};
     
     
     %[W_mod_2,edge_2] = bf_graph(Vblock, Ablock);           % Bilateral
@@ -110,7 +116,8 @@ for level=L:-1:1   % Esto será un loop de una iteración
                                                % ¿Alguna métrica de
                                                % detección de bordes?
                                                
-    
+    [Ahat, Gfreq,GFT, weights, L] = block_coeffs(Vblock, Ablock, Qin_block,bsize(level));
+    transform_data{currblock} = {Ahat, Gfreq, GFT, weights, L};
     
     % Bloque: 
     %Geometría             (V)
@@ -163,6 +170,81 @@ for level=L:-1:1   % Esto será un loop de una iteración
         %Qout(first_point:last_point) = weights_block;
         %Gfreq_curr(first_point:last_point) = Gfreq_block;
     end
+    save("block_data.mat", "block_data_save")
+    save("tranform_data.mat", "transform_data")
 end
 end
+
+function [Ahat, Gfreq, GFT,weights, L] = block_coeffs(Vblock,A,Q,bsize)
+    %UNTITLED Summary of this function goes here
+    %   Detailed explanation goes here
+    
+    [W,~] = compute_graph_MSR(Vblock);  %Construye el grafo según Microsoft
+    % Se debería modificar para hacerla dependiente de otros valores de la
+    % matriz. Construir el grafo
+    
+    %[W,~] = compute_graph_gaussian(Vblock);
+    if(sum(isnan(W),'all'))
+              disp(['nana']);  
+    end
+    if (bsize == 2)
+        %do standard RA-GFT with a connected graph
+        [Ahat, Gfreq, GFT,weights,L] = RAGFT_connected_graph(W,A,Q);
+    else
+        %check of graph is connected
+        [p, ~, r, ~] = dmperm( W + eye(size(W)));
+        numConnComp = size( r, 2 ) - 1;
+        if (numConnComp==1)%graph is connected
+            %do standard RA-GFT with a connected graph
+            [Ahat, Gfreq,GFT, weights, L] = RAGFT_connected_graph(W,A,Q);
+        else
+            %if graph is disconnected,
+            [Ahat, Gfreq, GFT, weights, L] = RAGFT_disconnected_graph(W,A,Q,Vblock,numConnComp,p,r);
+        end
+    end
+    end
+    function [Coeff, Gfreq,GFT, weights, L] = RAGFT_connected_graph(W,A,Q)
+    [ GFT, Gfreq, L ] = compute_GFT( W, Q );
+    weights = repmat(sum(Q),size(A,1),1);
+    Coeff = GFT*A;
+    end
+    function [Coeff, Gfreq,GFT_new, weights, L_new] = RAGFT_disconnected_graph(Wcurr,A,Qcurr,Vblock,numDCs,p,r)
+    %Wcurr = W;
+    %Qcurr = Q;
+    %first level
+    U=[];
+    isDC=[];
+    Gfreq_level = [];
+    weights_level=[];
+    Vblock_new = zeros(numDCs,3);
+    for comp=1:numDCs
+        %compute GFT
+        idx=p(r(comp):r(comp+1)-1);
+        [ GFT, Gfreq_tmp, L ] = compute_GFT( Wcurr(idx,idx), Qcurr(idx) );
+        Utmp=zeros(size(Wcurr,1),length(idx));
+        Utmp(idx,:)=GFT';
+        U=[U,Utmp];
+        isDCtmp=zeros(length(idx),1);
+        isDCtmp(1)=1;
+        isDC=[isDC;isDCtmp];
+        Gfreq_level = [Gfreq_level; Gfreq_tmp];
+        weights_level = [weights_level ; ones(length(idx),1)*sum(Qcurr(idx))];
+        %compute average of points in block
+        Vblock_new(comp,:) =  sum(diag(Qcurr(idx))*Vblock(idx,:),1)/sum(Qcurr(idx));
+        %    
+    end
+    Ahat_1 = U'*A;
+    isDC_index = find(isDC);
+    notDC_index = find(~isDC);
+    Ahat_low = Ahat_1(isDC_index,:);%low pass coeffs for further processing
+    Ahat_high=Ahat_1(notDC_index,:);%high pass coeffs
+    %level 2
+    Qnew = weights_level(isDC_index);
+    Wnew = complete_graph(Vblock_new);
+    
+    [GFT_new, Gfreq_new, L_new ] = compute_GFT( Wnew, Qnew );
+    Coeff = [GFT_new*Ahat_low;Ahat_high];
+    Gfreq = [Gfreq_new ;Gfreq_level(notDC_index) ];
+    weights = [ones(length(Qnew),1)*sum(Qnew) ; weights_level(notDC_index)];
+    end
 

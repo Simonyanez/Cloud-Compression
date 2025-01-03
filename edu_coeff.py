@@ -2,7 +2,26 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-# Load the coefficient data for all blocks from .mat files
+def scatter_coeff(Coeff_1, Coeff_2, bsize, qstep):
+    Coeff_1_quant =  np.round(Coeff_1/qstep)
+    Coeff_2_quant =  np.round(Coeff_2/qstep)
+    fig = plt.figure()
+
+
+    ax_1 = fig.add_subplot(1,2,1, projection='3d')
+    ax_1.scatter(Coeff_1_quant[:,0],Coeff_1_quant[:,1],Coeff_1_quant[:,2], c='red', label='Simon Coeff')
+    ax_1.legend()
+
+    ax_2 = fig.add_subplot(1,2,2, projection='3d')
+    ax_2.scatter(Coeff_2_quant[:,0],Coeff_2_quant[:,1],Coeff_2_quant[:,2], c='blue', label='Edu Coeff')
+    ax_2.legend()
+    
+    plt.suptitle(f'Block Size: {bsize} Quantization Step: {qstep}')
+    plt.tight_layout()
+    plt.show()
+
+
+    # Load the coefficient data for all blocks from .mat files
 Coeff_b4_read = sio.loadmat("res/Eduardo_Exp/_RA-GFT_exp_zhang_4simon.mat")
 Coeff_b8_read = sio.loadmat("res/Eduardo_Exp/_RA-GFT_exp_zhang_8simon.mat")
 Coeff_b16_read = sio.loadmat("res/Eduardo_Exp/_RA-GFT_exp_zhang_16simon.mat")
@@ -17,51 +36,51 @@ Coeff_b4_edu = Coeff_b4_read['Coeff']
 Coeff_b8_edu = Coeff_b8_read['Coeff']
 Coeff_b16_edu = Coeff_b16_read['Coeff']
 
-
+print(Coeff_b4_edu[54619,:])
 # Load coefficient data from .npy files
 Coeff_b4_simon = np.load('res/struct_GFT_4_exp.npy')
 Coeff_b8_simon = np.load('res/struct_GFT_8_exp.npy')
 Coeff_b16_simon = np.load('res/struct_GFT_16_exp.npy')
 
-# Create subplots
-fig, axs = plt.subplots(3, 2, figsize=(10, 15))
+# # Create subplots
+# fig, axs = plt.subplots(3, 2, figsize=(10, 15))
 
-# Plot for Coeff_b4
-axs[0, 0].plot(Coeff_b4_edu, label='Edu Coeff b4')
-axs[0, 0].set_title('Coefficients from .mat (b4)')
-# axs[0, 0].set_xticks([])
-axs[0, 0].legend()
+# # Plot for Coeff_b4
+# axs[0, 0].plot(Coeff_b4_edu, label='Edu Coeff b4')
+# axs[0, 0].set_title('Coefficients from .mat (b4)')
+# # axs[0, 0].set_xticks([])
+# axs[0, 0].legend()
 
-axs[0, 1].plot(Coeff_b4_simon, label='Simon Coeff b4')
-axs[0, 1].set_title('Coefficients from .npy (b4)')
-# axs[0, 1].set_xticks([])
-axs[0, 1].legend()
+# axs[0, 1].plot(Coeff_b4_simon, label='Simon Coeff b4')
+# axs[0, 1].set_title('Coefficients from .npy (b4)')
+# # axs[0, 1].set_xticks([])
+# axs[0, 1].legend()
 
-# Plot for Coeff_b8
-axs[1, 0].plot(Coeff_b8_edu, label='Edu Coeff b8')
-axs[1, 0].set_title('Coefficients from .mat (b8)')
-# axs[1, 0].set_xticks([])
-axs[1, 0].legend()
+# # Plot for Coeff_b8
+# axs[1, 0].plot(Coeff_b8_edu, label='Edu Coeff b8')
+# axs[1, 0].set_title('Coefficients from .mat (b8)')
+# # axs[1, 0].set_xticks([])
+# axs[1, 0].legend()
 
-axs[1, 1].plot(Coeff_b8_simon, label='Simon Coeff b8')
-axs[1, 1].set_title('Coefficients from .npy (b8)')
-# axs[1, 1].set_xticks([])
-axs[1, 1].legend()
+# axs[1, 1].plot(Coeff_b8_simon, label='Simon Coeff b8')
+# axs[1, 1].set_title('Coefficients from .npy (b8)')
+# # axs[1, 1].set_xticks([])
+# axs[1, 1].legend()
 
-# Plot for Coeff_b16
-axs[2, 0].plot(Coeff_b16_edu, label='Edu Coeff b16')
-axs[2, 0].set_title('Coefficients from .mat (b16)')
-# axs[2, 0].set_xticks([])
-axs[2, 0].legend()
+# # Plot for Coeff_b16
+# axs[2, 0].plot(Coeff_b16_edu, label='Edu Coeff b16')
+# axs[2, 0].set_title('Coefficients from .mat (b16)')
+# # axs[2, 0].set_xticks([])
+# axs[2, 0].legend()
 
-axs[2, 1].plot(Coeff_b16_simon, label='Simon Coeff b16')
-axs[2, 1].set_title('Coefficients from .npy (b16)')
-# axs[2, 1].set_xticks([])
-axs[2, 1].legend()
+# axs[2, 1].plot(Coeff_b16_simon, label='Simon Coeff b16')
+# axs[2, 1].set_title('Coefficients from .npy (b16)')
+# # axs[2, 1].set_xticks([])
+# axs[2, 1].legend()
 
-# Adjust layout
-plt.tight_layout()
-plt.show()
+# # Adjust layout
+# plt.tight_layout()
+# plt.show()
 
 # Get rare positions 
 Ypositions_4 = np.argwhere(np.abs(Coeff_b4_simon[:,0])>400)
@@ -72,6 +91,10 @@ Ypositions_16 = np.argwhere(np.abs(Coeff_b16_simon[:,0])>400)
 np.save('res/Ypositions_16.npy',Ypositions_16)
 #====================================================================================
 
+# # Scatter plot
+# scatter_coeff(Coeff_b16_simon, Coeff_b16_edu, 4, 16)
+# scatter_coeff(Coeff_b16_simon, Coeff_b16_edu, 8, 16)
+# scatter_coeff(Coeff_b16_simon, Coeff_b16_edu, 16, 16)
 
 # Squared diff
 SQQ_b4 = (Coeff_b4_edu - Coeff_b4_simon)**2

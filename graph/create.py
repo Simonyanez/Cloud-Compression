@@ -1,7 +1,7 @@
 import numpy as np
 
-def get_block_indexes(V, bsize):
-    
+
+def get_block_indexes(V, bsize):    
 
     if not np.log2(bsize).is_integer():
         raise ValueError
@@ -19,75 +19,14 @@ def get_block_indexes(V, bsize):
     idx_start = idx_start.flatten()
     idx_stop = idx_stop.flatten()
 
-    # Number of points per block
-    num_per_block = idx_stop - idx_start
-
     indexes = list(zip(idx_start,idx_stop))
     return indexes
 
 def get_block_npoints(indexes,iter):
     index = indexes[iter]
-    npoints = index[1] - index[0] + 1
+    npoints = index[1] - index[0]
     return npoints
 
-def block_indices_v2(V, bsize):
-    """
-    V is an Nx3 numpy array representing a point cloud, where each row contains the 
-    x, y, z coordinates of a point (integers). It assumes the point cloud is morton ordered.
-    
-    Parameters:
-    V (np.ndarray): An Nx3 array of integer coordinates.
-    bsize (int): The block size for the indexing.
-    
-    Returns:
-    np.ndarray: Indices of variation in the coarse point cloud.
-    """
-    # Calculate coarse representation of V
-    V_coarse = np.floor_divide(V, bsize) * bsize
-    
-    # Calculate variation
-    variation = np.sum(np.abs(V_coarse[1:] - V_coarse[:-1]), axis=1)
-    
-    # Prepend 1 to variation
-    variation = np.insert(variation, 0, 1)
-    
-    # Find indices of non-zero variation
-    indices = np.where(variation)[0]
-    
-    return indices
-
-def bf_graph(V, C):
-    N = V.shape[0]
-    
-    squared_norms = np.sum(V**2, axis=1)  # Squared distance of each row of V
-    D = np.sqrt(np.tile(squared_norms, (N, 1)).T + np.tile(squared_norms, (N, 1)) - 2 * np.dot(V, V.T))  # Distances between all points
-    
-    th = np.sqrt(3) + 0.00001  # Maximum distance threshold of points
-    
-    iD = 1 / D  # Scalar inverse of the elements of the matrix, weights are the inverse of the distance
-    iD[D > th] = 0  # Find all distances greater than the threshold and evaluate them to 0
-    iD[D == 0] = 0  # Also find those that are null, i.e., self-connections
-    
-    idx = np.where(iD != 0)
-    I, J = idx[0], idx[1]  # Identify connected nodes
-    
-    edge = np.column_stack((I, J))
-    W_aux = D.copy()  # Auxiliary set to weight distances
-                      # Square matrix of distances between nodes
-    
-    YUV_block_double = np.array(C, dtype=float)  # Block in YUV format
-    YUV_block_normed = YUV_block_double / 256  # Normalization
-    
-    for id in range(J.shape[0]):
-        i = I[id]
-        j = J[id]
-        W_aux[i, j] = np.exp(-(D[i, j]**2) / (2 * np.std(D)**2)) * np.exp(-(YUV_block_normed[i, 0] - YUV_block_normed[j, 0])**2) / (2 * np.std(YUV_block_normed[:, 0])**2)  # We only use luminance information. We weigh the difference
-                                                                                                                                  # between nodes as a parameter for the weights,
-                                                                                                                                  # decreases the distance, increases the relevance if the color change is more abrupt.
-    
-    W = W_aux.T + W_aux
-    
-    return W, edge
 
 def complete_graph(V):
     """
@@ -103,7 +42,7 @@ def complete_graph(V):
 
     # Compute Euclidean Distance Matrix (EDM)
     squared_norms = np.sum(V**2, axis=1)  # Squared norms of each point
-    D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
+    D = np.sqrt(np.maximum(0, np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T)))
 
     # Avoid division by zero: set diagonal elements of D to a small value (so we don't divide by zero)
     np.fill_diagonal(D, np.nan)  # We don't want to divide by zero for the diagonal, set them to NaN
@@ -147,80 +86,12 @@ def compute_graph_MSR(V, th=None):
     W = iD.T + iD
 
     idx = np.nonzero(iD)
-    I, J = np.unravel_index(idx, D.shape)
+    #I, J = np.unravel_index(idx, D.shape)
 
-    edge = np.column_stack((I, J))
-
-    return W, edge
-
-def compute_graph_MSR_v2(V, th=None):
-    """
-    Compute distance-based graph from Zhang et al., ICIP 2014.
-
-    Parameters:
-        V (numpy.ndarray): nx3 array. n points.
-        th (float): Threshold to construct the graph (optional).
-
-    Returns:
-        numpy.ndarray: Weight matrix representing the graph.
-        numpy.ndarray: Edge list.
-    """
-    N = V.shape[0]
-
-    if th is None:
-        th = np.sqrt(3) + 0.00001
-
-    # Compute Euclidean Distance Matrix (EDM)
-    squared_norms = np.sum(V**2, axis=1)
-    D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
-    iD = np.zeros_like(D) 
-    non_zero_mask = (D > 0) & (D <= th)
-    iD[non_zero_mask] = 1 / D[non_zero_mask]
-    iD[np.where(D > th)] = 0
-    iD[np.where(D == 0)] = 0
-    W = iD.T + iD
-
-    idx = np.nonzero(iD)
-
-    I = idx[0]
-    J = idx[1]
-    # I, J = np.unravel_index(idx, D.shape)
-
-    edge = np.column_stack((I, J))
+    edge = np.column_stack(( idx[1], idx[0]))
 
     return W, edge
 
-def compute_graph_MSR_v3(V, th=None):
-    # V: nx3 numpy array of points
-    # th: threshold to construct the graph
-
-    N = V.shape[0]
-
-    if th is None:
-        th = np.sqrt(3) + 0.00001
-
-    # Compute squared norms
-    squared_norms = np.sum(V**2, axis=1)
-    
-    # Compute the Euclidean distance matrix
-    D = np.sqrt(squared_norms[:, np.newaxis] + squared_norms[np.newaxis, :] - 2 * np.dot(V, V.T))
-    
-    # Inverse of distances
-    iD = np.where(D != 0, 1 / D, 0)  # Element-wise inverse, set self-connections to 0
-    iD[D > th] = 0                    # Set distances greater than threshold to 0
-
-    # Symmetric adjacency matrix
-    W = iD + iD.T
-
-    # Find non-zero entries in the adjacency matrix
-    idx = np.nonzero(iD)
-
-    # Get the indices of connected nodes
-    I, J = idx[0], idx[1]
-
-    edge = np.column_stack((I, J))
-
-    return W, edge
 
 def compute_graph_sl(V, distance_vectors, weights, th=None):
     """
@@ -332,37 +203,181 @@ def compute_graph_unit(V,th=None):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    import sys
+    import os
+    main_path = os.getcwd()
+    sys.path.append(main_path)
+    import utils.color as clr
+    import graph.transforms as cr
+    import scipy.io as sio
 
-    V = np.load('V_longdress.npy')
-    indexes = get_block_indexes(V,4)
-    indexes_2 = block_indices_v2(V,4)
+    def mean_square_error(A, B, absolute = False, just_DC = False, mean_AC=False):
+        if absolute:
+            A = np.abs(A)
+            B = np.abs(B)
 
-    # Ensure both index lists have the same length
-    min_length = min(len(indexes), len(indexes_2))
+        if just_DC:
+            A = A[0,:]
+            B = B[0,:]
 
-    print(min_length)
-    # Compare the indexes from both methods
-    for i in range(min_length):
-        if i+1 == min_length:
-            break
-        index = indexes[i]
-        index_2 = indexes_2[i]
-        
-        if index[0] != index_2 or index[1] != indexes_2[i+1]-1:
-            print(f"Old: {index}    New: {index_2,indexes_2[i+1]}")
+        new_A = np.zeros((2,3))
+        new_B = np.zeros((2,3))
+        if mean_AC and A.shape[0] > 1:
+            new_A[0,:] = A[0,:]
+            new_A[1,:] = np.mean(A[1:,:], axis=0)
+            new_B[0,:] = B[0,:]
+            new_B[1,:] = np.mean(B[1:,:], axis=0)
+            return np.mean((new_A - new_B) ** 2, axis=0)
+        return np.mean((A - B) ** 2, axis=0)
+    
+
+    def whole_test(compute = True, absolute = False, just_DC = False, mean_AC = False):
+        V = np.load('V_longdress.npy')
+        C_rgb = np.load('C_longdress.npy')
+        A = clr.RGBtoYUV(C_rgb)
+        indexes = get_block_indexes(V,8)
+        total_points = 0
+        one_points = []
+        mat_number_of_points = sio.loadmat('matlab_code/number_of_points.mat')
+        block_data_mat = sio.loadmat('matlab_code/block_data.mat')
+        matlab_transform_data = sio.loadmat('matlab_code/tranform_data.mat')
+        mse_results = np.zeros((len(indexes),3),dtype=np.float64)
+        if compute:
+            Coeff = np.zeros(C_rgb.shape, dtype=np.float64)
         else:
-            continue
-            # print(f"Number of points of block {index[1]- index[0] + 1}")
+            Coeff = np.load('python_Coeff.npy')
+        for iter in range(len(indexes)):
+            index = indexes[iter]
+            start_idx, end_idx = index[0], index[1]
+            # Number of points check
+            npoints = get_block_npoints(indexes,iter)
+            if npoints == 1 or npoints == 0:
+                one_points.append(iter)
+            if npoints != mat_number_of_points['ni'][iter]:
+                print(f"Block Nº {iter+1} has different number of points than matlab")
+                break        
+            total_points += npoints
+            #print(f"Block Nº {iter+1} Nº Points {npoints}")
+            Vblock = V[start_idx:end_idx]
+            Ablock = A[start_idx:end_idx]
+            
+            W,edge = compute_graph_MSR(Vblock)
+            # Edges check
+            if npoints != 1:
+                
+                
+                mat_edges = block_data_mat['block_data_save'][0][iter][0][1][:]    
+                mat_edges_python_indexing = mat_edges
+                if mat_edges.shape[0] != 0:
+                    mat_edges_python_indexing = mat_edges + np.array([[-1,-1]])
+                if not np.array_equal(edge, mat_edges_python_indexing):
+                    print(f"Block number {iter} has mitmatch with matlab")
+                    print(f"Mat edges {mat_edges_python_indexing, mat_edges_python_indexing.shape}")
+                    print(f"Python edges {edge, edge.shape}")
 
-    npoints = get_block_npoints(indexes,4)
-    Vblock = V[indexes[4][0]:indexes[4][1]+1]
-    print(f"Vblock size {Vblock.shape} and number of points {npoints}")
-    W,edge = compute_graph_MSR(Vblock)
-    W_2, edge_2 = compute_graph_MSR_v2(Vblock)
-    print(edge.shape, edge_2.shape)
+            # GFT check
+                # Python execution
+            if compute == True:
+                GFT, Gfreq, Ablockhat = cr.iterative_GFT(W, Ablock, Vblock, iter)
+                Coeff[start_idx:end_idx,:] = Ablockhat
+            else:
+                Ablockhat = Coeff[start_idx:end_idx,:]
+            # Matlab execution
+            Ahat_mat = matlab_transform_data['transform_data'][0][iter][0][0][:]
+            Gfreq_mat = matlab_transform_data['transform_data'][0][iter][0][1][:]
+            GFT_mat = matlab_transform_data['transform_data'][0][iter][0][2][:]
+            weights_mat = matlab_transform_data['transform_data'][0][iter][0][3][:]
 
-    I = edge_2[:,0]
-    J = edge_2[:,1]
+            
 
-    for k in range(len(I)):
-        print(f"Edge: {I[k],J[k]} \n Weight {W_2[I[k],J[k]],W_2[J[k],I[k]]} \n Position {Vblock[I[k],:], Vblock[J[k],:]}")
+            mse_results[iter] = mean_square_error(np.round(Ahat_mat), np.round(Ablockhat), absolute, just_DC, mean_AC)
+        if compute == True:
+            np.save('python_Coeff.npy',Coeff)
+        np.save('mse_results.npy', mse_results)
+        plt.plot(list(range(len(mse_results))),np.sort(np.mean(mse_results, axis=1)))  
+        plt.show()     
+        # Compare the indexes from both methods
+        # for i in range(min_length):
+        #     if i+1 == min_length:
+        #         break
+        #     index = indexes[i]
+        #     index_2 = indexes_2[i]
+            
+        #     if index[0] != index_2 or index[1] != indexes_2[i+1]-1:
+        #         print(f"Old: {index}    New: {index_2,indexes_2[i+1]}")
+        #     else:
+        #         continue
+                # print(f"Number of points of block {index[1]- index[0] + 1}")
+
+        # npoints = get_block_npoints(indexes,4)
+        # Vblock = V[indexes[4][0]:indexes[4][1]+1]
+        # print(f"Vblock size {Vblock.shape} and number of points {npoints}")
+        # W,edge = compute_graph_MSR(Vblock)
+        # W_2, edge_2 = compute_graph_MSR_v2(Vblock)
+        # print(edge.shape, edge_2.shape)
+
+        # I = edge_2[:,0]
+        # J = edge_2[:,1]
+
+        # for k in range(len(I)):
+        #     print(f"Edge: {I[k],J[k]} \n Weight {W_2[I[k],J[k]],W_2[J[k],I[k]]} \n Position {Vblock[I[k],:], Vblock[J[k],:]}")
+
+    def minor_test():
+        # Matlab
+        block_data_mat = sio.loadmat('matlab_code/block_data.mat')
+        matlab_transform_data = sio.loadmat('matlab_code/tranform_data.mat')
+        mse_results = np.load('mse_results.npy')
+        mse_all_channels_mean = np.mean(mse_results,axis=1)
+        worst_block = np.argsort(mse_all_channels_mean)[-1]
+        Ahat = matlab_transform_data['transform_data'][0][worst_block][0][0][:]
+        Gfreq_mat = matlab_transform_data['transform_data'][0][worst_block][0][1][:]
+        GFT_mat = matlab_transform_data['transform_data'][0][worst_block][0][2][:]
+        weights = matlab_transform_data['transform_data'][0][worst_block][0][3][:]
+        W_mat =  block_data_mat['block_data_save'][0][worst_block][0][2][:]
+        Ablock_mat = block_data_mat['block_data_save'][0][worst_block][0][3][:]
+        L_mat = matlab_transform_data['transform_data'][0][worst_block][0][4][:]
+        print(75*"=" + f"\n Matlab Coeff: {np.round(Ahat)} \n W: {W_mat} \n GFT: {GFT_mat} \n Gfreq: {Gfreq_mat} \n L: {L_mat} \n {Ablock_mat}")
+
+        # Python
+        V = np.load('V_longdress.npy')
+        C_rgb = np.load('C_longdress.npy')
+        A = clr.RGBtoYUV(C_rgb)
+        indexes = get_block_indexes(V,8)
+        Coeff = np.load('python_Coeff.npy')
+        print(f"This is the worst block {worst_block}")
+        worst_indexes = indexes[worst_block]
+        #Ablockhat = Coeff[worst_indexes[0]:worst_indexes[1],:]
+        Vblock = V[worst_indexes[0]:worst_indexes[1],:]
+        Ablock = A[worst_indexes[0]:worst_indexes[1],:]
+        W,_ = compute_graph_MSR(Vblock) 
+        #GFT,Gfreq,_ = cr.iterative_GFT(W,Ablock,Vblock,worst_block,debug=True)
+        GFT,Gfreq,Ablockhat = cr.compute_GFT_noQ(W,Ablock)
+        #GFT_new,Ablockhat_new = cr.optimize_rotation(Gfreq, GFT, Ablock)
+        L = cr.w2l(W)
+        print(75*"=" + f"\n Python Coeff: {np.round(Ablockhat)} \n W: {W} \n GFT: {GFT.T} \n Gfreq: {Gfreq} \n L: {L} \n Ablock {Ablock}")
+        #print(f"New GFT {GFT_new.T} and New Ablockhat {Ablockhat_new} ")
+        # for bad_block in np.argsort(mse_all_channels_mean)[-20:]:
+        #     Gfreq_mat = matlab_transform_data['transform_data'][0][bad_block][0][1][:]
+        #     print(f"Matlab Freqs {Gfreq_mat}")
+        #     bad_indexes = indexes[bad_block]
+        #     Vblock = V[bad_indexes[0]:bad_indexes[1],:]
+        #     Ablock = A[bad_indexes[0]:bad_indexes[1],:]
+        #     W,_ = compute_graph_MSR(Vblock) 
+        #     #GFT,Gfreq,_ = cr.iterative_GFT(W,Ablock,Vblock,worst_block,debug=True)
+        #     GFT,Gfreq,Ablockhat = cr.compute_GFT_noQ_v2(W,Ablock)
+        #     print(f"Python Freqs {Gfreq}")
+        print(mean_square_error(np.round(Ablockhat), np.round(Ahat), absolute=True, mean_AC=True))
+
+        
+        print(f" This many blocks have mean mse of all channels greater than 10: {np.sum(mse_all_channels_mean > 10)}")
+        
+        # print(75*"=" + f"\n {Gfreq}")
+        # print(75*"=" + f"\n {GFT}")
+        # print(75*"=" + f"\n {weights}")
+
+    whole_test(compute=True, absolute=True, just_DC=False, mean_AC=True)
+    
+    minor_test()
+
+# NOTE: DIFFERENT AND NOT CONSTANT HIFREQ SIGNS (THINK IS NORMAL)
+# NOTE: DC VALUES ARE EQUAL
