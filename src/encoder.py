@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('TkAgg')  # or 'Qt5Agg'
+matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
 import graph.create as cr 
 import graph.transforms as tf 
 import graph.properties as pt
@@ -283,13 +283,13 @@ class DirectionalEncoder:
     
     def gft_transform(self,iter,W,idx_map, iteration):
         Vblock,Ablock = self.get_block(iter)
-        if not idx_map is None:
-            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock,Vblock, iteration) #,idx_closest=idx_map, iter = iteration)
+        if idx_map is not None:
+            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock,Vblock, idx_map) #,idx_closest=idx_map, iter = iteration)
             idx = list(idx_map.keys())
             if self.plots:
                 _,_ = visual.border_visualization(Vblock, Ablock, idx)
         else:
-            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock, Vblock,iteration) #,idx_closest=idx_map)
+            GFT, Gfreq, Ablockhat = tf.iterative_GFT(W,Ablock, Vblock,idx_map) #,idx_closest=idx_map)
         return GFT, Gfreq, Ablockhat
     
     def igft_transform(self,iter,W,idx_map,Ablockhat):

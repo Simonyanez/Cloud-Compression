@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')  # or 'Qt5Agg'
+matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
 
 
 import matplotlib.pyplot as plt

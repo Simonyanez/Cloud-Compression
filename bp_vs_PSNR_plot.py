@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 from utils.bj_delta import *
-
+import matplotlib
+matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
 def extract_info(subdata):
     nPSNR_Y = subdata['nPSNR_Y']
     nbpv = subdata['Structural bpv']
@@ -13,7 +14,7 @@ def extract_info(subdata):
     
 def PSNR_vs_bpv_plot(data):
     bsizes = [4, 8, 16]
-    num_of_points = [1, 2, 4, 8, 16]
+    num_of_points = [1,2,4,8,16]
     markers = ['o', 's', '^']  # Different markers for each block size
     colors = ['blue', 'green', 'red']  # Different colors for each block size
 

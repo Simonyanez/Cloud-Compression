@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import os
 import rlgr
 
@@ -51,7 +51,28 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False, debug=False):
     
     return Ahat_sort
 
-def encode_rlgr(data,filename="test.bin",is_signed=1):
+def code_YUV(Coeff_quant_sorted,bitstream_directory = '', plot=False):
+    if plot:
+        plt.figure(figsize=(10,6))
+        plt.hist(np.abs(Coeff_quant_sorted[:,0]),bins=int(np.max(np.abs(Coeff_quant_sorted[:,0]))))
+        plt.title(f'Density distribution of Absolute Cuofficients in the Y Channel')
+        plt.xlabel('Value')
+        plt.ylabel('Count')
+        plt.yscale('log')
+        plt.grid(True,which="both", ls="-")
+        plt.show()
+
+    # Code Y, U, V separately 
+    numbits_Y = encode_rlgr(Coeff_quant_sorted[:, 0], os.path.join(bitstream_directory, 'bitstream_Y.bin'))
+    numbits_U = encode_rlgr(Coeff_quant_sorted[:, 1], os.path.join(bitstream_directory, 'bitstream_U.bin'))
+    numbits_V = encode_rlgr(Coeff_quant_sorted[:, 2], os.path.join(bitstream_directory, 'bitstream_V.bin'))
+
+    # Bit count
+    bs_size = numbits_Y + numbits_U + numbits_V
+    
+    return bs_size
+
+def encode_rlgr(data,filename="test.bin",is_signed=0):
     if os.path.isfile(filename):
         os.remove(filename)
     #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation

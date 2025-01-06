@@ -49,8 +49,8 @@ def get_coefficients(V,C_rgb,block_size,self_loop_weight,number_of_points=2,poin
             
             idx_map = dict(zip(choosed_positions,choosed_weights))
             #Ablockhat,block_decision = directional_encoder.dynamic_transform(iteration,W,idx_map)
-            # decision.append(block_decision)
-            
+            #decision.append(block_decision)
+
             _, _, Ablockhat = directional_encoder.gft_transform(iteration,W,idx_map,iteration)
             _, _, nAblockhat = directional_encoder.gft_transform(iteration,W,None,iteration)      
             Ablockconstructed = np.zeros(Ablockhat.shape)
@@ -129,7 +129,7 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     
     return Ahat_sort
 
-def encode_rlgr(data,filename="test.bin",is_signed=1):
+def encode_rlgr(data,filename="test.bin",is_signed=0):
     if os.path.isfile(filename):
         os.remove(filename)
     #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation
@@ -184,9 +184,9 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes,bsize):
     if qstep==1:
         np.save(f'res/struct_GFT_{bsize}_exp.npy', nCoeff_quant_sorted)
     # Run-Length Golomb-Rice
-    bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res')
-    bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res',plot=False)
-    bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res',plot=False)
+    bs_Coeffs = code_YUV(np.abs(Coeff_quant_sorted), bitstream_directory='res')
+    bs_nCoeffs = code_YUV(np.abs(nCoeff_quant_sorted), bitstream_directory='res',plot=False)
+    bs_dCoeffs = code_YUV(np.abs(dCoeff_quant_sorted), bitstream_directory='res',plot=False)
     return PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs 
 
 def extract_overhead(entropy_data, num_of_points, bsize):
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 64]
     block_sizes = [4,8,16]
     #point_fractions = [0.05]#,0.2,0.5]
-    num_of_points=[1]#,4]
+    num_of_points=[1,2,4,8,16]#,4]
     weights = [1.2]#,1.6,2.0]
     data = []
     entropy_analysis = pd.read_csv('entropy_analysis.csv')

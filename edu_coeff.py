@@ -1,6 +1,9 @@
 import numpy as np
 import scipy.io as sio
+import matplotlib
+matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
+from encode.encode import *
 
 def scatter_coeff(Coeff_1, Coeff_2, bsize, qstep):
     Coeff_1_quant =  np.round(Coeff_1/qstep)
@@ -36,7 +39,7 @@ Coeff_b4_edu = Coeff_b4_read['Coeff']
 Coeff_b8_edu = Coeff_b8_read['Coeff']
 Coeff_b16_edu = Coeff_b16_read['Coeff']
 
-print(Coeff_b4_edu[54619,:])
+
 # Load coefficient data from .npy files
 Coeff_b4_simon = np.load('res/struct_GFT_4_exp.npy')
 Coeff_b8_simon = np.load('res/struct_GFT_8_exp.npy')
@@ -126,24 +129,24 @@ MSEs = [MSE_b4,MSE_b8,MSE_b16]
 POSs = []
 CHs = ['Y','U','V']
 bsizes = [4,8,16]
-for i,MSE in enumerate(MSEs):
-    print(f"Block {bsizes[i]} MSE between coefficients {MSE}")
-    print("===============================================================")
-    for j in range(3):
-        plt.figure(figsize=(15,10))
-        plt.hist(SQQs[i][:,j], bins=50)
-        plt.title(f"Mean Squared Error for {CHs[j]} Channel and Block Size {bsizes[i]}")
-        plt.xlabel("MSE")
-        plt.ylabel("Count")
-        plt.show()
+# for i,MSE in enumerate(MSEs):
+#     print(f"Block {bsizes[i]} MSE between coefficients {MSE}")
+#     print("===============================================================")
+#     for j in range(3):
+#         plt.figure(figsize=(15,10))
+#         plt.hist(SQQs[i][:,j], bins=50)
+#         plt.title(f"Mean Squared Error for {CHs[j]} Channel and Block Size {bsizes[i]}")
+#         plt.xlabel("MSE")
+#         plt.ylabel("Count")
+#         plt.show()
 
-        POSs.append(np.argwhere(SQQs[i][:,j]> 1e5))
+#         POSs.append(np.argwhere(SQQs[i][:,j]> 1e5))
 # Print byte sizes
 print("Byte sizes comparison:")
 for i, step in enumerate(steps):
-    print(f"Block 4 Step {step} .mat: {Bytes_b4_edu[0][i]*8} bits, .npy: {Bits_b4_simon[i]} bits")
-    print(f"Block 8 Step {step} .mat: {Bytes_b8_edu[0][i]*8} bits, .npy: {Bits_b8_simon[i]} bits")
-    print(f"Block 16 Step {step} .mat: {Bytes_b16_edu[0][i]*8} bits, .npy: {Bits_b16_simon[i]} bits")
+    print(f"Block 4 Step {step} .mat: {code_YUV(np.abs(np.round(Coeff_b4_edu/step)))} bits, .npy: {Bits_b4_simon[i]} bits")
+    print(f"Block 8 Step {step} .mat: {code_YUV(np.abs(np.round(Coeff_b8_edu/step)))} bits, .npy: {Bits_b8_simon[i]} bits")
+    print(f"Block 16 Step {step} .mat: {code_YUV(np.abs(np.round(Coeff_b16_edu/step)))} bits, .npy: {Bits_b16_simon[i]} bits")
     print("=================================================================================================")
 # List of coefficients and block names for both sources
 coeff_blocks = [(Coeff_b4_edu, Coeff_b4_simon), (Coeff_b8_edu, Coeff_b8_simon), (Coeff_b16_edu, Coeff_b16_simon)]

@@ -35,15 +35,16 @@ def w2l(W, idx_closest_map=None, iter=None):
         # Handle negative weights differently if needed
 
     if idx_closest_map is not None:
+        # TODO: Make this from structure and not hardcoded
         for idx in idx_closest_map.keys():
-            #C[np.ix_(idx, idx)] = idx_closest_map[idx]
-            W[idx,idx] = idx_closest_map[idx]
+            C[idx, idx] = idx_closest_map[idx]
+            #W[idx,idx] = idx_closest_map[idx]
 
     D = np.diag(np.sum(W, axis=0))
 
     # Be careful that C = np.diag(np.diag(W)) if the self-loops are originally at the structure of the graph
 
-    L = D - W + np.diag(np.diag(W))
+    L = D - W + np.diag(np.diag(W)) + C
     return L
 
 def check_connected(W):
@@ -57,14 +58,13 @@ def check_connected(W):
     num_components, labels = connected_components(W_sparse, directed=False, return_labels=True)
     return num_components, labels
 
-def iterative_GFT(W, A, V, iteration, debug=False):
+def iterative_GFT(W, A, V, idx_map=None, debug=False):
     """
     Compute the Graph Fourier Transform (GFT) iteratively for each disconnected component of the graph.
     """
-    
     num_components, labels = check_connected(W)
     if num_components == 1:
-        GFT, Gfreq, Coeff = compute_GFT_noQ(W, A, debug=debug)
+        GFT, Gfreq, Coeff = compute_GFT_noQ(W, A, idx_closest=idx_map,debug=debug)
         return GFT, Gfreq, Coeff
     
     
@@ -88,7 +88,7 @@ def iterative_GFT(W, A, V, iteration, debug=False):
         
         # Compute GFT for this subgraph
         
-        GFT_curr, Gfreq_curr, Ahat_curr = compute_GFT_noQ(W_curr, A_curr,debug=debug)  # Assume this function is implemented
+        GFT_curr, Gfreq_curr, Ahat_curr = compute_GFT_noQ(W_curr, A_curr,idx_closest=None,debug=debug)  # Assume this function is implemented
         
         Utmp = np.zeros((W.shape[0], len(component_indices)))
         Utmp[component_indices, :] = GFT_curr
