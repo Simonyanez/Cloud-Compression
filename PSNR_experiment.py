@@ -129,7 +129,7 @@ def sort_gft_coeffs(Ahat,indexes,qstep, plot=False):
     
     return Ahat_sort
 
-def encode_rlgr(data,filename="test.bin",is_signed=0):
+def encode_rlgr(data,filename="test.bin",is_signed=1):
     if os.path.isfile(filename):
         os.remove(filename)
     #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation
@@ -184,9 +184,9 @@ def quantize_PSNR_bs(Coeff,nCoeff,dCoeff,qstep,indexes,bsize):
     if qstep==1:
         np.save(f'res/struct_GFT_{bsize}_exp.npy', nCoeff_quant_sorted)
     # Run-Length Golomb-Rice
-    bs_Coeffs = code_YUV(np.abs(Coeff_quant_sorted), bitstream_directory='res')
-    bs_nCoeffs = code_YUV(np.abs(nCoeff_quant_sorted), bitstream_directory='res',plot=False)
-    bs_dCoeffs = code_YUV(np.abs(dCoeff_quant_sorted), bitstream_directory='res',plot=False)
+    bs_Coeffs = code_YUV(Coeff_quant_sorted, bitstream_directory='res')
+    bs_nCoeffs = code_YUV(nCoeff_quant_sorted, bitstream_directory='res',plot=False)
+    bs_dCoeffs = code_YUV(dCoeff_quant_sorted, bitstream_directory='res',plot=False)
     return PSNR_Y,bs_Coeffs,nPSNR_Y,bs_nCoeffs, dPSNR_Y,bs_dCoeffs 
 
 def extract_overhead(entropy_data, num_of_points, bsize):
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     steps = [1, 2, 4, 8, 12, 16, 20, 24, 32, 64]
     block_sizes = [4,8,16]
     #point_fractions = [0.05]#,0.2,0.5]
-    num_of_points=[1,2,4,8,16]#,4]
+    num_of_points=[1]#,4]
     weights = [1.2]#,1.6,2.0]
     data = []
     entropy_analysis = pd.read_csv('entropy_analysis.csv')
@@ -251,7 +251,7 @@ if __name__ == "__main__":
                     bits = np.array(bits)
                     np.save(f'res/struct_GFT_{bsize}_exp_bits.npy', bits)
     # Create DataFrame
-    df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y","Adaptative bitstream", "Adaptative bpv","nPSNR_Y","Structural bitstream","Structural bpv", "dPSNR_Y","Dynamic bitstream","Dynamic bpv"])
+    #df = pd.DataFrame(data, columns=["Block Size", "Point Fraction", "Weight", "Step", "PSNR_Y","Adaptative bitstream", "Adaptative bpv","nPSNR_Y","Structural bitstream","Structural bpv", "dPSNR_Y","Dynamic bitstream","Dynamic bpv"])
 
     # Save the DataFrame to a CSV file (optional)
-    df.to_csv("PSNR_experiment.csv", index=False)
+    #df.to_csv("PSNR_experiment.csv", index=False)

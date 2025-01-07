@@ -72,11 +72,18 @@ def code_YUV(Coeff_quant_sorted,bitstream_directory = '', plot=False):
     
     return bs_size
 
-def encode_rlgr(data,filename="test.bin",is_signed=0):
+def decode_YUV(N,bitstream_directory = ''):
+    Coeff = np.zeros((N,3))
+    Coeff[:,0] = decode_rlgr(os.path.join(bitstream_directory, 'bitstream_Y.bin'), N=N)
+    Coeff[:,1] = decode_rlgr(os.path.join(bitstream_directory, 'bitstream_U.bin'), N=N)
+    Coeff[:,2] = decode_rlgr(os.path.join(bitstream_directory, 'bitstream_V.bin'), N=N)
+    return Coeff
+
+def encode_rlgr(data,filename="test.bin",is_signed=1):
     if os.path.isfile(filename):
         os.remove(filename)
     #np.uint is unsigned int, the data is in signed fashion. Also 8bits may be low for representation
-    data = data.astype(np.int64)
+    data = data.astype(np.int16)
     do_write = 1
     enc = rlgr.file(filename, do_write)
 
@@ -85,3 +92,10 @@ def encode_rlgr(data,filename="test.bin",is_signed=0):
     enc.close()
     numbits = os.path.getsize(filename) * 8
     return numbits
+
+def decode_rlgr(filename,N, is_signed=1):
+    do_write = 0
+    dec = rlgr.file(filename,do_write)
+    Coeff = dec.rlgrRead(N, is_signed)
+    dec.close()
+    return Coeff

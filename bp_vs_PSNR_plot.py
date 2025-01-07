@@ -41,6 +41,7 @@ def PSNR_vs_bpv_plot(data):
         #plt.xlim(0, 12)   # Adjust according to your data range
         plt.show()
 
+
 if __name__ == "__main__":
     data = pd.read_csv('PSNR_experiment.csv')
     PSNR_vs_bpv_plot(data)

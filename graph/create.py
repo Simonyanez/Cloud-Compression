@@ -294,7 +294,8 @@ if __name__ == "__main__":
         if compute == True:
             np.save('python_Coeff.npy',Coeff)
         np.save('mse_results.npy', mse_results)
-        plt.plot(list(range(len(mse_results))),np.sort(np.mean(mse_results, axis=1)))  
+        plt.plot(list(range(len(mse_results))),np.sort(np.mean(mse_results, axis=1)))
+        plt.yscale('log')  
         plt.show()     
         # Compare the indexes from both methods
         # for i in range(min_length):
@@ -375,7 +376,7 @@ if __name__ == "__main__":
         # print(75*"=" + f"\n {GFT}")
         # print(75*"=" + f"\n {weights}")
 
-    whole_test(compute=True, absolute=True, just_DC=False, mean_AC=True)
+    whole_test(compute=True, just_DC=False, mean_AC=True)
     
     minor_test()
 
