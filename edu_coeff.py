@@ -1,9 +1,14 @@
 import numpy as np
+import graph.create as cr
+import graph.transforms as tr
+import utils.ply as ply
 import scipy.io as sio
 import matplotlib
 matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
 import matplotlib.pyplot as plt
 from encode.encode import *
+
+V = np.load('V_longdress.npy')
 
 def scatter_coeff(Coeff_1, Coeff_2, bsize, qstep):
     Coeff_1_quant =  np.round(Coeff_1/qstep)
@@ -205,8 +210,11 @@ def calculate_psnr(Coeff, N,qstep):
     psnr_Y = -10 * np.log10(inner_value)
     
     return psnr_Y
-
-def PSNR_vs_bpv_from_coeff(Coeffs, matlab_bitstream, N, references=["Simón PyRLGR", "Eduardo PyRLGR", "Eduardo Matlab RLGR"]):
+from utils.bj_delta import *
+def PSNR_vs_bpv_from_coeff(Coeffs, matlab_bitstream, N, V, compressed_images=False,references=["Simón PyRLGR", "Eduardo PyRLGR", "Eduardo Matlab RLGR"]):
+    indexes_b4 = cr.get_block_indexes(V,4)
+    indexes_b8 = cr.get_block_indexes(V,8)
+    indexes_b16 = cr.get_block_indexes(V,16)
     # COEFFS for Eduardo and Simón
     Coeff_b4_edu = Coeffs['Eduardo b4']
     Coeff_b8_edu = Coeffs['Eduardo b8']
@@ -250,8 +258,14 @@ def PSNR_vs_bpv_from_coeff(Coeffs, matlab_bitstream, N, references=["Simón PyRL
         
         # Calculate BPV and PSNR for Simón
         bpv_b4_sim.append(code_YUV(np.round(Coeff_b4_sim / step), '') / N)
+        if compressed_images:
+            get_compressed_images(f"longdress_qstep{step}_b4.ply",'',indexes_b4,N,V)
         bpv_b8_sim.append(code_YUV(np.round(Coeff_b8_sim / step), '') / N)
+        if compressed_images:
+            get_compressed_images(f"longdress_qstep{step}_b8.ply",'',indexes_b8,N,V)
         bpv_b16_sim.append(code_YUV(np.round(Coeff_b16_sim / step), '') / N)
+        if compressed_images:
+            get_compressed_images(f"longdress_qstep{step}_b16.ply",'',indexes_b16,N,V)
         
         psnr_b4_sim.append(calculate_psnr(Coeff_b4_sim, N, step))
         psnr_b8_sim.append(calculate_psnr(Coeff_b8_sim, N, step))
@@ -300,4 +314,18 @@ for i,b4_step in enumerate(Coeff_b4_read['colorStep'][0]):
     matlab_bitstreams[f'b16 {b4_step}'] = Coeff_b16_read['bytes'][0][i]
 
 print(matlab_bitstreams)
-PSNR_vs_bpv_from_coeff(Coeffs, matlab_bitstreams, N )
+
+def get_compressed_images(ply_file, bin_folder, indexes, N, V):
+    Coeff = decode_YUV(N, bin_folder) 
+    Arec = np.zeros(V.shape)
+    for index in indexes:
+        Vblock = V[index[0]: index[1]]
+        W,_ = cr.compute_graph_MSR(Vblock)  # Structural data is given
+        Coeff_block = Coeff[index[0]:index[1]]
+        _, Ablockrec = tr.compute_iGFT_noQ(W,Coeff_block)
+        Arec[index[0]:index[1]] = Ablockrec
+    
+    ply.ply_write(filename=ply_file,V=V,C=Arec)
+
+
+PSNR_vs_bpv_from_coeff(Coeffs, matlab_bitstreams, N, V, compressed_images = False )

@@ -222,18 +222,20 @@ def compute_GFT_noQ(Adj, A, idx_closest=None, iter=None, debug=False):
 #     return GFT, Gfreq, Ahat
 
 def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
-    if idx_closest is not None:
-        L = w2l(Adj, idx_closest)
-    else:
-        L = w2l(Adj)
+    if Adj.shape[0] > 1:
+        if idx_closest is not None:
+            L = w2l(Adj, idx_closest, iter = iter)
+        else:
+            L = w2l(Adj, iter = iter)
+        # L is normalized by the way it's build
+        D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
+        idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
+        GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
 
-    D, GFT = np.linalg.eig(L) # D eigen values and GFT eigenvectors
-    idxSorted = np.argsort(D)      # Order of the eigenvalues
-    GFT = GFT[:,idxSorted]    # GFT ordered by eigenvalues order
-    GFT[:,0] = np.abs(GFT[:,0])
-    GFT = GFT.T
-
-    GFT_inv = np.linalg.inv(GFT)
+        for i in range(GFT.shape[0]):
+            if GFT[i,0] < 0:
+                GFT[i,:] =  GFT[i,:]*(-1) 
+    GFT_inv = np.linalg.inv(GFT.T)
 
     Arec = np.matmul(GFT_inv, Ahat_val)
     return GFT_inv, Arec

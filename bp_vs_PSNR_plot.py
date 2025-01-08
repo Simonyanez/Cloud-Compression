@@ -37,8 +37,8 @@ def PSNR_vs_bpv_plot(data):
         plt.ylabel('PSNR_Y')
         plt.grid(True, which='both')
         plt.legend(title='Legend')
-        #plt.ylim(20, 45)  # Adjust according to your data range
-        #plt.xlim(0, 12)   # Adjust according to your data range
+        plt.ylim(20, 40)  # Adjust according to your data range
+        plt.xlim(0, 6)   # Adjust according to your data range
         plt.show()
 
 
