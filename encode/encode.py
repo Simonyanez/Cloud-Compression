@@ -3,6 +3,25 @@ import matplotlib.pyplot as plt
 import os
 import rlgr
 
+class ADEncoder():
+    def __init__(self, Coeffs: np.ndarray):
+        self.Coeffs = Coeffs
+
+    def _quantize(self, qstep: int) -> np.ndarray:
+        return np.round(self.Coeffs/qstep)
+
+    def _sort_coeffs(self, PointCloud: ADPointCloud) -> np.ndarray:
+        ADPointCloud._sort_coeffs()
+        pass
+
+
+
+
+
+
+
+
+
 def sort_gft_coeffs(Ahat,indexes,qstep, plot=False, debug=False):
     N = Ahat[:,0].shape[0]
     mask_lo = np.zeros((N), dtype=bool)

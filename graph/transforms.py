@@ -9,11 +9,82 @@ sys.path.insert(0, main_folder)
 import matplotlib.pyplot as plt
 import numpy as np
 from graph.create import *
+from graph.graph import *
 from sklearn.preprocessing import normalize
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
 from scipy.linalg import fractional_matrix_power, eigh
 #from scipy.linalg import eigh
+
+class GFT():
+    def __init__(self):
+        # TODO: Give parameters
+        pass
+
+    def __call__(self, graph: Graph, block: Block):
+        self.graph = graph
+        self.block = block
+        self._check_connected()
+
+    def _check_connected(self):
+        Adj = self.graph.weights
+        Adj_sparse = csr_matrix(Adj)
+        num_components, labels = connected_components(Adj_sparse, directed=False, return_labels=True)
+        if num_components > 1:
+            self._process_disconnected(num_components,labels)
+        else:
+            self._process_connected()
+        return num_components, labels
+
+    def _process_disconnected(self, num_components, labels):
+        pass
+
+    def _process_connected(self):
+        pass
+
+    def _compute_GFT(self):
+        pass
+
+
+class Transformer():
+    def __init__(self):
+        pass
+    
+    def __call__(self, *args, **kwds):
+        pass
+        
+    def compute_GFT(self, A, Adj, idx_closest):
+        if Adj.shape[0] > 1:
+            if idx_closest is not None:
+                L = w2l(Adj, idx_closest, iter = iter)
+            else:
+                L = w2l(Adj, iter = iter)
+            if debug:
+                print(f"L: {L}")
+            # L is normalized by the way it's build
+            D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
+            idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
+            GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
+
+            for i in range(GFT.shape[0]):
+                if GFT[i,0] < 0:
+                    GFT[i,:] =  GFT[i,:]*(-1) 
+            # GFT[:,0] = np.abs(GFT[:,0])
+            # GFT = GFT.T         # Because the matrix that do the transform is this one
+            Gfreq = np.sort(D)
+    
+            Gfreq[0] = np.abs(Gfreq[0])
+            
+            Ahat = np.matmul(GFT.T, A)      # @ is a shortcut for matmul, yet i dont like it
+            if np.iscomplexobj(Ahat) and iter is not None:
+                print(f"This is the block that has complex values {iter}")
+
+        else:  # 1D-case, DC only
+            GFT = np.array([1.0])
+            Gfreq = np.array([0.0])
+            Ahat = np.matmul(GFT.T, A)
+
+        return GFT, Gfreq, Ahat
 
 def w2l(W, idx_closest_map=None, iter=None):
     """
@@ -114,6 +185,7 @@ def iterative_GFT(W, A, V, idx_map=None, debug=False):
     Ahat_1 = U.T @ A
     Ahat_low = Ahat_1[isDC, :]
     Ahat_high = Ahat_1[np.logical_not(isDC), :]
+
     # Complete graph creation
     Wnew = complete_graph(V_new)
     
@@ -135,7 +207,38 @@ def compute_GFT_noQ(Adj, A, idx_closest=None, iter=None, debug=False):
     Parameters:
         Adj (numpy.ndarray): Adjacency matrix of the graph.
         A (numpy.ndarray): Attribute matrix.
-        idx_closest (numpy.ndarray or None): Index of the closest points (optional).
+        idx_closest (numpy.ndarray or None): Index of the closest points (optional)
+    if Adj.shape[0] > 1:
+        if idx_closest is not None:
+            L = w2l(Adj, idx_closest, iter = iter)
+        else:
+            L = w2l(Adj, iter = iter)
+        if debug:
+            print(f"L: {L}")
+        # L is normalized by the way it's build
+        D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
+        idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
+        GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
+
+        for i in range(GFT.shape[0]):
+            if GFT[i,0] < 0:
+                GFT[i,:] =  GFT[i,:]*(-1) 
+        # GFT[:,0] = np.abs(GFT[:,0])
+        # GFT = GFT.T         # Because the matrix that do the transform is this one
+        Gfreq = np.sort(D)
+ 
+        Gfreq[0] = np.abs(Gfreq[0])
+        
+        Ahat = np.matmul(GFT.T, A)      # @ is a shortcut for matmul, yet i dont like it
+        if np.iscomplexobj(Ahat) and iter is not None:
+            print(f"This is the block that has complex values {iter}")
+
+    else:  # 1D-case, DC only
+        GFT = np.array([1.0])
+        Gfreq = np.array([0.0])
+        Ahat = np.matmul(GFT.T, A)
+
+    return GFT, Gfreq, Ahat.
 
     Returns:
         numpy.ndarray: Graph Fourier Transform.

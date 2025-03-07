@@ -93,7 +93,7 @@ def compute_graph_MSR(V, th=None):
     return W, edge
 
 
-def compute_graph_sl(V, distance_vectors, weights, th=None):
+def compute_graph_sl(V, distance_vectors, weights, degree_threshold=0.2, num_of_points = 2,th=None):
     """
     Compute distance-based graph from Zhang et al., ICIP 2014.
 
@@ -125,8 +125,8 @@ def compute_graph_sl(V, distance_vectors, weights, th=None):
     centered_V = V - mean_point_cloud
     
     # Mean direction normalized over all color change directions
-    mean_direction = np.sum(np.dot(weights,distance_vectors)) / np.sum(weights)
-    mean_direction /= np.linalg.norm(mean_direction)
+    mean_direction = np.dot(weights,distance_vectors) / np.sum(weights)
+    mean_direction /= np.linalg.norm(mean_direction) 
 
     # Standard weights calculation
     squared_norms = np.sum(V**2, axis=1)
@@ -143,7 +143,7 @@ def compute_graph_sl(V, distance_vectors, weights, th=None):
 
     # Find the 20% less degree indexs (edges)
     sorted_indices = np.argsort(degrees)
-    first_threshold = int(0.2 * len(sorted_indices))
+    first_threshold = int(degree_threshold * len(sorted_indices))
     idx_closest_original = sorted_indices[:first_threshold]
 
     # The selected vectors dot product to the mean direction
@@ -151,9 +151,8 @@ def compute_graph_sl(V, distance_vectors, weights, th=None):
     dot_products_degreed = np.dot(selected_vectors, mean_direction)
 
     # Use the new indices to reorder the original indexes (start edge for added weight)
-    second_threshold = int(0.2 * len(dot_products_degreed))
-    idx_closest = np.argsort(dot_products_degreed)[:second_threshold]
-    idx_closest = idx_closest_original[idx_closest[0]] if second_threshold > 0 else None
+    idx_closest = np.argsort(dot_products_degreed, axis=None)[::-1]#[:num_of_points]
+    idx_closest = idx_closest_original[idx_closest[:num_of_points]] 
 
     W = iD.T + iD
 

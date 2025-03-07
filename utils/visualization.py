@@ -12,6 +12,11 @@ from utils.color import YUVtoRGB
 from graph.properties import direction,gradient,simple_direction
 from graph.create import compute_graph_sl
 
+class ADPlotter():
+    pass
+
+
+
 def min_max_normalize(vector_values):
     """
     Perform min-max normalization on a vector.
@@ -595,10 +600,28 @@ def plot_vector_field(V,A, W, edges):
     ax = fig.add_subplot(111, projection='3d')
     
     # Plot vectors
+    first = True
+    cum_dir = []
     for i, j in direction_dict.items():
         if j is not None:
-            ax.quiver(X[i], Y[i], Z[i], X[j] - X[i], Y[j] - Y[i], Z[j] - Z[i], color='b')
+            X_dir = X[j] - X[i]
+            Y_dir = Y[j] - Y[i]
+            Z_dir = Z[j] - Z[i]
+            cum_dir.append(np.array([X_dir, Y_dir, Z_dir]))
+            label_str = None
+            if first:
+                label_str = 'Per node Y decrease direction'
+                first = False
+            ax.quiver(X[i], Y[i], Z[i], X[j] - X[i], Y[j] - Y[i], Z[j] - Z[i], color='b', label = label_str)
+    cum_dir = np.array(cum_dir)
+    mean_dir = np.mean(cum_dir, axis=0)
+    std_dir = np.std(cum_dir, axis=0)
+    print(f"This is mean direction {mean_dir} and std {std_dir}")
+    X_mean = np.mean(X)
+    Y_mean = np.mean(Y)
+    Z_mean = np.mean(Z)
 
+    ax.quiver(X_mean, Y_mean, Z_mean, mean_dir[0], mean_dir[1], mean_dir[2], color = 'r', label = 'Mean Y decrease direction')
     # Plot points
     #ax.scatter(X, Y, Z, c='r', marker='o')
 
@@ -606,6 +629,7 @@ def plot_vector_field(V,A, W, edges):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
+    ax.legend()
     plt.title('Decreasing Y Channel Graph Directions')
 
     return fig

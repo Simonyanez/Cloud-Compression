@@ -50,6 +50,10 @@ Coeff_b4_simon = np.load('res/struct_GFT_4_exp.npy')
 Coeff_b8_simon = np.load('res/struct_GFT_8_exp.npy')
 Coeff_b16_simon = np.load('res/struct_GFT_16_exp.npy')
 
+# Save coefficients as .mat files
+sio.savemat('Coeff_b4_simon.mat', {'Coeffs': Coeff_b4_simon})
+sio.savemat('Coeff_b8_simon.mat', {'Coeffs': Coeff_b8_simon})
+sio.savemat('Coeff_b16_simon.mat', {'Coeffs': Coeff_b16_simon})
 # # Create subplots
 # fig, axs = plt.subplots(3, 2, figsize=(10, 15))
 

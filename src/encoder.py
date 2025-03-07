@@ -249,7 +249,7 @@ class DirectionalEncoder:
     
     def get_direction(self,iter):
         Vblock,Ablock = self.get_block(iter)
-        _, _, distance_vectors, weights = pt.direction(Vblock, Ablock)
+        _, _, distance_vectors, weights = pt.direction(Vblock, Ablock, plot=self.plots)
         return Vblock, distance_vectors, weights
     
     def find_borders(self,iter):
@@ -263,10 +263,39 @@ class DirectionalEncoder:
         sorted_indices = np.argsort(DegreeVector)
         first_threshold = int(0.2 * len(sorted_indices))
         borders_idx = sorted_indices[:first_threshold]
+        border_fig = None
+        y_values = None
         if self.plots:
             y_values,border_fig = visual.border_visualization(Vblock, Ablock, borders_idx)
         return W, borders_idx,border_fig,y_values
-    
+
+    def filter_border_by_decrease(self,iter, num_points = 2):
+        Vblock, distance_vectors, weights = self.get_direction(iter)
+        W, borders_idx, _, _ = self.find_borders(iter)
+        Vblock, Ablock = self.get_block(iter)
+
+        # Find the mean of the Cloud 
+        mean_X = np.min(Vblock[:, 0])
+        mean_Y = np.min(Vblock[:, 1])
+        mean_Z = np.min(Vblock[:, 2])
+        mean_point_cloud = np.array([mean_X, mean_Y, mean_Z])
+        mean_direction = np.dot(weights,distance_vectors) / np.sum(weights)
+        mean_direction /= np.linalg.norm(mean_direction) 
+        
+        # Center de Cloud by its mean value
+        centered_V = Vblock - mean_point_cloud
+        centered_V /= np.linalg.norm(centered_V)
+        print(f"This is mean direction {mean_direction} \n centered_V_first3 {centered_V[:3]}")
+        selected_vectors = centered_V[borders_idx]
+        dot_products_degreed = np.dot(selected_vectors, mean_direction)
+        print(dict(zip(borders_idx,dot_products_degreed)))
+        # Use the new indices to reorder the original indexes (start edge for added weight)
+        idx_closest = np.argsort(dot_products_degreed, axis=None)[::-1]#[:num_of_points]
+        filtered_borders_idx = borders_idx[idx_closest[:num_points]] 
+        if self.plots:
+            _, border_fig = visual.border_visualization(Vblock, Ablock, filtered_borders_idx)
+        return filtered_borders_idx
+
     def direction_visualization(self,iter):
         Vblock,distance_vectors,_ = self.get_direction(iter)
         if self.plots:
@@ -275,9 +304,10 @@ class DirectionalEncoder:
         else:
             print("Plots are desactivated")
     
-    def directional_graph(self,iter):
+    def directional_graph(self,iter, num_points):
         Vblock, distance_vectors, weights = self.get_direction(iter)
-        W, edge, idx_closest = cr.compute_graph_sl(Vblock,distance_vectors,weights)
+        _, borders_idx,_,_ = self.find_borders(iter)
+        W, edge, idx_closest = cr.compute_graph_sl(Vblock,distance_vectors,weights, num_of_points=num_points)
         return W,edge, idx_closest
     
     
@@ -462,19 +492,23 @@ if __name__ == "__main__":
         np.save('V_longdress.npy',V)
         np.save('C_longdress.npy',C_rgb) 
     structural_encoder = StructuralEncoder(V,C_rgb)
-    directional_encoder = DirectionalEncoder(V,C_rgb)
-    indexes = structural_encoder.block_indexes(block_size = 4)
-    directional_encoder.block_indexes(block_size = 4)
-    W, edge, idx_closest = directional_encoder.directional_graph(14)
-    GFT,Gfreq,Ablockhat =directional_encoder.gft_transform(14,W, None)
-    #directional_encoder.energy_block(Ablockhat,"structural")
+    directional_encoder = DirectionalEncoder(V,C_rgb, plots_flag=True)
+    indexes = structural_encoder.block_indexes(block_size = 16)
+    directional_encoder.block_indexes(block_size = 16)
+    # for iter in range(1000,1100):
+    #     directional_encoder.simple_direction_visualization(iter)
+    #     directional_encoder.block_visualization(iter)
+    #     plt.show()
 
-    print(np.max(Ablockhat))
+    for iter in range(0,30):
+        # _, distance_vectors, weights = directional_encoder.get_direction(iter)
+        # W, borders_idx, border_fig, y_values = directional_encoder.find_borders(iter)
+        directional_encoder.filter_border_by_decrease(iter, num_points=4)
+        sorted_nodes = directional_encoder.simple_direction_sort(iter)
+        choosed_positions = sorted_nodes[:8]
+        directional_encoder.node_positions(iter, choosed_positions)
+        plt.show()
 
 
-
-    
-    fig = structural_encoder.energy_block(indexes[14])
-    plt.show()
 
     

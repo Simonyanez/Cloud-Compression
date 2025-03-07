@@ -54,7 +54,7 @@ def gradient(V, C):
 
 import matplotlib.pyplot as plt
 
-def direction(V, C, aspect_ratio=None):
+def direction(V, C, aspect_ratio=None, plot=False):
     """
     Compute direction vectors between points in a point cloud.
 
@@ -106,12 +106,12 @@ def direction(V, C, aspect_ratio=None):
     for iter in range(G_vec.shape[0]):
         min_val = np.min(G_vec[:, iter])
         min_index = np.argmin(G_vec[:, iter])
-        if np.abs(min_val) > 0.02:
-            distance_indexes[iter, :] = [min_index, iter]
-            weights[iter] = np.abs(G_vec[min_index, iter])
-            dis_vec = V[iter, :] - V[min_index, :]
-        else:
-            dis_vec = np.array([0, 0, 0])
+        # if np.abs(min_val) > 0.02:
+        distance_indexes[iter, :] = [min_index, iter]
+        weights[iter] = np.abs(G_vec[min_index, iter])
+        dis_vec = V[iter, :] - V[min_index, :]
+        # else:
+            # dis_vec = np.array([0, 0, 0])
         
         if np.linalg.norm(dis_vec) != 0:
             dis_vec = dis_vec / np.linalg.norm(dis_vec)
@@ -119,7 +119,7 @@ def direction(V, C, aspect_ratio=None):
         else:
             distance_vectors[iter, :] = dis_vec
 
-    if aspect_ratio is not None:
+    if plot:
         x = V[:, 0]
         y = V[:, 1]
         z = V[:, 2]
@@ -131,18 +131,20 @@ def direction(V, C, aspect_ratio=None):
         v_unit = v / magnitudes
         w_unit = w / magnitudes
         r = np.mean(distance_vectors, axis=0)
-        r = r / np.linalg.norm(r)
+        print(f"This is r {r}")
+        #r = r / np.linalg.norm(r)
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        ax.quiver(x, y, z, u_unit, v_unit, w_unit)
-        ax.quiver(0, 0, 0, r[0], r[1], r[2], color='r', linewidth=6, arrow_length_ratio=0.1)
+        ax.quiver(x, y, z, u_unit, v_unit, w_unit, label="Y decrease per node direction")
+        # Just for visual purposes the magnitude is other thing
+        ax.quiver(np.mean(x), np.mean(y), np.mean(z), r[0]*5, r[1]*5, r[2]*5, color='r', linewidth=2, arrow_length_ratio=0.5, label="Y decrease mean direction")
         ax.set_xlabel('X-axis')
         ax.set_ylabel('Y-axis')
         ax.set_zlabel('Z-axis')
+        ax.legend()
         ax.set_title('Unit Vectors in 3D')
         ax.grid(True)
-        ax.set_box_aspect(aspect_ratio)
         ax.set_xlim([np.min(x) - 1, np.max(x) + 1])
         ax.set_ylim([np.min(y) - 1, np.max(y) + 1])
         ax.set_zlim([np.min(z) - 1, np.max(z) + 1])
@@ -217,3 +219,7 @@ def block_indices(V, bsize):
     indices = np.nonzero(variation)[0]
 
     return indices
+
+
+if __name__ == '__main__':
+    pass 
