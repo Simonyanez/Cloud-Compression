@@ -2,10 +2,10 @@ from utils.color import *
 # from graph.graph import *
 
 class Block():
-    def __init__(self,V, A ,index):
-        start_idx, end_idx = index
-        self.Vblock = V[start_idx:end_idx, :]
-        self.Ablock = A[start_idx:end_idx, :]
+    def __init__(self,V: np.ndarray, A: np.ndarray ,idxs: list | np.ndarray):
+
+        self.Vblock = V[idxs, :]
+        self.Ablock = A[idxs, :]
         pass
     
     def get_structural_graph(self):
@@ -35,7 +35,9 @@ class ADPointCloud():
         self.indexes = sorted(indexes, key=lambda x: x[1]-x[0], reverse=True)
     
     def get_block(self, index: int) -> Block:
-        return Block(self.V, self.A, self.indexes[index])
+        start_idx, end_idx = self.indexes[index]
+        idx = list(range(start_idx, end_idx))
+        return Block(self.V, self.A, idx)
 
     def get_all_blocks(self) -> list[Block]:
         return [self.get_block(index) for index in self.indexes]

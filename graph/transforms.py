@@ -24,26 +24,75 @@ class GFT():
     def __call__(self, graph: Graph, block: Block):
         self.graph = graph
         self.block = block
-        self._check_connected()
+        self._exec()
 
-    def _check_connected(self):
+    def _exec(self):
+        n_components, labels = self._check_connected()
+        if n_components > 1:
+            Coeffs = self._process_disconnected(n_components,labels)
+        else:
+            Coeffs = self._process_connected()
+        return Coeffs
+
+    def _check_connected(self) -> tuple[np.ndarray, np.ndarray]:
         Adj = self.graph.weights
         Adj_sparse = csr_matrix(Adj)
         num_components, labels = connected_components(Adj_sparse, directed=False, return_labels=True)
-        if num_components > 1:
-            self._process_disconnected(num_components,labels)
-        else:
-            self._process_connected()
         return num_components, labels
-
+    
     def _process_disconnected(self, num_components, labels):
+        GFT_processor = GFT()
+        Q_norm = np.zeros((num_components, num_components))
+        for pos, component in enumerate(range(num_components)):
+            subgraph_indexes = np.where(labels == component)[0]
+            Q_norm[pos, pos] = len(subgraph_indexes)
+            subgraph, subblock = self._create_subobjects(subgraph_indexes)
+            GFT_processor(subgraph, subblock)            
         pass
 
-    def _process_connected(self):
-        pass
+    def _create_subobjects(self, subgraph_indexes) -> tuple[Graph, Block]:
+        Ablock = self.block.Ablock
+        Vblock = self.block.Vblock
+        W = self.graph.weights
+        W_sub = W[subgraph_indexes, :][:, subgraph_indexes]
+        subgraph = Graph(W_sub) # Creates a subgraph without connections
+        subblock = Block(Vblock, Ablock, subgraph_indexes)
+        return subgraph, subblock
 
-    def _compute_GFT(self):
-        pass
+    def _process_connected(self, Q: Optional[np.ndarray] = None):
+        if Q is None:
+            n = self.block.Ablock.shape[0]
+            Q = np.identity(n)
+
+        Qm = fractional_matrix_power(Q, -0.5)
+        L = self._get_laplacian(Qm)
+        GFT_matrix, _ = self._compute_GFT(L)
+        A = self.block.Ablock
+        Coeffs = GFT_matrix.T @ A
+        return Coeffs
+
+    def _get_laplacian(self, Qm: np.ndarray) -> np.ndarray:
+        A = self.graph.weights         # Adjacency matrix
+        D = np.diag(np.sum(W, axis=0)) # Degree matrix
+        C = np.diag(np.diag(W))        # Self-loops matrix
+        L = D - A + C
+        L_q = Qm @ L @ Qm
+        return L_q
+
+
+    def _compute_GFT(self, L: np.ndarray) -> np.ndarray:
+        GFT_matrix = np.array([1.0])
+        Gfreq = np.array([0.0])
+        if L.shape[0] > 1:
+            eigvals, eigvecs = np.linalg.eigh(L)
+            eigvals_idxsorted = np.argsort(np.abs(eigvals))
+            GFT_matrix = eigvecs[:, eigvals_idxsorted]
+            # TODO: No indent implementation
+            for i in range(GFT_matrix.shape[0]):
+                if GFT_matrix[i,0] < 0:
+                    GFT_matrix[i,:] = GFT_matrix[i,:]*(-1)
+            Gfreq = eigvals[eigvals_idxsorted]
+        return GFT_matrix, Gfreq
 
 
 class Transformer():
@@ -277,52 +326,6 @@ def compute_GFT_noQ(Adj, A, idx_closest=None, iter=None, debug=False):
         Ahat = np.matmul(GFT.T, A)
 
     return GFT, Gfreq, Ahat
-
-# def compute_GFT_noQ_v2(W,A, Q=None):
-#     """ Computes GFT from weight matrix
-
-#     Args:
-#         W (np.array): weight matrix
-#         Q (np.array): node weight matrix
-
-#     Returns:
-#         np.array: GFT matrix (sorted eigen vectors of Laplacian)
-#         np.array: GFT frequency vector (sorted eigen values of Laplacian)
-#     """
-
-#     if W.shape[0] > 1:  # more than one point in graph
-
-#         if Q is None:
-#             Q = np.ones((W.shape[0], 1))
-
-#         Qm = np.diag(1/np.sqrt(Q.flatten()))  # assume Q is a vector
-#         L = w2l(W)  # Compute Laplacian
-#         Ln = Qm @ L @ Qm  # normalize Laplacian
-
-#         # Eigenvalue decomposition/p
-#         # We use eigh instead of eig because it is much faster and
-#         # since Ln is symmetric
-#         diagD, GFT = eigh(Ln)  # eigenvalues, eigenvectors
-
-#         # Sort eigenvalues and vectors correspondingly
-#         idxSorted = np.argsort(diagD)
-#         Gfreq = diagD[idxSorted]
-#         GFT = GFT[:, idxSorted]
-        
-#         # Ensure non-negative DC
-#         GFT[:, 0] = np.abs(GFT[:, 0])
-#         Gfreq[0] = np.abs(Gfreq[0])
-
-#           # Transpose
-
-#         # Compute GFT for unconnected graphs
-
-#     else:  # 1D-case, DC only
-#         # TODO: Q is not needed here?!
-#         GFT = np.array([1.0])
-#         Gfreq = np.array([0.0])
-#     Ahat = GFT.T @ A
-#     return GFT, Gfreq, Ahat
 
 def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
     if Adj.shape[0] > 1:
