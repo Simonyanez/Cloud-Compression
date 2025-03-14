@@ -9,12 +9,53 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
 import graph.create as cr 
-import graph.transforms as tf 
+import transforms as tf 
 import graph.properties as pt
 import utils.color as clr
 import utils.ply as ply
-import utils.visualization as visual
+import visualization as visual
 from utils.encode_rlgr import *
+
+
+class Encoder:
+    def __init__(self, indexes):
+        self.indexes = indexes
+        pass
+
+    def __call__(self, Coeffs, qstep):
+        self.Coeffs = Coeffs
+        self.qstep = qstep
+        self._quantize()
+        pass
+
+    def _quantize(self):
+        Coeff_quant = np.round(self.Coeffs/self.qstep)
+        return Coeff_quant
+    
+    def _get_dr_cost(self):
+        """
+        Distorsion rate cost:
+        """
+        pass
+    
+    def _RLGR(self, Coeff_quant):
+        pass
+
+
+    def get_PSNR(self, Coeff_quant):
+        N = self.Coeffs[:,0].shape[0]
+        Coeff_dequant = Coeff_quant*self.qstep
+        norm_value = np.linalg.norm(self.Coeffs[:,0] - Coeff_dequant[:,0])
+        psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
+        return psnr_Y
+
+    def get_bpv(self):
+        pass
+
+
+
+
+
 
 # Product Class
 class StructuralEncoder:

@@ -1,4 +1,9 @@
 import numpy as np
+import os
+main_folder = os.getcwd()
+import sys
+sys.path.insert(0, main_folder)
+print(sys.path)
 from typing import Optional
 
 class Graph():
@@ -40,21 +45,21 @@ class StructuralGraph(Graph):
 
 class AttributeGraph(StructuralGraph):
     # NOTE: Consider renaming this class. This can be misleading
-    def __init__(self,  V: np.ndarray, A: np.ndarray):
+    def __init__(self,  V: np.ndarray, A: np.ndarray, block_fraction=0.1):
         super().__init__(V)
-        self._compute_attribute_graph(A, block_fraction=0.3)
+        self._compute_attribute_graph(A, block_fraction=block_fraction)
         
     def _compute_attribute_graph(self, A: np.ndarray, block_fraction: float, sl_weight: float = 1.2) -> None:
         # TODO: Refactor and optimize this process. This implementation is horrible
-        M = self._attribute_motion_matrix(A)
-        S = self._sink_nodes_vector(M)
-        most_pointed = np.argsort(S)[::-1]
+        self.M = self._attribute_motion_matrix(A)
+        self.S = self._sink_nodes_vector(self.M)
+        most_pointed = np.argsort(self.S)[::-1]
         num_nodes = int(np.round((len(most_pointed)*block_fraction)))
-        selected_nodes = most_pointed[:num_nodes]
-        pairs = np.column_stack((selected_nodes, selected_nodes))
+        self.selected_nodes = most_pointed[:num_nodes]
+        pairs = np.column_stack((self.selected_nodes, self.selected_nodes))
         self.weights[pairs[:,0], pairs[:,1]] = sl_weight
         self.edges = np.append(self.edges, pairs, axis=0)
-
+        
     def _attribute_motion_matrix(self, A: np.ndarray) -> np.ndarray:
         Y = A[:, 0]
         row_wise = self.weights * Y
@@ -65,28 +70,24 @@ class AttributeGraph(StructuralGraph):
     def _sink_nodes_vector(self, M: np.ndarray) -> np.ndarray:
         # Initialize sink vector
         sink_vector = np.zeros(M.shape[0])
-        # Find most decreased pointed nodes (ignore diagonal values)
-        np.fill_diagonal(M, np.inf)
-        dec_i = np.argmin(M, axis=1)
-        # Get unique values count into sink vector
-        unique, count = np.unique(dec_i, return_counts=True)
+        unique, count = self._get_decreasing_count(M)
         sink_vector[unique] = count
-        print(f"Previous sink vector {sink_vector}")
-        # Normalize count by total of node neighboors
+        # Normalization
         neighbors_count = np.sum(self.weights > 0, axis=1)
-        print(f"This is neighbors count {neighbors_count}")
         sink_vector = sink_vector/neighbors_count 
         return sink_vector
 
-    
+    def _get_decreasing_count(self, M: np.ndarray) -> np.ndarray:
+        np.fill_diagonal(M, np.inf)
+        dec_i = np.argmin(M, axis=1)
+        unique, count = np.unique(dec_i, return_counts=True)
+        return unique, count 
 
 if __name__ == "__main__":
-    import os 
-    import sys
-    sys.path.append(os.getcwd())
-    print(sys.path)
     from src.objects import *
+    from src.visualization import *
     import utils.ply as ply
+    from transforms import *
 
     file_conditions = os.path.exists('V_longdress.npy') and os.path.exists('C_longdress.npy')
     if file_conditions:
@@ -97,11 +98,29 @@ if __name__ == "__main__":
         np.save('V_longdress.npy',V)
         np.save('C_longdress.npy',C_rgb) 
     
-    AD_pc = ADPointCloud(V,C_rgb, bsize=4)
-    AD_block = AD_pc.get_block(100)
-    V_block, A_block = AD_block.Vblock, AD_block.Ablock
-    ADGraph = AttributeGraph(V_block,A_block)
-    M = ADGraph._attribute_motion_matrix(A_block)
-    print(f"This is attribute motion matrix {M}")
-    S = ADGraph._sink_nodes_vector(M)
-    print(f"This is sink vector {S}")
+    point_cloud = PointCloud(V,C_rgb, bsize=16)
+    block = point_cloud.get_block(2400)
+    Vblock, Ablock = block.Vblock, block.Ablock
+    
+    graph = AttributeGraph(Vblock, Ablock,block_fraction=0.01)
+    # M = graph._attribute_motion_matrix(Ablock)
+    # print(f"This is attribute motion matrix {M}")
+    # S = graph._sink_nodes_vector(M)
+    # print(f"This is sink vector {S}")
+    GFT_processor = GFT()
+    GFT_matrix, Coeffs = GFT_processor(graph, block)
+    visualizer = Visualizer()
+    visualizer(graph, block)
+    visualizer.visualize_block()
+    visualizer.add_selected_nodes()
+    visualizer.display()
+    print(min(GFT_matrix[:,0]), max(GFT_matrix[:,0]))
+    visualizer.visualize_base(GFT_matrix[:,0])
+    visualizer.add_selected_nodes()
+    visualizer.display()
+    visualizer.visualize_motion_matrix()
+    visualizer.display()
+    visualizer.visualize_sink()
+    visualizer.display()
+    visualizer.visualize_graph()
+    visualizer.display()

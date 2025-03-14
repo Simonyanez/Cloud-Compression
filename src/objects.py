@@ -12,7 +12,7 @@ class Block():
         pass
         
 
-class ADPointCloud():
+class PointCloud():
     def __init__(self, V: np.ndarray, C:np.ndarray, bsize:int):
         # FIXME: Is ADCOlor really necessary for one operation
         self.ad_color = ADColor()

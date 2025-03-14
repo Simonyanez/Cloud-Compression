@@ -1,15 +1,11 @@
 
-# Importing Parent Folder to Path
-import os
-main_folder = os.getcwd()
-import sys
-sys.path.insert(0, main_folder)
 
 # Other imports
 import matplotlib.pyplot as plt
 import numpy as np
-from graph.create import *
-from graph.graph import *
+# from graph.create import *
+from src.graph import *
+from src.objects import *
 from sklearn.preprocessing import normalize
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
@@ -21,18 +17,19 @@ class GFT():
         # TODO: Give parameters
         pass
 
-    def __call__(self, graph: Graph, block: Block):
+    def __call__(self, graph: Graph, block: Block, Q: Optional[np.ndarray] = None) -> tuple[np.ndarray, np.ndarray]:
         self.graph = graph
         self.block = block
-        self._exec()
-
-    def _exec(self):
+        GFT_matrix, Coeffs = self._exec(Q)
+        return GFT_matrix, Coeffs
+    
+    def _exec(self, Q):
         n_components, labels = self._check_connected()
         if n_components > 1:
-            Coeffs = self._process_disconnected(n_components,labels)
+            GFT_matrix, Coeffs = self._process_disconnected(n_components,labels)
         else:
-            Coeffs = self._process_connected()
-        return Coeffs
+            GFT_matrix, Coeffs = self._process_connected(Q)
+        return GFT_matrix, Coeffs
 
     def _check_connected(self) -> tuple[np.ndarray, np.ndarray]:
         Adj = self.graph.weights
@@ -43,12 +40,27 @@ class GFT():
     def _process_disconnected(self, num_components, labels):
         GFT_processor = GFT()
         Q_norm = np.zeros((num_components, num_components))
+        N = self.graph.weights.shape[0]
+        U = None
+        Vmean = np.zeros((num_components, 3))
+        isDC = np.zeros(len(N), dtype=bool)
+        i = 0
+        # FIXME isn't pos and component the same?
         for pos, component in enumerate(range(num_components)):
             subgraph_indexes = np.where(labels == component)[0]
             Q_norm[pos, pos] = len(subgraph_indexes)
             subgraph, subblock = self._create_subobjects(subgraph_indexes)
-            GFT_processor(subgraph, subblock)            
-        pass
+            GFT_sub, _ = GFT_processor(subgraph, subblock)  
+            U = self._fill_disconnected_transform(subgraph_indexes, GFT_sub, U)
+            isDC[i] = 1
+            i += len(subgraph_indexes)
+            Vmean[component, :] = np.mean(self.block.Vblock[subgraph_indexes, :], axis = 0)
+        Coeffs = U.T @ self.block.Ablock
+        Coeffs_low, Coeffs_high = Coeffs[isDC,:], Coeffs[np.logical_not(isDC),:]
+        meangraph, meanblock = self._create_meanobjects(Vmean)
+        GFT_mean, _ = GFT_processor(meangraph, meanblock, Q_norm)
+        Coeffs_fix = np.concatenate([GFT_mean.T @ Coeffs_low, Coeffs_high]) # Mean coeff transform with its GFT mean structure
+        return U, Coeffs_fix
 
     def _create_subobjects(self, subgraph_indexes) -> tuple[Graph, Block]:
         Ablock = self.block.Ablock
@@ -58,6 +70,23 @@ class GFT():
         subgraph = Graph(W_sub) # Creates a subgraph without connections
         subblock = Block(Vblock, Ablock, subgraph_indexes)
         return subgraph, subblock
+
+    def _create_meanobjects(Vmean: np.ndarray):
+        meangraph = StructuralGraph(Vmean, threshold= np.inf)
+        meanblock = Block(Vmean, Vmean) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        return meangraph, meanblock
+    
+    def _fill_disconnected_transform(self, subgraph_indexes: np.ndarray, GFT_matrix: np.ndarray, U: np.ndarray):
+        """
+        Fill an auxiliary
+        """
+        num_nodes = self.graph.weights.shape[0]
+        Utmp    = np.zeros((num_nodes, len(subgraph_indexes)))
+        Utmp[subgraph_indexes, :] = GFT_matrix
+        if U is None:
+            return Utmp
+        return np.concatenate([U, Utmp], axis = 1)
+
 
     def _process_connected(self, Q: Optional[np.ndarray] = None):
         if Q is None:
@@ -69,18 +98,18 @@ class GFT():
         GFT_matrix, _ = self._compute_GFT(L)
         A = self.block.Ablock
         Coeffs = GFT_matrix.T @ A
-        return Coeffs
+        return GFT_matrix, Coeffs
 
     def _get_laplacian(self, Qm: np.ndarray) -> np.ndarray:
         A = self.graph.weights         # Adjacency matrix
-        D = np.diag(np.sum(W, axis=0)) # Degree matrix
-        C = np.diag(np.diag(W))        # Self-loops matrix
+        D = np.diag(np.sum(A, axis=0)) # Degree matrix
+        C = np.diag(np.diag(A))        # Self-loops matrix
         L = D - A + C
         L_q = Qm @ L @ Qm
         return L_q
 
 
-    def _compute_GFT(self, L: np.ndarray) -> np.ndarray:
+    def _compute_GFT(self, L: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         GFT_matrix = np.array([1.0])
         Gfreq = np.array([0.0])
         if L.shape[0] > 1:
@@ -94,46 +123,6 @@ class GFT():
             Gfreq = eigvals[eigvals_idxsorted]
         return GFT_matrix, Gfreq
 
-
-class Transformer():
-    def __init__(self):
-        pass
-    
-    def __call__(self, *args, **kwds):
-        pass
-        
-    def compute_GFT(self, A, Adj, idx_closest):
-        if Adj.shape[0] > 1:
-            if idx_closest is not None:
-                L = w2l(Adj, idx_closest, iter = iter)
-            else:
-                L = w2l(Adj, iter = iter)
-            if debug:
-                print(f"L: {L}")
-            # L is normalized by the way it's build
-            D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
-            idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
-            GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
-
-            for i in range(GFT.shape[0]):
-                if GFT[i,0] < 0:
-                    GFT[i,:] =  GFT[i,:]*(-1) 
-            # GFT[:,0] = np.abs(GFT[:,0])
-            # GFT = GFT.T         # Because the matrix that do the transform is this one
-            Gfreq = np.sort(D)
-    
-            Gfreq[0] = np.abs(Gfreq[0])
-            
-            Ahat = np.matmul(GFT.T, A)      # @ is a shortcut for matmul, yet i dont like it
-            if np.iscomplexobj(Ahat) and iter is not None:
-                print(f"This is the block that has complex values {iter}")
-
-        else:  # 1D-case, DC only
-            GFT = np.array([1.0])
-            Gfreq = np.array([0.0])
-            Ahat = np.matmul(GFT.T, A)
-
-        return GFT, Gfreq, Ahat
 
 def w2l(W, idx_closest_map=None, iter=None):
     """
@@ -406,46 +395,10 @@ def eig_vector_rotation(repeated_eig_pos, repeated_eig, GFT):
     Coeff_new = GFT_new.T @ Ablock
     return GFT_new, Coeff_new
 
-def optimize_rotation(Gfreq, GFT, Ablock, max_iter=100, tol=1e-6):
-    Coeff = GFT.T @ Ablock
-    Coeff_new = Coeff.copy()  # Start with the original Coeffs
-    
-    uniques = np.unique(Gfreq)
-    
-    for unique in uniques: 
-        condition = Gfreq == unique
-        if np.sum(condition) > 1:  # Only proceed if there are repeated eigenvectors
-            repeated_eig_pos = np.argwhere(condition).flatten()
-            repeated_eig = GFT[:, repeated_eig_pos]
-            
-            # Initialize the iteration counter
-            iter_count = 0
-            while iter_count < max_iter:
-                # Update the eigenvectors by rotating them
-                GFT_new, Coeff_new = eig_vector_rotation(repeated_eig_pos, repeated_eig, GFT)
-                
-                # Check if the new coefficients are better
-                if np.sum(np.abs(Coeff_new[repeated_eig_pos])) < np.sum(np.abs(Coeff[repeated_eig_pos])):
-                    # Accept the new GFT and coefficients
-                    GFT = GFT_new
-                    Coeff = Coeff_new
-                
-                # If not improved, rotate again
-                iter_count += 1
-                
-                # If no improvement after max iterations, stop
-                if iter_count >= max_iter:
-                    print(f"Reached max iterations for eigenvalue {unique}.")
-                    break
-        else:
-            continue  # If only one eigenvector for this eigenvalue, skip
-    
-    return GFT, Coeff_new
-
 
 if __name__ == "__main__":
     from create import *
-    from utils import visualization as vis
+    from . import visualization as vis
     V = np.load('V_longdress.npy')
     C_rgb = np.load('C_longdress.npy')
     indexes = get_block_indexes(V,8)
