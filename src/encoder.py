@@ -29,31 +29,52 @@ class Encoder:
         pass
 
     def _quantize(self):
-        Coeff_quant = np.round(self.Coeffs/self.qstep)
-        return Coeff_quant
-    
-    def _get_dr_cost(self):
-        """
-        Distorsion rate cost:
-        """
-        pass
-    
-    def _RLGR(self, Coeff_quant):
+        Coeffs_quant = np.round(self.Coeffs/self.qstep)
+        return Coeffs_quant
+
+    def _sort_coeffs(self, Coeffs_quant: np.ndarray):
+        N = Coeffs_quant[:,0].shape[0]
+        mask_lo = np.zeros(())
+        for start_end_tuple in indexes:
+            mask_lo[start_end_tuple[0]] = True
+        mask_hi = np.logical_not(mask_lo)
+
+        Coeffs_quant_lo = Coeffs_quant[mask_lo, :]  # DC values
+        Coeffs_quant_hi = Coeffs_quant[mask_hi, :]  # "high" pass values
+        # Concatenate
+        Coeffs_quant_sorted = np.concatenate((Coeffs_quant_lo, Coeffs_quant_hi))
+        return Coeffs_quant_sorted
+
+    def _octree_coding(self, V_selected_nodes):
         pass
 
+    def _RLGR(self, Coeffs_quant: np.ndarray):
+        Coeffs_quant_sorted = self._sort_coeffs(Coeffs_quant)
+        
+        # Code Y, U, V separately 
+        numbits_Y = encode_rlgr(Coeffs_quant_sorted[:, 0], os.path.join('res', 'bitstream_Y.bin'))
+        numbits_U = encode_rlgr(Coeffs_quant_sorted[:, 1], os.path.join('res', 'bitstream_U.bin'))
+        numbits_V = encode_rlgr(Coeffs_quant_sorted[:, 2], os.path.join('res', 'bitstream_V.bin'))
 
-    def get_PSNR(self, Coeff_quant):
+        # Bit count
+        bs_size = numbits_Y + numbits_U + numbits_V
+        
+        return bs_size
+
+    def get_PSNR(self, Coeff_quant: np.ndarray):
         N = self.Coeffs[:,0].shape[0]
         Coeff_dequant = Coeff_quant*self.qstep
         norm_value = np.linalg.norm(self.Coeffs[:,0] - Coeff_dequant[:,0])
         psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
         return psnr_Y
 
-    def get_bpv(self):
-        pass
+    def get_bpv(self, Coeffs_quant: np.ndarray) -> None:
+        bs_size = self._RLGR(Coeffs_quant)
+        N = self.Coeffs[:,0].shape[0]
+        bpv = bs_size/N
+        return bpv
 
-
-
+    
 
 
 

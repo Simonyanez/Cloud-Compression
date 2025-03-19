@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class ADColor:
+class Colourist:
     def __init__(self):
         self.__init__transformations()
 

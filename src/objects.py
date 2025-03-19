@@ -1,4 +1,6 @@
 from utils.color import *
+import utils.ply as ply
+from pathlib import Path
 # from graph.graph import *
 
 class Block():
@@ -13,14 +15,29 @@ class Block():
         
 
 class PointCloud():
-    def __init__(self, V: np.ndarray, C:np.ndarray, bsize:int):
+    def __init__(self) -> None:
         # FIXME: Is ADCOlor really necessary for one operation
-        self.ad_color = ADColor()
-        self.V = V
-        self.A = self.ad_color.RGBtoYUV(C, rounding=True)
-        self.block_partitioning(bsize=bsize)
+        self.colourist = Colourist()
+        self.V = None
+        self.A = None 
 
-    def block_partitioning(self, bsize: int) -> list:
+    def __call__(self, point_cloud_path: Path):
+        self._read_point_cloud(point_cloud_path)
+        
+    def _read_point_cloud(self, point_cloud_path: Path):
+        self.point_cloud_name = point_cloud_path.stem
+        save_path = Path("res/npy") / self.point_cloud_name
+        file_conditions = Path.exists(f"{save_path}_V.npy") and Path.exists(f"{save_path}_C.npy")
+        if file_conditions:
+            self.V = np.load(f"{save_path}_V.npy")
+            C_rgb = np.load(f"{save_path}_C.npy")
+        else:
+            self.V,C_rgb,_ = ply.ply_read8i(point_cloud_path)  
+            np.save(f"{save_path}_V.npy",self.V)
+            np.save(f"{save_path}_C.npy",C_rgb) 
+        self.A = self.colourist.RGBtoYUV(C_rgb)
+
+    def do_block_partitioning(self, bsize: int) -> None:
         # Assumes point cloud is morton ordered
         base_block_size = np.log2(bsize) 
         assert np.all(np.floor(base_block_size) == base_block_size), "block size b should be a power of 2"
