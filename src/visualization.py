@@ -9,35 +9,16 @@ import matplotlib.pyplot as plt
 from pyvis.network import Network
 from matplotlib import cm
 from matplotlib.colors import Normalize
-from graph.properties import block_indices
-from src.objects import *
-from src.graph import *
-from utils.color import YUVtoRGB
-from graph.properties import direction,gradient,simple_direction
-from graph.create import compute_graph_sl
+from objects import *
+from graph import *
+from transforms import *
+# from utils.color import YUVtoRGB
 
 class Visualizer:
     def __init__(self):
-        self.__init__transformations()
+        self.gft_computer = GFT()
+        self.colourist = Colourist()
 
-    def __init__transformations(self):
-        self.Q_RGBtoYUV = np.array(
-            [
-                [0.29899999, -0.1687, 0.5],
-                [0.587, -0.3313, -0.4187],
-                [0.114, 0.5, -0.0813],
-                [0, 0.50196078, 0.50196078],
-            ]
-        )
-
-        self.M_YUVtoRGB = np.array(
-            [
-                [1, 1, 1],
-                [0, -0.34414, 1.772],
-                [1.402, -0.71414, 0],
-                [-0.703749019, 0.53121505, -0.88947451],
-            ]
-        )
 
     def __call__(self, graph: Graph, block: Block):
         self.graph = graph
@@ -49,24 +30,6 @@ class Visualizer:
         self.Vblock, self.Ablock = self.block.Vblock, self.block.Ablock
         self.Xblock, self.Yblock, self.Zblock = np.hsplit(self.Vblock, 3)
     
-    def _YUVtoRGB(self, rounding: bool = True):
-        A_yuv = self.block.Ablock
-        A_yuv_1 = np.concatenate((A_yuv / 255, np.ones((A_yuv.shape[0], 1))), axis=1)
-        A_rgb = np.dot(A_yuv_1, self.M_YUVtoRGB)
-        A_rgb = 255 * np.clip(A_rgb, 0, 1)
-        if rounding:
-            A_rgb = A_rgb.round().astype(np.uint8)
-
-        return A_rgb
-    
-    def _RGBtoYUV(self, rounding=False) -> np.ndarray:
-        A_rgb = self.block.Ablock
-        A_rgb_1 = np.concatenate((A_rgb / 255, np.ones((A_rgb.shape[0], 1))), axis=1)
-        A_yuv = np.dot(A_rgb_1, self.Q_RGBtoYUV)
-        A_yuv = 255 * np.clip(A_yuv, 0, 1)
-        if rounding:
-            A_yuv = A_yuv.round().astype(np.uint8)
-        return A_yuv
 
     def _min_max_norm(self, vector: np.ndarray) -> np.ndarray:
         vector_min = np.min(vector)
@@ -86,13 +49,43 @@ class Visualizer:
         self.fig = fig 
         self.ax = ax
     
+    def _init_2d_figure(self):
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 5))  # 1 row, 3 columns
+        
+        # Configure first subplot
+        ax1.grid(True)
+        ax1.set_xlabel('X')
+        ax1.set_ylabel('Y')
+        ax1.set_title('Y Channel')
+        
+        # Configure second subplot
+        ax2.grid(True)
+        ax2.set_xlabel('X')
+        ax2.set_ylabel('Z')
+        ax2.set_title('U Channel')
+        
+        # Configure third subplot
+        ax3.grid(True)
+        ax3.set_xlabel('Y')
+        ax3.set_ylabel('Z')
+        ax3.set_title('V Channel')
+        
+        # Adjust layout to prevent overlap
+        fig.tight_layout()
+        
+        self.fig = fig 
+        self.ax1 = ax1
+        self.ax2 = ax2
+        self.ax3 = ax3
+
+
     def visualize_graph(self):
         self._init_3d_figure()
         self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c='k', s=20)
         self.add_graph_edges()
 
     def visualize_block(self):
-        Ablock = self._YUVtoRGB().astype(float) / 256
+        Ablock = self.colourist._YUVtoRGB(self.block.Ablock).astype(float) / 256
         self._init_3d_figure()
         self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c=Ablock, s=20)
         
@@ -122,6 +115,58 @@ class Visualizer:
             dir_x, dir_y, dir_z = self.Xblock[j], self.Yblock[j], self.Zblock[j]
             self.ax.quiver(og_x, og_y, og_z, dir_x - og_x, dir_y - og_y, dir_z - og_z, color='b', normalize=True)
             self.ax.scatter3D(og_x, og_y, og_z, c= 'gray', s=10)
+
+    def visualize_coeffs(self,title: str,  num_of_coeffs: int = 10):
+        """Visualizes the top GFT coefficients for Y, U, V channels with values annotated."""
+        self._init_2d_figure()  # Initialize the 2D figure with 3 subplots
+        self.fig.suptitle(title)    
+        # Compute GFT coefficients (shape: [num_coeffs, 3] where columns are Y, U, V)
+        _, coeffs = self.gft_computer(self.graph, self.block)
+        
+        # Sort coefficients in descending order (magnitude) per channel
+        sorted_coeffs = np.sort(np.abs(coeffs), axis=0)[::-1]  # [num_coeffs, 3]
+        
+        # X-axis (1 to num_of_coeffs)
+        x = np.arange(1, num_of_coeffs + 1)
+        
+        # --- Plot 1: Y Channel (Luminance) ---
+        sc1 = self.ax1.scatter(x, sorted_coeffs[:num_of_coeffs, 0], color='black', label='Y (Luminance)')
+        self.ax1.set_title('Top Y Channel Coefficients')
+        self.ax1.set_xlabel('Coefficient Index')
+        self.ax1.set_ylabel('Magnitude')
+        self.ax1.legend()
+        self.ax1.grid(True)
+        
+        # Add text labels for Y values
+        for i, (xi, yi) in enumerate(zip(x, sorted_coeffs[:num_of_coeffs, 0])):
+            self.ax1.text(xi, yi, f"{yi:.2f}", ha='center', va='bottom', fontsize=8, color='black')
+        
+        # --- Plot 2: U Channel (Chrominance) ---
+        sc2 = self.ax2.scatter(x, sorted_coeffs[:num_of_coeffs, 1], color='blue', label='U (Chrominance)')
+        self.ax2.set_title('Top U Channel Coefficients')
+        self.ax2.set_xlabel('Coefficient Index')
+        self.ax2.set_ylabel('Magnitude')
+        self.ax2.legend()
+        self.ax2.grid(True)
+        
+        # Add text labels for U values
+        for i, (xi, yi) in enumerate(zip(x, sorted_coeffs[:num_of_coeffs, 1])):
+            self.ax2.text(xi, yi, f"{yi:.2f}", ha='center', va='bottom', fontsize=8, color='blue')
+        
+        # --- Plot 3: V Channel (Chrominance) ---
+        sc3 = self.ax3.scatter(x, sorted_coeffs[:num_of_coeffs, 2], color='red', label='V (Chrominance)')
+        self.ax3.set_title('Top V Channel Coefficients')
+        self.ax3.set_xlabel('Coefficient Index')
+        self.ax3.set_ylabel('Magnitude')
+        self.ax3.legend()
+        self.ax3.grid(True)
+        
+        # Add text labels for V values
+        for i, (xi, yi) in enumerate(zip(x, sorted_coeffs[:num_of_coeffs, 2])):
+            self.ax3.text(xi, yi, f"{yi:.2f}", ha='center', va='bottom', fontsize=8, color='red')
+        
+        # Adjust layout to prevent text overlap
+        self.fig.tight_layout()
 
     def add_graph_edges(self):
         for edge in self.graph.edges:

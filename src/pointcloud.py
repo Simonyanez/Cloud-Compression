@@ -1,38 +1,9 @@
-# from utils.color import *
-import ply as ply
-from uuid import *
-from pathlib import Path
-from graph import *
-from typing import List
-from color import *
-import numpy as np
-
-class Block():
-    def __init__(self,Vblock: np.ndarray, Ablock: np.ndarray ,idxs: list | np.ndarray):
-
-        self.idxs: List[int] = idxs
-        self.Vblock: np.ndarray = Vblock
-        self.Ablock: np.ndarray = Ablock
-        self.block_id: UUID = uuid4()
-        self._init_structural_graph()
-        self.results: dict = {}
-
-    def __str__(self):
-        return f""" Block at [{min(self.idxs), max(self.idxs)}] with UUID: {self.block_id}"""
-
-    def save_gft_result(self,key: UUID, gft_mat: np.ndarray, coeffs: np.ndarray):
-        self.results[key] = (gft_mat, coeffs)
-
-    def _init_structural_graph(self):
-        self.structural_graph = StructuralGraph(self.Vblock)
-        
-    def get_coeffs_dict(self):
-        return {k:v[1] for k,v in self.results.items()}
+from visualization import *
 
 class PointCloud():
     def __init__(self) -> None:
         # FIXME: Is ADCOlor really necessary for one operation
-        self.colourist = Colourist()
+        self.visualizer = Visualizer()
         self.V: Optional[np.ndarray] = None
         self.A: Optional[np.ndarray] = None 
 
@@ -63,7 +34,7 @@ class PointCloud():
             np.save(c_file, C_rgb)
 
         # Convert RGB to YUV using the colourist
-        self.A = self.colourist._RGBtoYUV(C_rgb)
+        self.A = self.visualizer._RGBtoYUV(C_rgb)
 
     def do_block_partitioning(self, bsize: int) -> None:
         # Assumes point cloud is morton ordered
@@ -88,28 +59,3 @@ class PointCloud():
 
     def get_all_blocks(self) -> list[Block]:
         return [self.get_block(index) for index,_ in enumerate(self.indexes)]
-
-if __name__ == "__main__":
-    from transforms import *
-    from visualization import *
-    GFT_computer = GFT()
-    visualizer = Visualizer()
-    point_cloud = PointCloud()
-    point_cloud(Path("res/longdress_vox10_1051.ply"))
-    point_cloud.do_block_partitioning(bsize = 16)
-    block = point_cloud.get_block(200)
-    graph = AttributeGraph(block.Vblock, block.Ablock, sl_weight=5, block_fraction=0.05)
-    visualizer(graph, block)
-    visualizer.visualize_block()
-    visualizer.add_selected_nodes()
-    visualizer.visualize_coeffs(title="Attribute")
-    visualizer(block.structural_graph, block)
-    visualizer.visualize_coeffs(title="Structural")
-    visualizer.display()
-    
-    
-        
-# class ADGFT():
-#     def __init__(self, V, C):
-#         pass
-

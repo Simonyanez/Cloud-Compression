@@ -3,17 +3,17 @@ import os
 main_folder = os.getcwd()
 import sys
 sys.path.insert(0, main_folder)
-print(sys.path)
 from typing import Optional
+from uuid import *
 
 class Graph():
     def __init__(self, weights: Optional[np.ndarray], edges: Optional[np.ndarray]):
         self.weights = weights
         self.edges = edges
-
+        self.graph_id = uuid4()
 
 class StructuralGraph(Graph):
-    def __init__(self, V, threshold: float = np.sqrt(3), epsilon = 0.00001):
+    def __init__(self, V, threshold: float = np.sqrt(3), epsilon = 1e-5):
         self.threshold = threshold
         self.epsilon = epsilon
         weights, edges = self._compute_structural_graph(V)
@@ -45,11 +45,11 @@ class StructuralGraph(Graph):
 
 class AttributeGraph(StructuralGraph):
     # NOTE: Consider renaming this class. This can be misleading
-    def __init__(self,  V: np.ndarray, A: np.ndarray, block_fraction=0.1):
+    def __init__(self,  V: np.ndarray, A: np.ndarray, sl_weight: float, block_fraction: float):
         super().__init__(V)
-        self._compute_attribute_graph(A, block_fraction=block_fraction)
+        self._compute_attribute_graph(A, sl_weight=sl_weight, block_fraction=block_fraction)
         
-    def _compute_attribute_graph(self, A: np.ndarray, block_fraction: float, sl_weight: float = 1.2) -> None:
+    def _compute_attribute_graph(self, A: np.ndarray, sl_weight: float, block_fraction: float) -> None:
         # TODO: Refactor and optimize this process. This implementation is horrible
         self.M = self._attribute_motion_matrix(A)
         self.S = self._sink_nodes_vector(self.M)

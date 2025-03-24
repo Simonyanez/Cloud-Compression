@@ -207,7 +207,7 @@ if __name__ == "__main__":
     main_path = os.getcwd()
     sys.path.append(main_path)
     import utils.color as clr
-    import graph.transforms as cr
+    import transforms as cr
     import scipy.io as sio
 
     def mean_square_error(A, B, absolute = False, just_DC = False, mean_AC=False):

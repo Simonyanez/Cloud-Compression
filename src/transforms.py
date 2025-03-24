@@ -4,13 +4,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 # from graph.create import *
-from src.graph import *
-from src.objects import *
+from graph import *
+from objects import *
 from sklearn.preprocessing import normalize
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
 from scipy.linalg import fractional_matrix_power, eigh
 #from scipy.linalg import eigh
+import logging
+logging.basicConfig(filename="logs/graph.log", filemode="w", level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class GFT():
     def __init__(self):
@@ -43,7 +46,7 @@ class GFT():
         N = self.graph.weights.shape[0]
         U = None
         Vmean = np.zeros((num_components, 3))
-        isDC = np.zeros(len(N), dtype=bool)
+        isDC = np.zeros(N, dtype=bool)
         i = 0
         # FIXME isn't pos and component the same?
         for pos, component in enumerate(range(num_components)):
@@ -63,17 +66,17 @@ class GFT():
         return U, Coeffs_fix
 
     def _create_subobjects(self, subgraph_indexes) -> tuple[Graph, Block]:
-        Ablock = self.block.Ablock
-        Vblock = self.block.Vblock
+        Asubblock = self.block.Ablock[subgraph_indexes,:]
+        Vsubblock = self.block.Vblock[subgraph_indexes,:]
         W = self.graph.weights
         W_sub = W[subgraph_indexes, :][:, subgraph_indexes]
-        subgraph = Graph(W_sub) # Creates a subgraph without connections
-        subblock = Block(Vblock, Ablock, subgraph_indexes)
+        subgraph = Graph(W_sub,[]) # Creates a subgraph without connections
+        subblock = Block(Vsubblock, Asubblock, subgraph_indexes)
         return subgraph, subblock
 
-    def _create_meanobjects(Vmean: np.ndarray):
+    def _create_meanobjects(self, Vmean: np.ndarray):
         meangraph = StructuralGraph(Vmean, threshold= np.inf)
-        meanblock = Block(Vmean, Vmean) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        meanblock = Block(Vmean, Vmean[:,0], None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
         return meangraph, meanblock
     
     def _fill_disconnected_transform(self, subgraph_indexes: np.ndarray, GFT_matrix: np.ndarray, U: np.ndarray):
@@ -89,40 +92,79 @@ class GFT():
 
 
     def _process_connected(self, Q: Optional[np.ndarray] = None):
-        if Q is None:
-            n = self.block.Ablock.shape[0]
-            Q = np.identity(n)
+            """
+            Process a connected block to compute the GFT matrix and coefficients.
 
-        Qm = fractional_matrix_power(Q, -0.5)
-        L = self._get_laplacian(Qm)
-        GFT_matrix, _ = self._compute_GFT(L)
-        A = self.block.Ablock
-        Coeffs = GFT_matrix.T @ A
-        return GFT_matrix, Coeffs
+            Args:
+                Q (Optional[np.ndarray]): The weighting matrix. Defaults to the identity matrix.
+
+            Returns:
+                tuple[np.ndarray, np.ndarray]: The GFT matrix and the coefficients.
+            """
+            if Q is None:
+                n = self.block.Ablock.shape[0]
+                Q = np.identity(n)
+
+            # Handle 1-point blocks
+            if Q.shape[0] == 1:
+                GFT_matrix = np.array([[1.0]])
+                Coeffs = self.block.Ablock
+                return GFT_matrix, Coeffs
+            try:
+                Qm = fractional_matrix_power(Q, -0.5)
+                L = self._get_laplacian(Qm)
+                GFT_matrix, _ = self._compute_GFT(L)
+                A = self.block.Ablock
+                Coeffs = GFT_matrix.T @ A
+                return GFT_matrix, Coeffs
+            except:
+                logger.debug(f"Q is {Q.shape}  --> {Q}. {self.block.idxs}")
 
     def _get_laplacian(self, Qm: np.ndarray) -> np.ndarray:
-        A = self.graph.weights         # Adjacency matrix
-        D = np.diag(np.sum(A, axis=0)) # Degree matrix
-        C = np.diag(np.diag(A))        # Self-loops matrix
+        """
+        Compute the normalized Laplacian matrix.
+
+        Args:
+            Qm (np.ndarray): The square root of the inverse weighting matrix.
+
+        Returns:
+            np.ndarray: The normalized Laplacian matrix.
+        """
+        A = self.graph.weights  # Adjacency matrix
+        D = np.diag(np.sum(A, axis=0))  # Degree matrix
+        C = np.diag(np.diag(A))  # Self-loops matrix
         L = D - A + C
         L_q = Qm @ L @ Qm
         return L_q
 
-
     def _compute_GFT(self, L: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        GFT_matrix = np.array([1.0])
-        Gfreq = np.array([0.0])
-        if L.shape[0] > 1:
+        """
+        Compute the Graph Fourier Transform (GFT) matrix and frequencies.
+
+        Args:
+            L (np.ndarray): The Laplacian matrix.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: The GFT matrix and the frequencies.
+        """
+        if L.shape[0] == 1:
+            # Handle 1-point blocks
+            GFT_matrix = np.array([[1.0]])
+            Gfreq = np.array([0.0])
+        else:
+            # Compute eigenvalues and eigenvectors for larger blocks
             eigvals, eigvecs = np.linalg.eigh(L)
             eigvals_idxsorted = np.argsort(np.abs(eigvals))
             GFT_matrix = eigvecs[:, eigvals_idxsorted]
-            # TODO: No indent implementation
+            # Ensure the first eigenvector is positive
             for i in range(GFT_matrix.shape[0]):
-                if GFT_matrix[i,0] < 0:
-                    GFT_matrix[i,:] = GFT_matrix[i,:]*(-1)
+                if GFT_matrix[i, 0] < 0:
+                    GFT_matrix[i, :] = GFT_matrix[i, :] * (-1)
             Gfreq = eigvals[eigvals_idxsorted]
         return GFT_matrix, Gfreq
 
+
+        
 
 def w2l(W, idx_closest_map=None, iter=None):
     """

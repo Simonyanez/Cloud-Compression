@@ -8,68 +8,72 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
-import graph.create as cr 
+import graph_old.create as cr 
 import transforms as tf 
-import graph.properties as pt
+import graph_old.properties as pt
 import utils.color as clr
-import utils.ply as ply
+import ply as ply
 import visualization as visual
 from utils.encode_rlgr import *
 
 
 class Encoder:
-    def __init__(self, indexes):
-        self.indexes = indexes
+    def __init__(self):
         pass
 
-    def __call__(self, Coeffs, qstep):
+    def __call__(self, Coeffs, selected_graphs, qstep, indexes):
+        self.indexes = indexes
         self.Coeffs = Coeffs
+        self.selected_graphs = selected_graphs
         self.qstep = qstep
         self._quantize()
-        pass
+        self._sort_coeffs()
+        self._RLGR()
+        return self.get_bpv(), self.get_PSNR()
 
     def _quantize(self):
-        Coeffs_quant = np.round(self.Coeffs/self.qstep)
-        return Coeffs_quant
+        self.Coeffs_quant = np.round(self.Coeffs/self.qstep)
 
-    def _sort_coeffs(self, Coeffs_quant: np.ndarray):
-        N = Coeffs_quant[:,0].shape[0]
-        mask_lo = np.zeros(())
-        for start_end_tuple in indexes:
-            mask_lo[start_end_tuple[0]] = True
+    def _sort_coeffs(self):
+        N = self.Coeffs_quant[:,0].shape[0]
+        mask_lo = np.zeros(N, dtype=bool)
+        for start_idx, _ in self.indexes:
+            mask_lo[start_idx] = True
         mask_hi = np.logical_not(mask_lo)
 
-        Coeffs_quant_lo = Coeffs_quant[mask_lo, :]  # DC values
-        Coeffs_quant_hi = Coeffs_quant[mask_hi, :]  # "high" pass values
+        Coeffs_quant_lo = self.Coeffs_quant[mask_lo, :]  # DC values
+        Coeffs_quant_hi = self.Coeffs_quant[mask_hi, :]  # "high" pass values
         # Concatenate
         Coeffs_quant_sorted = np.concatenate((Coeffs_quant_lo, Coeffs_quant_hi))
-        return Coeffs_quant_sorted
+        # Reassign
+        self.Coeffs_quant = Coeffs_quant_sorted
 
-    def _octree_coding(self, V_selected_nodes):
+    def _octree_coding(self):
+        # DO SOMETHING WITH
+        self.selected_graphs
         pass
 
-    def _RLGR(self, Coeffs_quant: np.ndarray):
-        Coeffs_quant_sorted = self._sort_coeffs(Coeffs_quant)
+    def _RLGR(self):
         
         # Code Y, U, V separately 
-        numbits_Y = encode_rlgr(Coeffs_quant_sorted[:, 0], os.path.join('res', 'bitstream_Y.bin'))
-        numbits_U = encode_rlgr(Coeffs_quant_sorted[:, 1], os.path.join('res', 'bitstream_U.bin'))
-        numbits_V = encode_rlgr(Coeffs_quant_sorted[:, 2], os.path.join('res', 'bitstream_V.bin'))
+        numbits_Y = encode_rlgr(self.Coeffs_quant[:, 0], os.path.join('res', 'bitstream_Y.bin'))
+        numbits_U = encode_rlgr(self.Coeffs_quant[:, 1], os.path.join('res', 'bitstream_U.bin'))
+        numbits_V = encode_rlgr(self.Coeffs_quant[:, 2], os.path.join('res', 'bitstream_V.bin'))
 
         # Bit count
         bs_size = numbits_Y + numbits_U + numbits_V
         
         return bs_size
 
-    def get_PSNR(self, Coeff_quant: np.ndarray):
+    def get_PSNR(self) -> float:
         N = self.Coeffs[:,0].shape[0]
-        Coeff_dequant = Coeff_quant*self.qstep
+        Coeff_dequant = self.Coeffs_quant*self.qstep
         norm_value = np.linalg.norm(self.Coeffs[:,0] - Coeff_dequant[:,0])
         psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
         return psnr_Y
 
-    def get_bpv(self, Coeffs_quant: np.ndarray) -> None:
-        bs_size = self._RLGR(Coeffs_quant)
+    def get_bpv(self) -> float:
+        bs_size = self._RLGR()
         N = self.Coeffs[:,0].shape[0]
         bpv = bs_size/N
         return bpv

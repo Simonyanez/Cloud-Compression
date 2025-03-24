@@ -1,7 +1,15 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
-# NOTE: Should it be iterative or one experiment per block?
+import yaml
+import logging
+logging.basicConfig(filename="logs/parameters.log", 
+                    filemode="w", 
+                    level=logging.DEBUG, 
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    )
+logger = logging.getLogger(__name__)
+
 @dataclass
 class ExperimentParameters:
     # Experiment general data
@@ -45,3 +53,53 @@ class ExperimentParameters:
         if not isinstance(param, list):
             param = [param] * max_len
         return param
+
+    def __str__(self):
+            """
+            Custom string representation for logging and display.
+            """
+            return f""""
+                        ExperimentParameters
+                ============================================
+                  Name: {self.experiment_name}
+                  Date: {self.experiment_date}
+                  Info: {self.experiment_info}
+                  Point Cloud: {self.point_cloud_path}
+                  Export Path: {self.export_folder}
+                  Self-loop Weights: {self.self_loop_weight}
+                  Self-loop Percentages: {self.self_loop_percentage}
+                  Quantization Steps: {self.quantization_steps}
+                  Block Size: {self.block_size}
+                """
+        
+# Parser method to load YAML into ExperimentParameters
+def load_experiment_parameters(yaml_file: Path) -> ExperimentParameters:
+    """
+    Load experiment parameters from a YAML file and log the loaded parameters.
+    """
+    try:
+        logger.info(f"Loading parameters from YAML file: {yaml_file}")
+        with open(yaml_file, "r") as file:
+            config = yaml.safe_load(file)
+
+        # Convert paths to Path objects
+        config["point_cloud_path"] = [Path(p) for p in config["point_cloud_path"]]
+        config["export_folder"] = Path(config["export_folder"])
+
+        # Create an instance of ExperimentParameters
+        params = ExperimentParameters(**config)
+
+        # Log the loaded parameters
+        logger.info("Successfully loaded parameters:")
+        logger.info(params)
+
+        return params
+    except Exception as e:
+        logger.error(f"Failed to load parameters from {yaml_file}: {e}")
+        raise
+
+# Example usage
+if __name__ == "__main__":
+    yaml_file = "experiment_config.yaml"
+    params = load_experiment_parameters(yaml_file)
+    print(params)
