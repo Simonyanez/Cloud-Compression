@@ -35,27 +35,31 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 class Researcher():
+    # TODO: Use less RAM, currently up to 9Gb of RAM
     def __init__(self):
         self.point_cloud =  PointCloud()
         self.GFT_computer = GFT()
         self.encoder = Encoder()
         self.decider = Decider()
         self.visualizer = Visualizer()
-        self.structural_graph = None
+        self.graphs = []
         self.blocks = None
         self.param = [None] *5
         self.graphs_dict: Optional[dict[UUID,AttributeGraph | StructuralGraph]] = {}
 
     def __call__(self, params: ExperimentParameters):
         param_combinations = self._generate_combinations(params)
+        export_folder = Path(params.export_folder)
+        experiment_code = params.experiment_code
         for i,param in enumerate(tqdm(param_combinations, desc="Running parameters: ")):
             logger.info(self._params_msg(param))
             if param[0] != self.param[0]:
                 self.point_cloud(param[0])
             if param[1] != self.param[1]:
+                self.block_manager = BlockManager(bsize=param[1], export_folder=export_folder, experiment_code=experiment_code, point_cloud_path=param[0])
                 if self.blocks:
                     self._exec_encoding(params.quantization_steps)
-                self.point_cloud.do_block_partitioning(bsize=param[1])
+                self.point_cloud.do_block_partitioning(bsize=param[1])   # Restart blocks
             if param[2] != self.param[2] or param[3] != self.param[3]:
                 self._block_processing(self_loop_weight=param[2], self_loop_percentage=param[3])
             if i == len(param_combinations)-1:
@@ -69,51 +73,44 @@ class Researcher():
         for q_step in tqdm(q_steps, desc= "Iterating over quantization steps: "):
             logger.info(f"Quantization Step: {q_step}")
             Coeffs, graph_ids = self._per_block_decider(q_step)
-            selected_graphs = [self.graphs_dict[graph_id] for graph_id in graph_ids]
+            selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
             indexes = self.point_cloud.indexes
-            bpv, PSNR = self.encoder(Coeffs, selected_graphs, q_step, indexes)
-            logger.info(self._result_msg(bpv, PSNR))
+            bpv, PSNR, bsize = self.encoder(Coeffs, selected_graphs, q_step, indexes)
+            logger.info(self._result_msg(bpv, PSNR, bsize))
 
-    def _result_msg(self, bpv: float, PSNR: float):
+    def _result_msg(self, bpv: float, PSNR: float, bsize: int):
         log_msg = f"""Results: 
+                    Total bitstream = {bsize}
                     Bits per voxel = {bpv}
                     Peak Signal-to-Noise Ratio = {PSNR}"""
         return log_msg
         
         
     def _per_block_decider(self,q_step: int):
-        graph_ids = []
+        selected_graph_ids = []
         Coeffs = np.zeros(self.point_cloud.A.shape)    
-        for block in tqdm(self.blocks, desc="Rate-Distorsion Optimization: "):
-            selected_coeff, selected_graph_id = self._block_decider(q_step, block=block)
-            Coeffs[block.idxs] = selected_coeff
-            graph_ids.append(selected_graph_id)
-        return Coeffs, graph_ids
+        for block in tqdm(self.blocks, desc=f"Rate-Distorsion Optimization for Quantization Step {q_step}: "):
+            coeffs_dict = self.block_manager.get_coefficients(block.id)
+            selected_coeff, selected_graph_id = self._block_decider(q_step, coeffs_dict, block.id)
+            Coeffs[block.as_index()] = selected_coeff
+            selected_graph_ids.append(selected_graph_id)
+        return Coeffs, selected_graph_ids
 
-    def _block_decider(self, q_step: int, block: Optional[Block] = None, idx: Optional[int] = None):
-        assert block is not None or idx is not None, "Block or block index missing"
-        if idx:
-            block = self.blocks[idx]
-        coeffs_dict = block.get_coeffs_dict()
+    def _block_decider(self, q_step: int, coeffs_dict: Dict[str, np.ndarray], block_id: int):
         selected_graph_id, selected_coeff = self.decider(q_step, coeffs_dict)
-        logger.info(f"{str(block)} selected {self._decision_msg(selected_graph_id)}")
+        logger.info(f"Selected {self._decision_msg(selected_graph_id, block_id)}")
         return selected_coeff, selected_graph_id
             
-    def _decision_msg(self, selected_graph_id):
-        selected_graph = self.graphs_dict[selected_graph_id]
-        print(type(selected_graph))
-        if isinstance(selected_graph, AttributeGraph):
-            diag = np.diag(selected_graph.weights)
-            sl_pos = diag > 0
-            sl_count = np.sum(sl_pos)
-            sl_percentage = 100*sl_count/selected_graph.weights.shape[0]
-            sl_weight = diag[sl_pos[0]]
+    def _decision_msg(self, selected_graph_id: str, block_id:str):
+        # TODO: Create Object factory and avoid circular imports
+        sl_weight, sl_percentage, sl_count = self.block_manager.get_graph_metadata(block_id, selected_graph_id)
+        if sl_percentage > 0: # Self-loop percentage
             log_msg = f""" Attribute Graph: 
                 Self-Loop Weight: {sl_weight}
                 Self-Loop Percentage: {sl_percentage}
                 Self-Loop Count: {sl_count}
             """
-        if isinstance(selected_graph, StructuralGraph):
+        else:
             log_msg = f""" Structural Graph"""
         return log_msg
     
@@ -126,18 +123,35 @@ class Researcher():
         ]
         return list(product(*multiple_params))
     
-    def _block_processing(self, self_loop_weight, self_loop_percentage):
-        self.blocks = self.point_cloud.get_all_blocks()
+    def _block_processing(self, self_loop_weight: float, self_loop_percentage: float):
+        self.blocks = self.point_cloud.get_all_blocks()         # Start end tuples
+        V = self.point_cloud.V
+        A = self.point_cloud.A
+        
         for block in tqdm(self.blocks, desc="Processing blocks: "):
-            if block.structural_graph.graph_id not in list(block.results.keys()):
-                self.graphs_dict[block.structural_graph.graph_id] = block.structural_graph
-                gft_mat, coeffs = self.GFT_computer(block.structural_graph, block)
-                block.save_gft_result(block.structural_graph.graph_id, gft_mat, coeffs)
-            attribute_graph = AttributeGraph(block.Vblock, block.Ablock, sl_weight= self_loop_weight, block_fraction=self_loop_percentage)
-            self.graphs_dict[attribute_graph.graph_id] = attribute_graph
-            gft_mat, coeffs = self.GFT_computer(attribute_graph, block)
-            block.save_gft_result(attribute_graph.graph_id, gft_mat, coeffs)
+            block._init_data(V, A)
+            if block.id not in self.block_manager.list_blocks(): # Check if block is in file
+                struct_graph = StructuralGraph(block.id)
+                self.graphs.append(struct_graph)
+                struct_graph._init_data(V=block.Vblock)
+                self._add_block(block)
+                self._add_graph(struct_graph, block)
+                struct_graph._del_data()
+            attr_graph = AttributeGraph(block.id, sl_weight=self_loop_weight, sl_percentage=self_loop_percentage)
+            attr_graph._init_data(block.Vblock, block.Ablock)
+            self.graphs.append(attr_graph)
+            self._add_graph(attr_graph, block)
+            attr_graph._del_data()
+            block._del_data()
 
+    def _add_block(self, block: Block):
+        if str(block.id) not in self.block_manager.list_blocks():
+            self.block_manager.add_block(block)
+
+    def _add_graph(self, graph, block):
+        if not self.block_manager.matched_metadata(graph):
+            result = self.GFT_computer(graph, block)
+            self.block_manager.add_result(graph, result)
 
     def _encode_coeffs(self, Coeffs: np.ndarray, q_step: int):
         self.encoder(Coeffs, q_step)
@@ -163,8 +177,10 @@ class Researcher():
     def _save_plots(self):
         pass
 
-        
-
+    
+class Analyst():
+    def __init__(self):
+        pass
 
 if __name__ == "__main__":
     params = load_experiment_parameters(Path("config/config.yaml"))

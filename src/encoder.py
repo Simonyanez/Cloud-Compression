@@ -14,7 +14,10 @@ import graph_old.properties as pt
 import utils.color as clr
 import ply as ply
 import visualization as visual
+import logging
 from utils.encode_rlgr import *
+logging.basicConfig(filename="logs/decider.log", filemode="w", level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 class Encoder:
@@ -27,12 +30,14 @@ class Encoder:
         self.selected_graphs = selected_graphs
         self.qstep = qstep
         self._quantize()
+        PSNR = self.get_PSNR()
         self._sort_coeffs()
-        self._RLGR()
-        return self.get_bpv(), self.get_PSNR()
+        bsize, bpv = self.get_bpv()
+        return PSNR, bpv, bsize
 
     def _quantize(self):
         self.Coeffs_quant = np.round(self.Coeffs/self.qstep)
+        print(f"This is selected coeff {self.Coeffs_quant.shape} - {np.min(self.Coeffs_quant), np.max(self.Coeffs_quant), type(np.min(self.Coeffs_quant))}")
 
     def _sort_coeffs(self):
         N = self.Coeffs_quant[:,0].shape[0]
@@ -54,7 +59,6 @@ class Encoder:
         pass
 
     def _RLGR(self):
-        
         # Code Y, U, V separately 
         numbits_Y = encode_rlgr(self.Coeffs_quant[:, 0], os.path.join('res', 'bitstream_Y.bin'))
         numbits_U = encode_rlgr(self.Coeffs_quant[:, 1], os.path.join('res', 'bitstream_U.bin'))
@@ -68,6 +72,7 @@ class Encoder:
     def get_PSNR(self) -> float:
         N = self.Coeffs[:,0].shape[0]
         Coeff_dequant = self.Coeffs_quant*self.qstep
+        logger.debug(f"Coeffs comparison {np.min(self.Coeffs), np.max(self.Coeffs), type(self.Coeffs), self.Coeffs.shape} \n{np.min(Coeff_dequant), np.max(Coeff_dequant), type(Coeff_dequant), Coeff_dequant.shape}")
         norm_value = np.linalg.norm(self.Coeffs[:,0] - Coeff_dequant[:,0])
         psnr_Y = -10 * np.log10((norm_value ** 2) / (N * 255 ** 2))
         return psnr_Y
@@ -76,7 +81,7 @@ class Encoder:
         bs_size = self._RLGR()
         N = self.Coeffs[:,0].shape[0]
         bpv = bs_size/N
-        return bpv
+        return bs_size, bpv
 
     
 

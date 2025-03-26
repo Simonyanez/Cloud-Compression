@@ -1,3 +1,5 @@
+from typing import Dict
+from uuid import *
 import numpy as np
 from scipy.optimize import minimize
 import logging
@@ -5,10 +7,10 @@ logging.basicConfig(filename="logs/decider.log", filemode="w", level=logging.DEB
 logger = logging.getLogger(__name__)
 
 class Decider:
-    def __init__(self, QP: int = 3, r: float = 0.85):
+    def __init__(self):
         pass
 
-    def __call__(self, q_step: int, coeff_dict, r=0.85):
+    def __call__(self, q_step: int, coeff_dict: Dict[str, np.ndarray], r=0.85):
         self.lagrange_mult = r * q_step**2   
         self.q_step = q_step
         Coeffs_list = list(coeff_dict.values())

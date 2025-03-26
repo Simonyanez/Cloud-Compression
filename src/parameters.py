@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class ExperimentParameters:
     # Experiment general data
     experiment_name: str
+    experiment_code: str
     experiment_date: str
     experiment_info: str
 
@@ -62,6 +63,7 @@ class ExperimentParameters:
                         ExperimentParameters
                 ============================================
                   Name: {self.experiment_name}
+                  Code: {self.experiment_code}
                   Date: {self.experiment_date}
                   Info: {self.experiment_info}
                   Point Cloud: {self.point_cloud_path}

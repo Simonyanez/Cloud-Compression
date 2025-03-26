@@ -15,6 +15,8 @@ import logging
 logging.basicConfig(filename="logs/graph.log", filemode="w", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+from typing import Optional
+
 class GFT():
     def __init__(self):
         # TODO: Give parameters
@@ -70,13 +72,18 @@ class GFT():
         Vsubblock = self.block.Vblock[subgraph_indexes,:]
         W = self.graph.weights
         W_sub = W[subgraph_indexes, :][:, subgraph_indexes]
-        subgraph = Graph(W_sub,[]) # Creates a subgraph without connections
-        subblock = Block(Vsubblock, Asubblock, subgraph_indexes)
+        aux_tuple = (-1,-1)
+        subblock = Block((-1,-1), block_num=-1)
+        subblock._init_auxiliary(Vblock=Vsubblock, Ablock =Asubblock, subidxs=subgraph_indexes)
+        subgraph = Graph(subblock.id)
+        subgraph._init_data(weights=W_sub,edges=[]) # Creates a subgraph without connections
         return subgraph, subblock
 
     def _create_meanobjects(self, Vmean: np.ndarray):
-        meangraph = StructuralGraph(Vmean, threshold= np.inf)
-        meanblock = Block(Vmean, Vmean[:,0], None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        meanblock = Block(idxs=(-1,-1), block_num=-2)
+        meanblock._init_auxiliary(Vblock=Vmean, Ablock=Vmean[:,0], subidxs=None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        meangraph = StructuralGraph(meanblock.id)
+        meangraph._init_data(Vmean, threshold= np.inf)
         return meangraph, meanblock
     
     def _fill_disconnected_transform(self, subgraph_indexes: np.ndarray, GFT_matrix: np.ndarray, U: np.ndarray):
@@ -118,7 +125,7 @@ class GFT():
                 Coeffs = GFT_matrix.T @ A
                 return GFT_matrix, Coeffs
             except:
-                logger.debug(f"Q is {Q.shape}  --> {Q}. {self.block.idxs}")
+                logger.debug(f"Q is {Q.shape}  --> {Q}")
 
     def _get_laplacian(self, Qm: np.ndarray) -> np.ndarray:
         """

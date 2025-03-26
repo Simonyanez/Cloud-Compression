@@ -2,10 +2,10 @@ import rlgr
 import os
 import numpy as np
 
-def encode_rlgr(data,filename="test.bin",is_signed=1):
+def encode_rlgr(data,filename="test.bin",is_signed=0):
     if os.path.isfile(filename):
         os.remove(filename)
-    data = data.astype(np.uint8).tolist()
+    data = data.astype(np.uint16).tolist()
     do_write = 1
     enc = rlgr.file(filename, do_write)
 

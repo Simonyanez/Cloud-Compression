@@ -1,33 +1,124 @@
 # from utils.color import *
 import ply as ply
+import h5py
 from uuid import *
 from pathlib import Path
 from graph import *
-from typing import List
+from typing import List, Dict
 from color import *
 import numpy as np
 
-class Block():
-    def __init__(self,Vblock: np.ndarray, Ablock: np.ndarray ,idxs: list | np.ndarray):
+class BlockManager:
+    def __init__(self, bsize: int, export_folder: Path, experiment_code: str, point_cloud_path: Path, rewrite=False):
+        point_cloud_name = point_cloud_path.stem
+        self.hdf5_path = export_folder / Path(f"{experiment_code}/{point_cloud_name}/block_size{bsize}_data.h5")
+        if rewrite and self.hdf5_path.exists():
+            self.hdf5_path.unlink()
+            
+        self.hdf5_path.parent.mkdir(parents=True, exist_ok=True)
+        self.file = h5py.File(self.hdf5_path, "a")
+        if "blocks" not in self.file:
+            self.file.create_group("blocks")
+    
+    def add_block(self, block: "Block") -> UUID:
+        """Register a new block with metadata."""
+        block_grp = self.file.create_group(f"blocks/{block.id}")
+        block_grp.create_dataset("idxs", data=block.idxs)
+        block_grp.create_group("graphs")  # Stores graph configurations
 
-        self.idxs: List[int] = idxs
-        self.Vblock: np.ndarray = Vblock
-        self.Ablock: np.ndarray = Ablock
-        self.block_id: UUID = uuid4()
-        self._init_structural_graph()
-        self.results: dict = {}
+    def add_result(
+        self,
+        graph: Graph,
+        result: tuple[np.ndarray, np.ndarray]):
+        """Add a graph configuration + GFT results to a block."""
+
+        graph_id = graph.id
+        block_id = graph.block_id 
+        graph_grp = self.file.create_group(f"blocks/{block_id}/graphs/{graph_id}")
+        graph_grp.create_dataset("adjacency", data=graph.weights, compression="gzip")
+        graph_grp.create_dataset("edges", data=graph.edges, compression="gzip")
+        graph_grp.create_dataset("gft_mat", data=result[0], compression="gzip")
+        graph_grp.create_dataset("coeffs", data=result[1], compression="gzip")
+
+    def matched_metadata(self, graph: Graph, rewrite=False):
+        if rewrite:
+            return False
+        graph_id = graph.id
+        block_id = graph.block_id
+        return f"blocks/{block_id}/graphs/{graph_id}" in self.file
+
+    def get_config_data(
+        self, block_id: int, graph_id: str
+    ) -> Dict[str, np.ndarray]:
+        """Load all data for a specific configuration."""
+        graph_grp = self.file[f"blocks/{block_id}/graphs/{graph_id}"]
+        return {
+            "adjacency": graph_grp["adjacency"][:],
+            "edges": graph_grp["edges"][:],
+            "gft_mat": graph_grp["gft_mat"][:],
+            "coeffs": graph_grp["coeffs"][:],
+            
+        }
+
+    def get_data(self, block_id: int, graph_id: str, h5_key: str) -> np.ndarray:
+        graph_grp = self.file[f"blocks/{block_id}/graphs/{graph_id}"]
+        return graph_grp[h5_key][:]
+    
+    def get_graph_metadata(self, block_id: str, graph_id: str) -> np.ndarray:
+        adjacency = self.get_data(block_id, graph_id, h5_key="adjacency")[:]
+        diag = np.diag(adjacency)
+        sl_pos = diag > 0
+        sl_count = np.sum(sl_pos)
+        sl_percentage = 100*sl_count/adjacency.shape[0]
+        sl_weight = 0
+        if sl_count > 0:
+            sl_weight = diag[sl_pos][0]
+        metadata = (sl_weight, sl_percentage, sl_count)
+        return metadata
+
+    def list_blocks(self) -> List[int]:
+        return list(self.file["blocks"].keys())
+    
+    def list_graphs(self, block_id: UUID) -> List[UUID]:
+        """List all graphs IDs for a block."""
+        return list(self.file[f"blocks/{block_id}/graphs"].keys())
+
+    def get_coefficients(self, block_id:UUID) -> List[np.ndarray]:
+        return {graph_id:self.get_data(block_id, graph_id, h5_key='coeffs') for graph_id in self.list_graphs(block_id)}
+
+    def close(self):
+        self.file.close()
+
+    # Context manager support
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+class Block():
+    def __init__(self ,idxs: tuple[int, int], block_num: int | np.ndarray):
+        self.id: int = block_num
+        self.idxs: tuple[int, int] = idxs
 
     def __str__(self):
-        return f""" Block at [{min(self.idxs), max(self.idxs)}] with UUID: {self.block_id}"""
+        return f""" Block at [{self.idxs[0], self.idxs[1]}] with UUID: {self.id}"""
 
-    def save_gft_result(self,key: UUID, gft_mat: np.ndarray, coeffs: np.ndarray):
-        self.results[key] = (gft_mat, coeffs)
+    def _init_data(self, V: np.ndarray, A: np.ndarray):
+        self.Vblock = V[self.as_index()]
+        self.Ablock = A[self.as_index()]
 
-    def _init_structural_graph(self):
-        self.structural_graph = StructuralGraph(self.Vblock)
-        
-    def get_coeffs_dict(self):
-        return {k:v[1] for k,v in self.results.items()}
+    def _init_auxiliary(self, Vblock: np.ndarray, Ablock:np.ndarray, subidxs: np.ndarray):
+        self.Vblock = Vblock
+        self.Ablock = Ablock
+        self.subidxs = subidxs
+
+    def _del_data(self):
+        self.Vblock = None
+        self.Ablock = None
+
+    def as_index(self):
+        return np.arange(start=self.idxs[0], stop=self.idxs[1]+1) # Include end index       
 
 class PointCloud():
     def __init__(self) -> None:
@@ -79,15 +170,12 @@ class PointCloud():
         self.indexes = list(zip(start_indexes,end_indexes))  # Paired start and end indexes
         # self.indexes = sorted(indexes, key=lambda x: x[1]-x[0], reverse=True)
     
-    def get_block(self, index: int) -> Block:
-        start_idx, end_idx = self.indexes[index]
-        idxs = list(range(start_idx, end_idx+1))
-        Vblock = self.V[idxs, :]
-        Ablock = self.A[idxs, :]
-        return Block(Vblock, Ablock, idxs)
+    def get_block(self, index: int) -> tuple[int, int]:
+        start_end_tuple = self.indexes[index]
+        return Block(idxs=start_end_tuple, block_num=index) 
 
     def get_all_blocks(self) -> list[Block]:
-        return [self.get_block(index) for index,_ in enumerate(self.indexes)]
+        return [self.get_block(index) for index, _ in enumerate(self.indexes)]
 
 if __name__ == "__main__":
     from transforms import *
