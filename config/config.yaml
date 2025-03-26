@@ -1,5 +1,6 @@
 # experiment_config.yaml
 experiment_name: "First Test"
+experiment_code: "FT01"
 experiment_date: "2025-03-21"
 experiment_info: "This is a sample experiment to test the parameters."
 
