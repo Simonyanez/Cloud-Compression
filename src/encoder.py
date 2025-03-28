@@ -37,7 +37,7 @@ class Encoder:
 
     def _quantize(self):
         self.Coeffs_quant = np.round(self.Coeffs/self.qstep)
-        print(f"This is selected coeff {self.Coeffs_quant.shape} - {np.min(self.Coeffs_quant), np.max(self.Coeffs_quant), type(np.min(self.Coeffs_quant))}")
+        logging.debug(f"This is selected coeff {self.Coeffs_quant.shape} - {np.min(self.Coeffs_quant), np.max(self.Coeffs_quant), type(np.min(self.Coeffs_quant))}")
 
     def _sort_coeffs(self):
         N = self.Coeffs_quant[:,0].shape[0]

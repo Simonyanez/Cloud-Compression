@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 from typing import Optional
 
 class GFT():
+    # FIXME: Disconnected components not working correctly
     def __init__(self):
         # TODO: Give parameters
         pass
@@ -31,6 +32,7 @@ class GFT():
     def _exec(self, Q):
         n_components, labels = self._check_connected()
         if n_components > 1:
+            logger.debug("Found disconnected graph")
             GFT_matrix, Coeffs = self._process_disconnected(n_components,labels)
         else:
             GFT_matrix, Coeffs = self._process_connected(Q)
@@ -165,8 +167,8 @@ class GFT():
             GFT_matrix = eigvecs[:, eigvals_idxsorted]
             # Ensure the first eigenvector is positive
             for i in range(GFT_matrix.shape[0]):
-                if GFT_matrix[i, 0] < 0:
-                    GFT_matrix[i, :] = GFT_matrix[i, :] * (-1)
+                if GFT_matrix[0, i] < 0:
+                    GFT_matrix[:, i] = GFT_matrix[:, i] * (-1)
             Gfreq = eigvals[eigvals_idxsorted]
         return GFT_matrix, Gfreq
 

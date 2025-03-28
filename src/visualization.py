@@ -3,7 +3,7 @@ import matplotlib
 from mpl_toolkits.mplot3d.art3d import Line3D
 from matplotlib.patches import Arc
 matplotlib.use('Qt5Agg')  # or 'Qt5Agg'
-
+from typing import Optional
 
 import matplotlib.pyplot as plt
 from pyvis.network import Network
@@ -50,6 +50,18 @@ class Visualizer:
         self.ax = ax
     
     def _init_2d_figure(self):
+        """Initialize a single 2D matplotlib subplot."""
+        fig, ax = plt.subplots(figsize=(8, 6))  # Single subplot
+        ax.grid(True)
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_title('2D Visualization')
+        
+        # Store references
+        self.fig = fig 
+        self.ax = ax  # Single axis object
+
+    def _init_2d_3ch_figure(self):
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 5))  # 1 row, 3 columns
         
         # Configure first subplot
@@ -116,54 +128,88 @@ class Visualizer:
             self.ax.quiver(og_x, og_y, og_z, dir_x - og_x, dir_y - og_y, dir_z - og_z, color='b', normalize=True)
             self.ax.scatter3D(og_x, og_y, og_z, c= 'gray', s=10)
 
-    def visualize_coeffs(self,title: str,  num_of_coeffs: int = 10):
-        """Visualizes the top GFT coefficients for Y, U, V channels with values annotated."""
-        self._init_2d_figure()  # Initialize the 2D figure with 3 subplots
-        self.fig.suptitle(title)    
-        # Compute GFT coefficients (shape: [num_coeffs, 3] where columns are Y, U, V)
-        _, coeffs = self.gft_computer(self.graph, self.block)
+    def visualize_coeffs(self, result: tuple[np.ndarray, np.ndarray],title: str, num_of_coeffs: int = 10, vis_gft: Optional[bool] = False):
+        """Visualizes the top GFT coefficients for Y, U, V channels."""
+        gft_mat, coeffs = result 
+         
+        if vis_gft:
+            self.visualize_gft(gft_mat)
+
+        self._init_2d_3ch_figure()
+        self.fig.suptitle(title)
         
-        # Sort coefficients in descending order (magnitude) per channel
-        sorted_coeffs = np.sort(np.abs(coeffs), axis=0)[::-1]  # [num_coeffs, 3]
+        # Ensure we don't request more coefficients than available
+        num_available = min(num_of_coeffs, coeffs.shape[0])
+        x = np.arange(1, num_available + 1)  # 1-based indexing
         
-        # X-axis (1 to num_of_coeffs)
-        x = np.arange(1, num_of_coeffs + 1)
+        # Channel configurations
+        channels = [
+            (self.ax1, 'black', 'Y (Luminance)', 0),
+            (self.ax2, 'blue', 'U (Chrominance)', 1),
+            (self.ax3, 'red', 'V (Chrominance)', 2)
+        ]
         
-        # --- Plot 1: Y Channel (Luminance) ---
-        sc1 = self.ax1.scatter(x, sorted_coeffs[:num_of_coeffs, 0], color='black', label='Y (Luminance)')
-        self.ax1.set_title('Top Y Channel Coefficients')
-        self.ax1.set_xlabel('Coefficient Index')
-        self.ax1.set_ylabel('Magnitude')
-        self.ax1.legend()
-        self.ax1.grid(True)
+        for ax, color, name, channel_idx in channels:
+            # Get coefficients for this channel (N×1 array)
+            channel_data = coeffs[:, channel_idx]
+            
+            # Sort by absolute magnitude (descending)
+            sorted_idx = np.argsort(-np.abs(channel_data))[:num_available]
+            sorted_coeffs = channel_data[sorted_idx]
+            
+            # Plot
+            ax.scatter(x, sorted_coeffs, color=color, label=name)
+            ax.set_title(f'Top {name} Coefficients')
+            ax.set_xlabel('Coefficient Index')
+            ax.set_ylabel('Magnitude')
+            ax.legend()
+            ax.grid(True)
+            
+            # Annotate values
+            for i, val in enumerate(sorted_coeffs):
+                ax.text(x[i], val, f"{val:.2f}", 
+                    ha='center', 
+                    va='bottom' if val >= 0 else 'top',
+                    fontsize=8, color=color)
+
+        self.fig.tight_layout()
+
+    def visualize_gft(self, gft_mat: np.ndarray, title: Optional[str] = "GFT matrix"):
+        """Visualize a matrix with colormap and value range display.
         
-        # Add text labels for Y values
-        for i, (xi, yi) in enumerate(zip(x, sorted_coeffs[:num_of_coeffs, 0])):
-            self.ax1.text(xi, yi, f"{yi:.2f}", ha='center', va='bottom', fontsize=8, color='black')
+        Args:
+            gft_mat: Matrix to visualize (if None, computes GFT)
+            title: Title for the plot
+        """
         
-        # --- Plot 2: U Channel (Chrominance) ---
-        sc2 = self.ax2.scatter(x, sorted_coeffs[:num_of_coeffs, 1], color='blue', label='U (Chrominance)')
-        self.ax2.set_title('Top U Channel Coefficients')
-        self.ax2.set_xlabel('Coefficient Index')
-        self.ax2.set_ylabel('Magnitude')
-        self.ax2.legend()
-        self.ax2.grid(True)
+        self._init_2d_figure()
         
-        # Add text labels for U values
-        for i, (xi, yi) in enumerate(zip(x, sorted_coeffs[:num_of_coeffs, 1])):
-            self.ax2.text(xi, yi, f"{yi:.2f}", ha='center', va='bottom', fontsize=8, color='blue')
+        # Create the heatmap with colorbar
+        im = self.ax.imshow(gft_mat, cmap='viridis', aspect='auto')
         
-        # --- Plot 3: V Channel (Chrominance) ---
-        sc3 = self.ax3.scatter(x, sorted_coeffs[:num_of_coeffs, 2], color='red', label='V (Chrominance)')
-        self.ax3.set_title('Top V Channel Coefficients')
-        self.ax3.set_xlabel('Coefficient Index')
-        self.ax3.set_ylabel('Magnitude')
-        self.ax3.legend()
-        self.ax3.grid(True)
+        # Add colorbar with value range
+        cbar = self.fig.colorbar(im, ax=self.ax)
+        cbar.set_label('Magnitude')
         
-        # Add text labels for V values
-        for i, (xi, yi) in enumerate(zip(x, sorted_coeffs[:num_of_coeffs, 2])):
-            self.ax3.text(xi, yi, f"{yi:.2f}", ha='center', va='bottom', fontsize=8, color='red')
+        # Display min/max values
+        min_val = np.min(gft_mat)
+        max_val = np.max(gft_mat)
+        mean_val = np.mean(gft_mat)
+        
+        # Add text box with stats
+        stats_text = (f"Min: {min_val:.2f}\n"
+                    f"Max: {max_val:.2f}\n"
+                    f"Mean: {mean_val:.2f}")
+        props = dict(boxstyle='round', facecolor='white', alpha=0.8)
+        self.ax.text(0.02, 0.98, stats_text, 
+                    transform=self.ax.transAxes,
+                    verticalalignment='top',
+                    bbox=props)
+        
+        # Formatting
+        self.ax.set_title(title)
+        self.ax.set_xlabel('Frequency Components')
+        self.ax.set_ylabel('Spatial Components')
         
         # Adjust layout to prevent text overlap
         self.fig.tight_layout()

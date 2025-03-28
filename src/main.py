@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 # Custom logging handler for tqdm
 class TqdmLoggingHandler(logging.Handler):
-    def __init__(self, level=logging.NOTSET):
+    def __init__(self, level=logging.WARNING):
         super().__init__(level)
 
     def emit(self, record):
@@ -28,11 +28,11 @@ class TqdmLoggingHandler(logging.Handler):
 logging.basicConfig(filename="logs/main.log", filemode="w", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.addHandler(TqdmLoggingHandler())
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+# console_handler = logging.StreamHandler()
+# console_handler.setLevel(logging.INFO)
+# formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+# console_handler.setFormatter(formatter)
+# logger.addHandler(console_handler)
 
 class Researcher():
     # TODO: Use less RAM, currently up to 9Gb of RAM
@@ -51,12 +51,13 @@ class Researcher():
         param_combinations = self._generate_combinations(params)
         export_folder = Path(params.export_folder)
         experiment_code = params.experiment_code
+        self.debugging = params.debugging
         for i,param in enumerate(tqdm(param_combinations, desc="Running parameters: ")):
             logger.info(self._params_msg(param))
             if param[0] != self.param[0]:
                 self.point_cloud(param[0])
             if param[1] != self.param[1]:
-                self.block_manager = BlockManager(bsize=param[1], export_folder=export_folder, experiment_code=experiment_code, point_cloud_path=param[0])
+                self.block_manager = BlockManager(bsize=param[1], export_folder=export_folder, experiment_code=experiment_code, point_cloud_path=param[0], rewrite=params.rewrite_results)
                 if self.blocks:
                     self._exec_encoding(params.quantization_steps)
                 self.point_cloud.do_block_partitioning(bsize=param[1])   # Restart blocks
@@ -88,7 +89,7 @@ class Researcher():
         
     def _per_block_decider(self,q_step: int):
         selected_graph_ids = []
-        Coeffs = np.zeros(self.point_cloud.A.shape)    
+        Coeffs = np.zeros(self.point_cloud.A.shape, dtype=np.float64)    
         for block in tqdm(self.blocks, desc=f"Rate-Distorsion Optimization for Quantization Step {q_step}: "):
             coeffs_dict = self.block_manager.get_coefficients(block.id)
             selected_coeff, selected_graph_id = self._block_decider(q_step, coeffs_dict, block.id)
@@ -98,7 +99,7 @@ class Researcher():
 
     def _block_decider(self, q_step: int, coeffs_dict: Dict[str, np.ndarray], block_id: int):
         selected_graph_id, selected_coeff = self.decider(q_step, coeffs_dict)
-        logger.info(f"Selected {self._decision_msg(selected_graph_id, block_id)}")
+        # logger.info(f"Selected {self._decision_msg(selected_graph_id, block_id)}")
         return selected_coeff, selected_graph_id
             
     def _decision_msg(self, selected_graph_id: str, block_id:str):
@@ -127,7 +128,8 @@ class Researcher():
         self.blocks = self.point_cloud.get_all_blocks()         # Start end tuples
         V = self.point_cloud.V
         A = self.point_cloud.A
-        
+       
+        self.bugs_idx = []
         for block in tqdm(self.blocks, desc="Processing blocks: "):
             block._init_data(V, A)
             if block.id not in self.block_manager.list_blocks(): # Check if block is in file
@@ -143,15 +145,63 @@ class Researcher():
             self._add_graph(attr_graph, block)
             attr_graph._del_data()
             block._del_data()
+        logger.info(f"Bad working blocks {self.bugs_idx}")
+
+    def _visualize_transform(self, result: tuple[np.ndarray, np.ndarray], vis_gft:bool):
+        self.visualizer.visualize_coeffs(result=result, title=f"Coeffs for block", vis_gft = vis_gft)
+        plt.show(block=True)
+
 
     def _add_block(self, block: Block):
         if str(block.id) not in self.block_manager.list_blocks():
             self.block_manager.add_block(block)
 
-    def _add_graph(self, graph, block):
+    def _add_graph(self, graph: Graph, block: Block):
+        """Process and store graph results with configurable debugging.
+        
+        Args:
+            graph: Graph object to process
+            block: Associated block data
+            debug: If True, enables detailed logging (default: False)
+        """
+        self.visualizer(graph, block)
         if not self.block_manager.matched_metadata(graph):
-            result = self.GFT_computer(graph, block)
-            self.block_manager.add_result(graph, result)
+            # Compute GFT transform
+            gft_mat, coeffs = self.GFT_computer(graph, block)
+            
+            # Visualization trigger condition (DC component check)
+            dc_check = np.sum(coeffs[0,0] < coeffs[:,0]) >= 1
+            if self.debugging and dc_check:
+                self._block_debugger(graph, block,gft_mat, coeffs)
+                self._visualize_transform((gft_mat, coeffs), vis_gft=True)
+
+            # Store results
+            self.block_manager.add_result(graph, (gft_mat, coeffs))
+
+    def _block_debugger(self, graph: Graph, block: Block, gft_mat: np.ndarray, coeffs: np.ndarray):
+        logger.debug("Visualization triggered - DC component not dominant")
+        logger.debug("\n=== GFT Computation Debug ===")
+        logger.debug(f"Graph ID: {graph.id}")
+        logger.debug(f"Graph Type: {type(graph).__name__}")
+        logger.debug(f"Block Size: {block.Vblock.shape}")
+        logger.debug(f"GFT Matrix Shape: {gft_mat.shape}")
+        logger.debug(f"Coefficients Shape: {coeffs.shape}")
+         
+        # Channel statistics
+        for i, ch in enumerate(['Y', 'U', 'V']):
+            logger.debug(f"{ch} Channel - Min: {np.min(coeffs[:,i]):.4f} "
+                    f"DC: {coeffs[0,i]:.4f} "
+                    f"Max: {np.max(coeffs[:,i]):.4f} "
+                    f"Mean: {np.mean(coeffs[:,i]):.4f}")
+        
+        # Data quality checks
+        if np.any(np.isnan(coeffs)):
+            logger.warning("NaN values detected in coefficients!")
+        if np.any(np.abs(coeffs) > 1e6):
+            logger.warning("Extremely large coefficient values detected!")
+
+        logger.debug("DC coefficients non dominant -> Visualization triggered")
+        self.bugs_idx.append(block.id)
 
     def _encode_coeffs(self, Coeffs: np.ndarray, q_step: int):
         self.encoder(Coeffs, q_step)

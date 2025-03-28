@@ -36,7 +36,6 @@ class Decider:
         Y_coeffs_quant = self._quantize(Y_coeffs)
         qerror = self._qError(Y_coeffs, Y_coeffs_quant)
         sparsity = self._zeroNorm(Y_coeffs_quant)
-        logger.debug(f"Quantization Error {qerror} - Zero norm (sparsity) {sparsity} - RDO Cost: {qerror + self.lagrange_mult * sparsity}")
         return qerror + self.lagrange_mult * sparsity
 
     def _RDO(self, Coeffs_list: list[np.ndarray], graph_ids: list[str]):
@@ -63,7 +62,6 @@ class Decider:
             # Perform minimization for the current coefficient
             res = self._RDcost(coeff[:,0])
             # Check if this is the best result so far
-            logger.debug(f"Current graph id {graph_id}")
             if res < min_cost:
                 min_cost = res
                 selected_coeff = coeff # Reshape back to original shape

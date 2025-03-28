@@ -21,6 +21,8 @@ class ExperimentParameters:
     # File and paths
     point_cloud_path: List[Path]  # Always a list of paths
     export_folder: Path
+    rewrite_results: bool
+    debugging: bool
 
     # Method parameters
     self_loop_weight: List[float]  # Always a list of floats
