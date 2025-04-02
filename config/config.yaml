@@ -9,6 +9,8 @@ point_cloud_path:
   - res/longdress_vox10_1051.ply
 
 
+rewrite_results: True
+debugging: True
 export_folder: experiments
 
 # Method parameters
@@ -38,4 +40,4 @@ quantization_steps:
   - 80
 
 block_size:
-  - 16
+  - 8

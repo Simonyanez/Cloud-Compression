@@ -76,6 +76,7 @@ class Researcher():
             Coeffs, graph_ids = self._per_block_decider(q_step)
             selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
             indexes = self.point_cloud.indexes
+            self.visualizer.visualize_coeffs(Coeffs)
             bpv, PSNR, bsize = self.encoder(Coeffs, selected_graphs, q_step, indexes)
             logger.info(self._result_msg(bpv, PSNR, bsize))
 
@@ -148,7 +149,7 @@ class Researcher():
         logger.info(f"Bad working blocks {self.bugs_idx}")
 
     def _visualize_transform(self, result: tuple[np.ndarray, np.ndarray], vis_gft:bool):
-        self.visualizer.visualize_coeffs(result=result, title=f"Coeffs for block", vis_gft = vis_gft)
+        self.visualizer.visualize_block_coeffs(result=result, title=f"Coeffs for block", vis_gft = vis_gft)
         plt.show(block=True)
 
 
@@ -173,7 +174,7 @@ class Researcher():
             dc_check = np.sum(coeffs[0,0] < coeffs[:,0]) >= 1
             if self.debugging and dc_check:
                 self._block_debugger(graph, block,gft_mat, coeffs)
-                self._visualize_transform((gft_mat, coeffs), vis_gft=True)
+                # self._visualize_transform((gft_mat, coeffs), vis_gft=True)
 
             # Store results
             self.block_manager.add_result(graph, (gft_mat, coeffs))

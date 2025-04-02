@@ -128,7 +128,7 @@ class Visualizer:
             self.ax.quiver(og_x, og_y, og_z, dir_x - og_x, dir_y - og_y, dir_z - og_z, color='b', normalize=True)
             self.ax.scatter3D(og_x, og_y, og_z, c= 'gray', s=10)
 
-    def visualize_coeffs(self, result: tuple[np.ndarray, np.ndarray],title: str, num_of_coeffs: int = 10, vis_gft: Optional[bool] = False):
+    def visualize_block_coeffs(self, result: tuple[np.ndarray, np.ndarray],title: str, num_of_coeffs: int = 10, vis_gft: Optional[bool] = False):
         """Visualizes the top GFT coefficients for Y, U, V channels."""
         gft_mat, coeffs = result 
          
@@ -172,6 +172,34 @@ class Visualizer:
                     va='bottom' if val >= 0 else 'top',
                     fontsize=8, color=color)
 
+        self.fig.tight_layout()
+
+    def visualize_coeffs(self, Coeffs: np.ndarray):
+        self._init_2d_3ch_figure()
+        self.fig.suptitle("Coeffs for all ")
+
+        # Ensure we don't request more coefficients than available
+        x = np.arange(1, Coeffs.shape[0]+1)  # 1-based indexing
+        
+        # Channel configurations
+        channels = [
+            (self.ax1, 'black', 'Y (Luminance)', 0),
+            (self.ax2, 'blue', 'U (Chrominance)', 1),
+            (self.ax3, 'red', 'V (Chrominance)', 2)
+        ]
+        
+        for ax, color, name, channel_idx in channels:
+            # Get coefficients for this channel (N×1 array)
+            channel_data = Coeffs[:, channel_idx]
+            
+            # Plot
+            ax.scatter(x, channel_data, color=color, label=name)
+            ax.set_title(f'Top {name} Coefficients')
+            ax.set_xlabel('Coefficient Index')
+            ax.set_ylabel('Magnitude')
+            ax.legend()
+            ax.grid(True)
+            
         self.fig.tight_layout()
 
     def visualize_gft(self, gft_mat: np.ndarray, title: Optional[str] = "GFT matrix"):
