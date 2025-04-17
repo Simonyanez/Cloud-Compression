@@ -11,12 +11,10 @@ from matplotlib import cm
 from matplotlib.colors import Normalize
 from objects import *
 from graph import *
-from transforms import *
 # from utils.color import YUVtoRGB
 
 class Visualizer:
     def __init__(self):
-        self.gft_computer = GFT()
         self.colourist = Colourist()
 
 
@@ -174,9 +172,9 @@ class Visualizer:
 
         self.fig.tight_layout()
 
-    def visualize_coeffs(self, Coeffs: np.ndarray):
+    def visualize_coeffs(self, Coeffs: np.ndarray, title: Optional[str]="Coeffs for all"):
         self._init_2d_3ch_figure()
-        self.fig.suptitle("Coeffs for all ")
+        self.fig.suptitle(title)
 
         # Ensure we don't request more coefficients than available
         x = np.arange(1, Coeffs.shape[0]+1)  # 1-based indexing
@@ -269,6 +267,9 @@ class Visualizer:
                           ,c='cyan', s =120, alpha=0.3)
     def display(self):
         plt.show()
+
+    def close(self):
+        plt.close()
          
 
 if __name__ == "__main__":

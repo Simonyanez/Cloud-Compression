@@ -7,6 +7,13 @@ from graph import *
 from typing import List, Dict
 from color import *
 import numpy as np
+import logging
+logging.basicConfig(filename="logs/objects.log", 
+                    filemode="w", 
+                    level=logging.DEBUG, 
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    )
+logger = logging.getLogger(__name__)
 
 class BlockManager:
     def __init__(self, bsize: int, export_folder: Path, experiment_code: str, point_cloud_path: Path, rewrite=False):
@@ -105,8 +112,8 @@ class Block():
         return f""" Block at [{self.idxs[0], self.idxs[1]}] with UUID: {self.id}"""
 
     def _init_data(self, V: np.ndarray, A: np.ndarray):
-        self.Vblock = V[self.as_index()]
-        self.Ablock = A[self.as_index()]
+        self.Vblock = V[self.as_index(),:]
+        self.Ablock = A[self.as_index(),:]
 
     def _init_auxiliary(self, Vblock: np.ndarray, Ablock:np.ndarray, subidxs: np.ndarray):
         self.Vblock = Vblock

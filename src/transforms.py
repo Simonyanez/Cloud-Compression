@@ -6,7 +6,9 @@ import numpy as np
 # from graph.create import *
 from graph import *
 from objects import *
+from visualization import *
 from sklearn.preprocessing import normalize
+from scipy.optimize import linear_sum_assignment
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
 from scipy.linalg import fractional_matrix_power, eigh
@@ -20,6 +22,7 @@ from typing import Optional
 class GFT():
     # FIXME: Disconnected components not working correctly
     def __init__(self):
+        self.visualizer = Visualizer()
         # TODO: Give parameters
         pass
 
@@ -35,6 +38,7 @@ class GFT():
             logger.debug("Found disconnected graph")
             GFT_matrix, Coeffs = self._process_disconnected(n_components,labels)
         else:
+            print("Processing as connected now")
             GFT_matrix, Coeffs = self._process_connected(Q)
         return GFT_matrix, Coeffs
 
@@ -60,13 +64,34 @@ class GFT():
             GFT_sub, _ = GFT_processor(subgraph, subblock)  
             U = self._fill_disconnected_transform(subgraph_indexes, GFT_sub, U)
             isDC[i] = 1
+            print(len(subgraph_indexes), subgraph_indexes)
             i += len(subgraph_indexes)
             Vmean[component, :] = np.mean(self.block.Vblock[subgraph_indexes, :], axis = 0)
         Coeffs = U.T @ self.block.Ablock
+        self.visualizer.visualize_gft(U, title="Disconnected GFT reordered")
+        self.visualizer.visualize_coeffs(Coeffs, title="Disconnected coeffs")
         Coeffs_low, Coeffs_high = Coeffs[isDC,:], Coeffs[np.logical_not(isDC),:]
+        self.visualizer.visualize_coeffs(Coeffs_low, title = "Low disconnected")
+        self.visualizer.visualize_coeffs(Coeffs_high,title = "High disconnected" )
         meangraph, meanblock = self._create_meanobjects(Vmean)
+        self.visualizer(meangraph, meanblock)
+        self.visualizer.visualize_block()
+        self.visualizer.visualize_graph()
+        self.visualizer.visualize_gft(Q_norm, title="Q_norm")
         GFT_mean, _ = GFT_processor(meangraph, meanblock, Q_norm)
-        Coeffs_fix = np.concatenate([GFT_mean.T @ Coeffs_low, Coeffs_high]) # Mean coeff transform with its GFT mean structure
+        print(f"This is coeffs low {Coeffs_low}")
+        # freq_order = np.argsort(Gfreq_mean)
+        # print(f"This is reordered Gfreq {freq_order}")
+        # GFT_mean_sorted = GFT_mean[:, freq_order]
+        Coeffs_low_fixed = GFT_mean.T @ Coeffs_low
+        # Apply reordered transform
+        
+        print(f"This is coeffs low fixed {Coeffs_low_fixed}")
+        Coeffs_fix = np.concatenate([Coeffs_low_fixed, Coeffs_high])
+        self.visualizer.visualize_gft(GFT_mean, title="mean GFT")
+        # Coeffs_fix = np.concatenate([GFT_mean.T @ Coeffs_low, Coeffs_high]) # Mean coeff transform with its GFT mean structure
+        self.visualizer.visualize_coeffs(GFT_mean.T @ Coeffs_low)
+        self.visualizer.visualize_coeffs(Coeffs_fix, title="Coeffs Fixed")
         return U, Coeffs_fix
 
     def _create_subobjects(self, subgraph_indexes) -> tuple[Graph, Block]:
@@ -82,8 +107,9 @@ class GFT():
         return subgraph, subblock
 
     def _create_meanobjects(self, Vmean: np.ndarray):
+        print(f"Vmean: {Vmean}")
         meanblock = Block(idxs=(-1,-1), block_num=-2)
-        meanblock._init_auxiliary(Vblock=Vmean, Ablock=Vmean[:,0], subidxs=None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        meanblock._init_auxiliary(Vblock=Vmean, Ablock=Vmean, subidxs=None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
         meangraph = StructuralGraph(meanblock.id)
         meangraph._init_data(Vmean, threshold= np.inf)
         return meangraph, meanblock
@@ -99,6 +125,25 @@ class GFT():
             return Utmp
         return np.concatenate([U, Utmp], axis = 1)
 
+    def reorder_coeffs_by_vmean(self, Vmean: np.ndarray, Coeffs_low_fixed: np.ndarray) -> np.ndarray:
+        """
+        Reorder the rows of Coeffs_low_fixed to match the spatial order in Vmean.
+        This fixes random flips/swaps from spectral decomposition.
+        """
+        from sklearn.preprocessing import normalize
+        from scipy.optimize import linear_sum_assignment
+
+        Vmean_norm = normalize(Vmean)
+        coeffs_norm = normalize(Coeffs_low_fixed)
+
+        # Compute cosine similarity
+        similarity = Vmean_norm @ coeffs_norm.T  # shape: (num_components, num_components)
+        cost = -np.abs(similarity)
+        row_ind, col_ind = linear_sum_assignment(cost)
+
+        # Reorder rows
+        Coeffs_low_sorted = Coeffs_low_fixed[col_ind]
+        return Coeffs_low_sorted
 
     def _process_connected(self, Q: Optional[np.ndarray] = None):
             """
@@ -121,7 +166,9 @@ class GFT():
                 return GFT_matrix, Coeffs
             try:
                 Qm = fractional_matrix_power(Q, -0.5)
+                print(f"This is Qm {Qm}")
                 L = self._get_laplacian(Qm)
+                print(f"This is L {L}")
                 GFT_matrix, _ = self._compute_GFT(L)
                 A = self.block.Ablock
                 Coeffs = GFT_matrix.T @ A
@@ -163,13 +210,21 @@ class GFT():
         else:
             # Compute eigenvalues and eigenvectors for larger blocks
             eigvals, eigvecs = np.linalg.eigh(L)
-            eigvals_idxsorted = np.argsort(np.abs(eigvals))
+            print(f"This are the eig vals {eigvals}")
+            eigvals_idxsorted = np.argsort(eigvals)  # Changed from abs value
+            print(f"Eig vals sorted {eigvals_idxsorted}")
             GFT_matrix = eigvecs[:, eigvals_idxsorted]
+            print(f"This is pre fix GFT {GFT_matrix}")
             # Ensure the first eigenvector is positive
             for i in range(GFT_matrix.shape[0]):
-                if GFT_matrix[0, i] < 0:
-                    GFT_matrix[:, i] = GFT_matrix[:, i] * (-1)
+                if eigvals_idxsorted[i] < 0:
+                    print(eigvals_idxsorted[i])
+
+                if GFT_matrix[i, 0] < 0:
+                    GFT_matrix[i, :] = GFT_matrix[i, :] * (-1)
+            print(f"This is post-fix GFT {GFT_matrix}")
             Gfreq = eigvals[eigvals_idxsorted]
+            print(f"Final gfreqs {Gfreq}")
         return GFT_matrix, Gfreq
 
 

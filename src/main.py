@@ -27,12 +27,16 @@ class TqdmLoggingHandler(logging.Handler):
 # Configure logging
 logging.basicConfig(filename="logs/main.log", filemode="w", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Add custom handler for tqdm output
 logger.addHandler(TqdmLoggingHandler())
-# console_handler = logging.StreamHandler()
-# console_handler.setLevel(logging.INFO)
-# formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-# console_handler.setFormatter(formatter)
-# logger.addHandler(console_handler)
+
+# Add a file handler to write to the log file
+file_handler = logging.FileHandler('logs/main.log')
+file_handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 class Researcher():
     # TODO: Use less RAM, currently up to 9Gb of RAM
@@ -76,7 +80,6 @@ class Researcher():
             Coeffs, graph_ids = self._per_block_decider(q_step)
             selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
             indexes = self.point_cloud.indexes
-            self.visualizer.visualize_coeffs(Coeffs)
             bpv, PSNR, bsize = self.encoder(Coeffs, selected_graphs, q_step, indexes)
             logger.info(self._result_msg(bpv, PSNR, bsize))
 
@@ -92,14 +95,14 @@ class Researcher():
         selected_graph_ids = []
         Coeffs = np.zeros(self.point_cloud.A.shape, dtype=np.float64)    
         for block in tqdm(self.blocks, desc=f"Rate-Distorsion Optimization for Quantization Step {q_step}: "):
-            coeffs_dict = self.block_manager.get_coefficients(block.id)
-            selected_coeff, selected_graph_id = self._block_decider(q_step, coeffs_dict, block.id)
+            selected_coeff, selected_graph_id = self._block_decider(block, q_step)
             Coeffs[block.as_index()] = selected_coeff
             selected_graph_ids.append(selected_graph_id)
         return Coeffs, selected_graph_ids
-
-    def _block_decider(self, q_step: int, coeffs_dict: Dict[str, np.ndarray], block_id: int):
-        selected_graph_id, selected_coeff = self.decider(q_step, coeffs_dict)
+    
+    def _block_decider(self, block: Block, q_step: int):
+        coeffs_dict = self.block_manager.get_coefficients(block.id)
+        selected_coeff, selected_graph_id = self.decider(q_step, coeffs_dict, block.id)
         # logger.info(f"Selected {self._decision_msg(selected_graph_id, block_id)}")
         return selected_coeff, selected_graph_id
             
@@ -132,21 +135,24 @@ class Researcher():
        
         self.bugs_idx = []
         for block in tqdm(self.blocks, desc="Processing blocks: "):
-            block._init_data(V, A)
-            if block.id not in self.block_manager.list_blocks(): # Check if block is in file
-                struct_graph = StructuralGraph(block.id)
-                self.graphs.append(struct_graph)
-                struct_graph._init_data(V=block.Vblock)
-                self._add_block(block)
-                self._add_graph(struct_graph, block)
-                struct_graph._del_data()
-            attr_graph = AttributeGraph(block.id, sl_weight=self_loop_weight, sl_percentage=self_loop_percentage)
-            attr_graph._init_data(block.Vblock, block.Ablock)
-            self.graphs.append(attr_graph)
-            self._add_graph(attr_graph, block)
-            attr_graph._del_data()
-            block._del_data()
+            self._process_block(V, A, block, self_loop_weight, self_loop_percentage)
         logger.info(f"Bad working blocks {self.bugs_idx}")
+
+    def _process_block(self,V: np.ndarray, A:np.ndarray, block: Block, sl_weight: float, sl_percentage: float):
+        block._init_data(V, A)
+        if block.id not in self.block_manager.list_blocks(): # Check if block is in file
+            struct_graph = StructuralGraph(block.id)
+            self.graphs.append(struct_graph)
+            struct_graph._init_data(V=block.Vblock)
+            self._add_block(block)
+            self._add_graph(struct_graph, block)
+            struct_graph._del_data()
+        attr_graph = AttributeGraph(block.id, sl_weight=sl_weight, sl_percentage=sl_percentage)
+        attr_graph._init_data(block.Vblock, block.Ablock)
+        self.graphs.append(attr_graph)
+        self._add_graph(attr_graph, block)
+        attr_graph._del_data()
+        block._del_data()
 
     def _visualize_transform(self, result: tuple[np.ndarray, np.ndarray], vis_gft:bool):
         self.visualizer.visualize_block_coeffs(result=result, title=f"Coeffs for block", vis_gft = vis_gft)
@@ -174,8 +180,11 @@ class Researcher():
             dc_check = np.sum(coeffs[0,0] < coeffs[:,0]) >= 1
             if self.debugging and dc_check:
                 self._block_debugger(graph, block,gft_mat, coeffs)
+                self.visualizer.visualize_coeffs(coeffs)
+                self.visualizer.visualize_gft(gft_mat)
+                self.visualizer.display()
                 # self._visualize_transform((gft_mat, coeffs), vis_gft=True)
-
+            self.visualizer.close()
             # Store results
             self.block_manager.add_result(graph, (gft_mat, coeffs))
 
