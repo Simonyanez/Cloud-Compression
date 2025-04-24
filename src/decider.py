@@ -1,5 +1,6 @@
 from typing import Dict
 from uuid import *
+from line_profiler import profile
 import numpy as np
 from scipy.optimize import minimize
 import logging
@@ -10,6 +11,7 @@ class Decider:
     def __init__(self):
         pass
 
+    @profile
     def __call__(self, q_step: int, coeff_dict: Dict[str, np.ndarray], r=0.85):
         self.lagrange_mult = r * q_step**2   
         self.q_step = q_step

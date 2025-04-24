@@ -16,14 +16,17 @@ import ply as ply
 import visualization as visual
 import logging
 from utils.encode_rlgr import *
+from line_profiler import profile
 logging.basicConfig(filename="logs/decider.log", filemode="w", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
 class Encoder:
     def __init__(self):
+        self.visualizer = visual.Visualizer()
         pass
 
+    @profile
     def __call__(self, Coeffs, selected_graphs, qstep, indexes):
         self.indexes = indexes
         self.Coeffs = Coeffs

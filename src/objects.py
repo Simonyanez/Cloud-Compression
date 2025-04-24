@@ -4,7 +4,7 @@ import h5py
 from uuid import *
 from pathlib import Path
 from graph import *
-from typing import List, Dict
+from typing import List, Dict, Union
 from color import *
 import numpy as np
 import logging
@@ -14,6 +14,7 @@ logging.basicConfig(filename="logs/objects.log",
                     format="%(asctime)s - %(levelname)s - %(message)s",
                     )
 logger = logging.getLogger(__name__)
+
 
 class BlockManager:
     def __init__(self, bsize: int, export_folder: Path, experiment_code: str, point_cloud_path: Path, rewrite=False):
@@ -46,6 +47,21 @@ class BlockManager:
         graph_grp.create_dataset("edges", data=graph.edges, compression="gzip")
         graph_grp.create_dataset("gft_mat", data=result[0], compression="gzip")
         graph_grp.create_dataset("coeffs", data=result[1], compression="gzip")
+
+    def add_decision(self, block: "Block", q_step: int, sel_graph_id: str, sel_coeff: np.ndarray):
+        sl_weight, sl_percentage = map(float, sel_graph_id.split("_"))
+        decision_grp = self.file.create_group(f"blocks/{block.id}/decision/{q_step}")
+        decision_grp.create_dataset("sl_weight", data=sl_weight)
+        decision_grp.create_dataset("sl_percentage", data=sl_percentage)
+        decision_grp.create_dataset("coeffs", data=sel_coeff, compression="gzip") 
+
+    def add_overall(self,q_step: int, psnr: float, bpv: float, bitcount: int):
+        overall_grp = self.file.create_group(f"results/{q_step}")
+        overall_grp.create_dataset("psnr", data=psnr)
+        overall_grp.create_dataset("bpv", data=bpv)
+        overall_grp.create_dataset("bitcount", data=bitcount)
+        
+
 
     def matched_metadata(self, graph: Graph, rewrite=False):
         if rewrite:

@@ -6,6 +6,7 @@ from transforms import *
 from objects import *
 from visualization import *
 from itertools import product
+from line_profiler import profile
 import logging
 from tqdm import tqdm
 
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(TqdmLoggingHandler())
 
 # Add a file handler to write to the log file
-file_handler = logging.FileHandler('logs/main.log')
+file_handler = logging.FileHandler('logs/main.log', mode='w')
 file_handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
@@ -51,6 +52,7 @@ class Researcher():
         self.param = [None] *5
         self.graphs_dict: Optional[dict[UUID,AttributeGraph | StructuralGraph]] = {}
 
+    @profile
     def __call__(self, params: ExperimentParameters):
         param_combinations = self._generate_combinations(params)
         export_folder = Path(params.export_folder)
@@ -73,38 +75,40 @@ class Researcher():
         pass
 
         
-
+    @profile
     def _exec_encoding(self, q_steps: List[int]):
         for q_step in tqdm(q_steps, desc= "Iterating over quantization steps: "):
             logger.info(f"Quantization Step: {q_step}")
             Coeffs, graph_ids = self._per_block_decider(q_step)
             selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
             indexes = self.point_cloud.indexes
-            bpv, PSNR, bsize = self.encoder(Coeffs, selected_graphs, q_step, indexes)
-            logger.info(self._result_msg(bpv, PSNR, bsize))
+            PSNR, bpv, bsize = self.encoder(Coeffs, selected_graphs, q_step, indexes)
+            self.block_manager.add_overall(q_step=q_step, psnr=PSNR, bpv=bpv, bitcount=bsize)
+            logger.info(self._result_msg(PSNR, bpv, bsize))
 
-    def _result_msg(self, bpv: float, PSNR: float, bsize: int):
+    def _result_msg(self, PSNR: float, bpv:float, bsize: int):
         log_msg = f"""Results: 
                     Total bitstream = {bsize}
                     Bits per voxel = {bpv}
                     Peak Signal-to-Noise Ratio = {PSNR}"""
         return log_msg
         
-        
+    @profile
     def _per_block_decider(self,q_step: int):
         selected_graph_ids = []
         Coeffs = np.zeros(self.point_cloud.A.shape, dtype=np.float64)    
         for block in tqdm(self.blocks, desc=f"Rate-Distorsion Optimization for Quantization Step {q_step}: "):
-            selected_coeff, selected_graph_id = self._block_decider(block, q_step)
-            Coeffs[block.as_index()] = selected_coeff
+            selected_graph_id, selected_coeff = self._block_decider(block, q_step)
+            self.block_manager.add_decision(block, q_step, selected_graph_id, selected_coeff)
+            Coeffs[block.as_index(),:] = selected_coeff
             selected_graph_ids.append(selected_graph_id)
         return Coeffs, selected_graph_ids
     
     def _block_decider(self, block: Block, q_step: int):
         coeffs_dict = self.block_manager.get_coefficients(block.id)
-        selected_coeff, selected_graph_id = self.decider(q_step, coeffs_dict, block.id)
-        # logger.info(f"Selected {self._decision_msg(selected_graph_id, block_id)}")
-        return selected_coeff, selected_graph_id
+        selected_graph_id, selected_coeff = self.decider(q_step, coeffs_dict, block.id)
+        logger.info(f"Selected {self._decision_msg(selected_graph_id, block.id)}")
+        return selected_graph_id, selected_coeff
             
     def _decision_msg(self, selected_graph_id: str, block_id:str):
         # TODO: Create Object factory and avoid circular imports
@@ -128,6 +132,7 @@ class Researcher():
         ]
         return list(product(*multiple_params))
     
+    @profile
     def _block_processing(self, self_loop_weight: float, self_loop_percentage: float):
         self.blocks = self.point_cloud.get_all_blocks()         # Start end tuples
         V = self.point_cloud.V
@@ -138,6 +143,7 @@ class Researcher():
             self._process_block(V, A, block, self_loop_weight, self_loop_percentage)
         logger.info(f"Bad working blocks {self.bugs_idx}")
 
+    @profile
     def _process_block(self,V: np.ndarray, A:np.ndarray, block: Block, sl_weight: float, sl_percentage: float):
         block._init_data(V, A)
         if block.id not in self.block_manager.list_blocks(): # Check if block is in file
@@ -201,7 +207,7 @@ class Researcher():
         for i, ch in enumerate(['Y', 'U', 'V']):
             logger.debug(f"{ch} Channel - Min: {np.min(coeffs[:,i]):.4f} "
                     f"DC: {coeffs[0,i]:.4f} "
-                    f"Max: {np.max(coeffs[:,i]):.4f} "
+                    f"Max: {np.max(coeffs[:,i]):.4f} at pos {np.where(coeffs[:,i] == np.max(coeffs[:,i]))}"
                     f"Mean: {np.mean(coeffs[:,i]):.4f}")
         
         # Data quality checks

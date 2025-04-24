@@ -3,6 +3,7 @@
 # Other imports
 import matplotlib.pyplot as plt
 import numpy as np
+from line_profiler import profile
 # from graph.create import *
 from graph import *
 from objects import *
@@ -26,9 +27,10 @@ class GFT():
         # TODO: Give parameters
         pass
 
-    def __call__(self, graph: Graph, block: Block, Q: Optional[np.ndarray] = None) -> tuple[np.ndarray, np.ndarray]:
+    def __call__(self, graph: Graph, block: Block, Q: Optional[np.ndarray] = None, sl_flag=True) -> tuple[np.ndarray, np.ndarray]:
         self.graph = graph
         self.block = block
+        self.sl_flag = sl_flag
         GFT_matrix, Coeffs = self._exec(Q)
         return GFT_matrix, Coeffs
     
@@ -38,7 +40,6 @@ class GFT():
             logger.debug("Found disconnected graph")
             GFT_matrix, Coeffs = self._process_disconnected(n_components,labels)
         else:
-            print("Processing as connected now")
             GFT_matrix, Coeffs = self._process_connected(Q)
         return GFT_matrix, Coeffs
 
@@ -47,7 +48,8 @@ class GFT():
         Adj_sparse = csr_matrix(Adj)
         num_components, labels = connected_components(Adj_sparse, directed=False, return_labels=True)
         return num_components, labels
-    
+
+    @profile 
     def _process_disconnected(self, num_components, labels):
         GFT_processor = GFT()
         Q_norm = np.zeros((num_components, num_components))
@@ -64,34 +66,15 @@ class GFT():
             GFT_sub, _ = GFT_processor(subgraph, subblock)  
             U = self._fill_disconnected_transform(subgraph_indexes, GFT_sub, U)
             isDC[i] = 1
-            print(len(subgraph_indexes), subgraph_indexes)
             i += len(subgraph_indexes)
             Vmean[component, :] = np.mean(self.block.Vblock[subgraph_indexes, :], axis = 0)
         Coeffs = U.T @ self.block.Ablock
-        self.visualizer.visualize_gft(U, title="Disconnected GFT reordered")
-        self.visualizer.visualize_coeffs(Coeffs, title="Disconnected coeffs")
         Coeffs_low, Coeffs_high = Coeffs[isDC,:], Coeffs[np.logical_not(isDC),:]
-        self.visualizer.visualize_coeffs(Coeffs_low, title = "Low disconnected")
-        self.visualizer.visualize_coeffs(Coeffs_high,title = "High disconnected" )
         meangraph, meanblock = self._create_meanobjects(Vmean)
         self.visualizer(meangraph, meanblock)
-        self.visualizer.visualize_block()
-        self.visualizer.visualize_graph()
-        self.visualizer.visualize_gft(Q_norm, title="Q_norm")
-        GFT_mean, _ = GFT_processor(meangraph, meanblock, Q_norm)
-        print(f"This is coeffs low {Coeffs_low}")
-        # freq_order = np.argsort(Gfreq_mean)
-        # print(f"This is reordered Gfreq {freq_order}")
-        # GFT_mean_sorted = GFT_mean[:, freq_order]
+        GFT_mean, _ = GFT_processor(meangraph, meanblock, Q_norm, sl_flag=False)
         Coeffs_low_fixed = GFT_mean.T @ Coeffs_low
-        # Apply reordered transform
-        
-        print(f"This is coeffs low fixed {Coeffs_low_fixed}")
         Coeffs_fix = np.concatenate([Coeffs_low_fixed, Coeffs_high])
-        self.visualizer.visualize_gft(GFT_mean, title="mean GFT")
-        # Coeffs_fix = np.concatenate([GFT_mean.T @ Coeffs_low, Coeffs_high]) # Mean coeff transform with its GFT mean structure
-        self.visualizer.visualize_coeffs(GFT_mean.T @ Coeffs_low)
-        self.visualizer.visualize_coeffs(Coeffs_fix, title="Coeffs Fixed")
         return U, Coeffs_fix
 
     def _create_subobjects(self, subgraph_indexes) -> tuple[Graph, Block]:
@@ -107,7 +90,6 @@ class GFT():
         return subgraph, subblock
 
     def _create_meanobjects(self, Vmean: np.ndarray):
-        print(f"Vmean: {Vmean}")
         meanblock = Block(idxs=(-1,-1), block_num=-2)
         meanblock._init_auxiliary(Vblock=Vmean, Ablock=Vmean, subidxs=None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
         meangraph = StructuralGraph(meanblock.id)
@@ -145,6 +127,7 @@ class GFT():
         Coeffs_low_sorted = Coeffs_low_fixed[col_ind]
         return Coeffs_low_sorted
 
+    @profile
     def _process_connected(self, Q: Optional[np.ndarray] = None):
             """
             Process a connected block to compute the GFT matrix and coefficients.
@@ -166,9 +149,7 @@ class GFT():
                 return GFT_matrix, Coeffs
             try:
                 Qm = fractional_matrix_power(Q, -0.5)
-                print(f"This is Qm {Qm}")
                 L = self._get_laplacian(Qm)
-                print(f"This is L {L}")
                 GFT_matrix, _ = self._compute_GFT(L)
                 A = self.block.Ablock
                 Coeffs = GFT_matrix.T @ A
@@ -189,6 +170,8 @@ class GFT():
         A = self.graph.weights  # Adjacency matrix
         D = np.diag(np.sum(A, axis=0))  # Degree matrix
         C = np.diag(np.diag(A))  # Self-loops matrix
+        if not self.sl_flag:
+            C = np.zeros(A.shape)
         L = D - A + C
         L_q = Qm @ L @ Qm
         return L_q
@@ -210,21 +193,13 @@ class GFT():
         else:
             # Compute eigenvalues and eigenvectors for larger blocks
             eigvals, eigvecs = np.linalg.eigh(L)
-            print(f"This are the eig vals {eigvals}")
             eigvals_idxsorted = np.argsort(eigvals)  # Changed from abs value
-            print(f"Eig vals sorted {eigvals_idxsorted}")
             GFT_matrix = eigvecs[:, eigvals_idxsorted]
-            print(f"This is pre fix GFT {GFT_matrix}")
             # Ensure the first eigenvector is positive
             for i in range(GFT_matrix.shape[0]):
-                if eigvals_idxsorted[i] < 0:
-                    print(eigvals_idxsorted[i])
-
                 if GFT_matrix[i, 0] < 0:
                     GFT_matrix[i, :] = GFT_matrix[i, :] * (-1)
-            print(f"This is post-fix GFT {GFT_matrix}")
             Gfreq = eigvals[eigvals_idxsorted]
-            print(f"Final gfreqs {Gfreq}")
         return GFT_matrix, Gfreq
 
 
