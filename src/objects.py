@@ -43,9 +43,7 @@ class BlockManager:
         graph_id = graph.id
         block_id = graph.block_id 
         graph_grp = self.file.create_group(f"blocks/{block_id}/graphs/{graph_id}")
-        graph_grp.create_dataset("adjacency", data=graph.weights, compression="gzip")
         graph_grp.create_dataset("edges", data=graph.edges, compression="gzip")
-        graph_grp.create_dataset("gft_mat", data=result[0], compression="gzip")
         graph_grp.create_dataset("coeffs", data=result[1], compression="gzip")
 
     def add_decision(self, block: "Block", q_step: int, sel_graph_id: str, sel_coeff: np.ndarray):
@@ -76,9 +74,7 @@ class BlockManager:
         """Load all data for a specific configuration."""
         graph_grp = self.file[f"blocks/{block_id}/graphs/{graph_id}"]
         return {
-            "adjacency": graph_grp["adjacency"][:],
             "edges": graph_grp["edges"][:],
-            "gft_mat": graph_grp["gft_mat"][:],
             "coeffs": graph_grp["coeffs"][:],
             
         }

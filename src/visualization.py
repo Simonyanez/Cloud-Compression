@@ -200,6 +200,20 @@ class Visualizer:
             
         self.fig.tight_layout()
 
+    def visualize_rd(self):
+        self.ax.set_title("Rate-Distortion Curve")
+        self.ax.set_xlabel("Bits per Voxel (bpv)")
+        self.ax.set_ylabel("PSNR (dB)")
+        self.ax.grid(True)
+        self.ax.legend()
+        self.fig.tight_layout()
+        self.fig.show()
+
+    def add_rd_data(self, qsteps, bpvs, psnrs, color, label):
+        self.ax.plot(bpvs, psnrs, marker='o', linestyle='-', color=color, label=label)
+        for q, x, y in zip(qsteps, bpvs, psnrs):
+            self.ax.text(x, y, f"q={q}", fontsize=8, ha="right", va="bottom")
+
     def visualize_gft(self, gft_mat: np.ndarray, title: Optional[str] = "GFT matrix"):
         """Visualize a matrix with colormap and value range display.
         
@@ -265,6 +279,7 @@ class Visualizer:
         selected_nodes = self.graph.selected_nodes
         self.ax.scatter3D(self.Xblock[selected_nodes], self.Yblock[selected_nodes], self.Zblock[selected_nodes]
                           ,c='cyan', s =120, alpha=0.3)
+            
     def display(self):
         plt.show()
 

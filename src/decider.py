@@ -8,8 +8,8 @@ logging.basicConfig(filename="logs/decider.log", filemode="w", level=logging.DEB
 logger = logging.getLogger(__name__)
 
 class Decider:
-    def __init__(self):
-        pass
+    def __init__(self, mode:str):
+        self.mode = mode
 
     @profile
     def __call__(self, q_step: int, coeff_dict: Dict[str, np.ndarray], r=0.85):
@@ -20,26 +20,47 @@ class Decider:
         selected_graph_id, selected_coeffs = self._RDO(Coeffs_list, graph_ids)
         return selected_graph_id, selected_coeffs
 
-    def _quantize(self, Y_coeffs):
-        Y_coeffs_quant = np.round(Y_coeffs / self.q_step)
-        return Y_coeffs_quant
+    def _quantize(self, Coeffs):
+        Coeffs_quant = np.round(Coeffs / self.q_step)
+        return Coeffs_quant
 
-    def _qError(self, Y_coeffs: np.ndarray, Y_coeffs_quant: np.ndarray):
-        N = Y_coeffs.shape[0]
-        Y_coeff_dequant = Y_coeffs_quant * self.q_step
-        norm_value = np.linalg.norm(Y_coeffs - Y_coeff_dequant)
-        psnr_Y = -10 * np.log10((norm_value**2) / (N * 255**2))
-        return psnr_Y
+    def _qError(self, Coeffs: np.ndarray, Coeffs_quant: np.ndarray):
+        N = Coeffs.shape[0]
+        Coeffs_dequant = Coeffs_quant * self.q_step
+        norm_value = np.linalg.norm(Coeffs - Coeffs_dequant)
+        if self.mode == "2":
+            proportion = np.array([0.695, 0.130, 0.175])
+            norm_value = norm_value * proportion
+        if self.mode in ["1","2"]:
+            norm_value = np.sum(norm_value, axis=1)
+        # psnr_Y = -10 * np.log10((norm_value**2) / (N * 255**2))
+        return norm_value
 
-    def _RDcost(self, Y_coeffs: np.ndarray):
+    def _zeroNorm(self, Coeffs_quant: np.ndarray):
+        # Count non-zero values per row (i.e., per coefficient vector)
+        if self.mode in ["1", "2"]:
+            return np.count_nonzero(Coeffs_quant, axis=1).sum()
+        return np.count_nonzero(Coeffs_quant, axis=0).sum()
+
+    def _RDcost(self, Coeffs: np.ndarray):
         """
         Rate-Distorsion cost
         """
-        Y_coeffs_quant = self._quantize(Y_coeffs)
-        qerror = self._qError(Y_coeffs, Y_coeffs_quant)
-        sparsity = self._zeroNorm(Y_coeffs_quant)
-        return qerror + self.lagrange_mult * sparsity
+        #TODO: Better mode naming
+        if self.mode == "0":
+            obj_coeffs = Coeffs[:,0]
+            pass
+        if self.mode in ["1","2"]:
+            obj_coeffs = Coeffs
+            pass
 
+        obj_coeffs_quant = self._quantize(obj_coeffs)
+        qerror = self._qError(obj_coeffs, obj_coeffs_quant)
+        sparsity = self._zeroNorm(obj_coeffs_quant)
+        logger.debug(f"Quality error {qerror} - Sparsity {sparsity}")
+        return (self.lagrange_mult * sparsity) + qerror # OG: qerror + self.lagrange_mult * sparsity
+
+    @profile
     def _RDO(self, Coeffs_list: list[np.ndarray], graph_ids: list[str]):
         """
         Perform Rate-Distortion Optimization (RDO) to select the best coefficient-graph pair.
@@ -62,16 +83,17 @@ class Decider:
         # Iterate over each coefficient-graph pair
         for coeff, graph_id in coeff_id_pairs:
             # Perform minimization for the current coefficient
-            res = self._RDcost(coeff[:,0])
+            res = self._RDcost(coeff)
             # Check if this is the best result so far
             if res < min_cost:
                 min_cost = res
                 selected_coeff = coeff # Reshape back to original shape
                 selected_graph_id = graph_id
+            if graph_id == "0.0_0.0":
+                struct_coeff = coeff
+
+        if self.mode == "0":
+            selected_coeff[:,1:] = struct_coeff[:,1:]
 
         logger.debug(f"Selected graph id {selected_graph_id}")
         return selected_graph_id, selected_coeff
-
-    def _zeroNorm(self, Coeffs_quant: np.ndarray):
-        zeroNorm = np.linalg.norm(Coeffs_quant, 0)
-        return zeroNorm

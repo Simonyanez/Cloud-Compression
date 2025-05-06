@@ -1,35 +1,31 @@
 # experiment_config.yaml
-experiment_name: "First Test"
-experiment_code: "FT01"
-experiment_date: "2025-03-21"
-experiment_info: "This is a sample experiment to test the parameters."
+experiment_name: "Test Experiment"
+experiment_code: "TE11"
+experiment_date: "2025-05-01"
+experiment_info: "Different Weight"
 
 # File and paths
 point_cloud_path:
   - res/longdress_vox10_1051.ply
 
 
-rewrite_results: True
+rewrite_results: False
 debugging: True
-export_folder: experiments
+export_folder: /media/simao/TOSHIBA EXT/Experiments
 
 # Method parameters
 self_loop_weight:
+  - 0.6
   - 0.8
+  - 1.2
+  - 1.6
+  - 2.0
 
 self_loop_percentage:
-  - 0.15
-  
+  - 0.1
 
 # Encoding ranges parameters
 quantization_steps:
-  - 1
-  - 2
-  - 4
-  - 8
-  - 12
-  - 16
-  - 20
   - 24
   - 28
   - 32
@@ -37,7 +33,6 @@ quantization_steps:
   - 48
   - 56
   - 64
-  - 80
 
 block_size:
-  - 8
+  - 16

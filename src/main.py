@@ -7,6 +7,7 @@ from objects import *
 from visualization import *
 from itertools import product
 from line_profiler import profile
+# from memory_profiler import profile
 import logging
 from tqdm import tqdm
 
@@ -45,9 +46,9 @@ class Researcher():
         self.point_cloud =  PointCloud()
         self.GFT_computer = GFT()
         self.encoder = Encoder()
-        self.decider = Decider()
+        self.decider = Decider(mode="0")
         self.visualizer = Visualizer()
-        self.graphs = []
+        # self.graphs = []  # TODO: Don't know what was intended here
         self.blocks = None
         self.param = [None] *5
         self.graphs_dict: Optional[dict[UUID,AttributeGraph | StructuralGraph]] = {}
@@ -68,6 +69,7 @@ class Researcher():
                     self._exec_encoding(params.quantization_steps)
                 self.point_cloud.do_block_partitioning(bsize=param[1])   # Restart blocks
             if param[2] != self.param[2] or param[3] != self.param[3]:
+                # self.graphs.clear()
                 self._block_processing(self_loop_weight=param[2], self_loop_percentage=param[3])
             if i == len(param_combinations)-1:
                 self._exec_encoding(params.quantization_steps)
@@ -80,7 +82,8 @@ class Researcher():
         for q_step in tqdm(q_steps, desc= "Iterating over quantization steps: "):
             logger.info(f"Quantization Step: {q_step}")
             Coeffs, graph_ids = self._per_block_decider(q_step)
-            selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
+            # selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
+            selected_graphs = []
             indexes = self.point_cloud.indexes
             PSNR, bpv, bsize = self.encoder(Coeffs, selected_graphs, q_step, indexes)
             self.block_manager.add_overall(q_step=q_step, psnr=PSNR, bpv=bpv, bitcount=bsize)
@@ -111,8 +114,10 @@ class Researcher():
         return selected_graph_id, selected_coeff
             
     def _decision_msg(self, selected_graph_id: str, block_id:str):
-        # TODO: Create Object factory and avoid circular imports
-        sl_weight, sl_percentage, sl_count = self.block_manager.get_graph_metadata(block_id, selected_graph_id)
+        # TODO: Create Object factory and avoid circular import
+        sl_weight, sl_percentage = map(float , selected_graph_id.split("_"))
+        edges = self.block_manager.get_data(block_id, selected_graph_id, "edges")
+        sl_count = np.sum(edges[:,0] == edges[:,1])
         if sl_percentage > 0: # Self-loop percentage
             log_msg = f""" Attribute Graph: 
                 Self-Loop Weight: {sl_weight}
@@ -148,14 +153,14 @@ class Researcher():
         block._init_data(V, A)
         if block.id not in self.block_manager.list_blocks(): # Check if block is in file
             struct_graph = StructuralGraph(block.id)
-            self.graphs.append(struct_graph)
+            # self.graphs.append(struct_graph)
             struct_graph._init_data(V=block.Vblock)
             self._add_block(block)
             self._add_graph(struct_graph, block)
             struct_graph._del_data()
         attr_graph = AttributeGraph(block.id, sl_weight=sl_weight, sl_percentage=sl_percentage)
         attr_graph._init_data(block.Vblock, block.Ablock)
-        self.graphs.append(attr_graph)
+        # self.graphs.append(attr_graph)
         self._add_graph(attr_graph, block)
         attr_graph._del_data()
         block._del_data()
@@ -169,6 +174,7 @@ class Researcher():
         if str(block.id) not in self.block_manager.list_blocks():
             self.block_manager.add_block(block)
 
+    @profile
     def _add_graph(self, graph: Graph, block: Block):
         """Process and store graph results with configurable debugging.
         
@@ -246,9 +252,110 @@ class Researcher():
     
 class Analyst():
     def __init__(self):
+        self.visualizer = Visualizer()
+        self.visualizer._init_2d_figure()
         pass
 
+    def __call__(self, h5_path: Path, label: str, color: str, decisions: bool = False):
+        self.h5path = h5_path
+        self.label = label
+        self.color = color
+        if decisions:
+            self.decision_stats()
+        self.rate_distortion_curve()
+
+    def decision_stats(self):
+        decision_df = self._load_decisions()
+        decision_counts = (
+            decision_df.groupby(["q_step", "sl_weight", "sl_percentage"])
+            .agg(block_count=("block_id", "nunique"))
+            .reset_index()
+            .sort_values(by=["q_step", "block_count"], ascending=[True, False])
+        )
+        q_steps = sorted(decision_counts["q_step"].unique())
+
+        for q in q_steps:
+            df_q = decision_counts[decision_counts["q_step"] == q].copy()
+
+            # ======= BAR PLOT =======
+            df_q["decision"] = df_q.apply(
+                lambda row: f"w:{row['sl_weight']}, p:{row['sl_percentage']}", axis=1)
+
+            plt.figure(figsize=(10, 5))
+            sns.barplot(data=df_q, x="decision", y="block_count", palette="Blues_d")
+            plt.title(f"Decision Counts - q_step {q}")
+            plt.xticks(rotation=45, ha="right")
+            plt.ylabel("Block Count")
+            plt.xlabel("Self-loop Decision (weight, percentage)")
+            plt.tight_layout()
+            plt.show()
+        
+
+    def _load_decisions(self):
+        stats = []
+        with h5py.File(self.h5path, "r") as f:
+            for block_id in tqdm(f["blocks"].keys(), "Checking block decisions"):
+                block_path = f["blocks"][block_id]
+                decision_group = block_path["decision"]
+                for q_step in decision_group.keys():
+                    grp = decision_group[q_step]
+                    sl_weight = grp["sl_weight"][()]
+                    sl_percentage = grp["sl_percentage"][()]
+                    stats.append({
+                        "block_id": int(block_id),
+                        "q_step": int(q_step),
+                        "sl_weight": sl_weight,
+                        "sl_percentage": sl_percentage
+                    })
+        return pd.DataFrame(stats)
+
+    def rate_distortion_curve(self):
+        rd_data = {}
+        with h5py.File(self.h5path, "r") as f:
+            results_group = f["results"]
+            for q_step in results_group.keys():
+                bpv = results_group[q_step]["bpv"][()]
+                PSNR = results_group[q_step]["psnr"][()]
+                rd_data[int(q_step)] = (float(bpv), float(PSNR))
+
+        sorted_qsteps = sorted(rd_data.keys())
+        bpv_values = [rd_data[q][0] for q in sorted_qsteps]
+        psnr_values = [rd_data[q][1] for q in sorted_qsteps]
+        self.visualizer.add_rd_data(sorted_qsteps, bpv_values, psnr_values, color=self.color, label=self.label) 
+
+    def plot_rd_curve(self):
+        self.visualizer.visualize_rd()
+
+    def bjontegaard_delta(self):
+        pass
+
+
+
 if __name__ == "__main__":
-    params = load_experiment_parameters(Path("config/config.yaml"))
-    researcher = Researcher()
-    researcher(params)
+    # params = load_experiment_parameters(Path("config/config.yaml"))
+    # researcher = Researcher()
+    # researcher(params)
+    analyst = Analyst()
+    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Standard", color='blue')
+    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE10/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Dynamic 1", color='cyan')
+    analyst.decision_stats()
+    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE11/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Dynamic 2", color='purple')
+    analyst.decision_stats()
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Standard", color='blue')
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE05/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Dynamic", color='cyan')
+    # analyst.decision_stats()
+
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE03/longdress_vox10_1051/block_size16_data.h5"),label="Block GFT Standard", color='cyan')
+    # analyst.decision_stats()
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE02/longdress_vox10_1051/block_size16_data.h5"),label="Block GFT Standard", color='cyan')
+
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE01/longdress_vox10_1051/block_size16_data.h5"),label="Block GFT Standard", color='cyan')
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/NT01/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT RDO Self-looped", color='red')
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR01/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='green')
+    # analyst.decision_stats()
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR02/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='orange')
+    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR06/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='black')
+# # 
+
+    analyst.plot_rd_curve()
+    plt.show()

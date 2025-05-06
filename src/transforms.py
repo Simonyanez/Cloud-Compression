@@ -141,14 +141,16 @@ class GFT():
             if Q is None:
                 n = self.block.Ablock.shape[0]
                 Q = np.identity(n)
+                Qm = Q
 
+            else:
+                Qm = fractional_matrix_power(Q, -0.5)
             # Handle 1-point blocks
             if Q.shape[0] == 1:
                 GFT_matrix = np.array([[1.0]])
                 Coeffs = self.block.Ablock
                 return GFT_matrix, Coeffs
             try:
-                Qm = fractional_matrix_power(Q, -0.5)
                 L = self._get_laplacian(Qm)
                 GFT_matrix, _ = self._compute_GFT(L)
                 A = self.block.Ablock
@@ -176,6 +178,7 @@ class GFT():
         L_q = Qm @ L @ Qm
         return L_q
 
+    @profile
     def _compute_GFT(self, L: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """
         Compute the Graph Fourier Transform (GFT) matrix and frequencies.

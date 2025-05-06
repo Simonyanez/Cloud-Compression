@@ -5,7 +5,7 @@ import numpy as np
 def encode_rlgr(data,filename="test.bin",is_signed=1):
     if os.path.isfile(filename):
         os.remove(filename)
-    data = data.astype(np.int16)
+    data = data.astype(np.int8)
     do_write = 1
     enc = rlgr.file(filename, do_write)
 
