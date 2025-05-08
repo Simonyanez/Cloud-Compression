@@ -333,19 +333,20 @@ class Analyst():
 
 
 if __name__ == "__main__":
-    params = load_experiment_parameters(Path("config/config.yaml"))
-    export_folder = Path(params.export_folder)
-    shutil.copy2(Path("config/config.yaml"), export_folder)
-    researcher = Researcher()
-    researcher(params)
+    # params = load_experiment_parameters(Path("config/config.yaml"))
+    # export_folder = Path(params.export_folder)
+    # shutil.copy2(Path("config/config.yaml"), export_folder)
+    # researcher = Researcher()
+    # researcher(params)
     analyst = Analyst()
+
     analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Standard", color='red')
     analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Standard", color='blue')
-    # # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size4_data.h5"),label="Block 4 GFT Standard", color='green')
+    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size4_data.h5"),label="Block 4 GFT Standard", color='green')
     analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE12/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Dynamic", color='orange')
     analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE12/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Dynamic", color='purple')
     analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE12/longdress_vox10_1051/block_size4_data.h5"),label="Block 4 GFT Dynamic", color='cyan')
-    # analyst.decision_stats()
+    
     # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Standard", color='blue')
     # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE05/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Dynamic", color='cyan')
     # analyst.decision_stats()
