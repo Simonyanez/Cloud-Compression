@@ -7,6 +7,7 @@ from objects import *
 from visualization import *
 from itertools import product
 from line_profiler import profile
+from utils.bj_delta import bj_delta
 # from memory_profiler import profile
 import logging
 import shutil
@@ -255,15 +256,12 @@ class Analyst():
     def __init__(self):
         self.visualizer = Visualizer()
         self.visualizer._init_2d_figure()
+        self.stored = {}
         pass
 
-    def __call__(self, h5_path: Path, label: str, color: str, decisions: bool = False):
+    def __call__(self, h5_path: Path, id:str):
         self.h5path = h5_path
-        self.label = label
-        self.color = color
-        if decisions:
-            self.decision_stats()
-        self.rate_distortion_curve()
+        self.id = id
 
     def decision_stats(self):
         decision_df = self._load_decisions()
@@ -275,6 +273,7 @@ class Analyst():
         )
         q_steps = sorted(decision_counts["q_step"].unique())
 
+        # TODO: Move this to visualization
         for q in q_steps:
             df_q = decision_counts[decision_counts["q_step"] == q].copy()
 
@@ -310,25 +309,43 @@ class Analyst():
                     })
         return pd.DataFrame(stats)
 
-    def rate_distortion_curve(self):
+    def rate_distortion_curve(self, label: str, color: str, linestyle: str):
         rd_data = {}
         with h5py.File(self.h5path, "r") as f:
             results_group = f["results"]
             for q_step in results_group.keys():
                 bpv = results_group[q_step]["bpv"][()]
                 PSNR = results_group[q_step]["psnr"][()]
-                rd_data[int(q_step)] = (float(bpv), float(PSNR))
+                bitcount = results_group[q_step]["bitcount"][()]
+                rd_data[int(q_step)] = (float(bpv), float(PSNR),int(bitcount))
 
         sorted_qsteps = sorted(rd_data.keys())
         bpv_values = [rd_data[q][0] for q in sorted_qsteps]
         psnr_values = [rd_data[q][1] for q in sorted_qsteps]
-        self.visualizer.add_rd_data(sorted_qsteps, bpv_values, psnr_values, color=self.color, label=self.label) 
+        bitcount_values = [rd_data[q][2] for q in sorted_qsteps]
+        self.stored[self.id] = {"qsteps": sorted_qsteps,"bpv": bpv_values,"PSNR": psnr_values, "bitcount":bitcount_values}
+        self.visualizer.add_rd_data(sorted_qsteps, bpv_values, psnr_values, color=color, label=label, linestyle=linestyle) 
+
+    def cleanup_stored(self):
+        self.stored = {}
 
     def plot_rd_curve(self):
         self.visualizer.visualize_rd()
 
-    def bjontegaard_delta(self):
-        pass
+    def bjontegaard_delta(self, id_1, id_2):
+        qsteps = self.stored[id_1]["qsteps"] # Assuming you compare same number of q steps
+        R1 = self.stored[id_1]["bpv"]
+        PSNR1 = self.stored[id_1]["PSNR"]
+        bitcount1 = self.stored[id_1]["bitcount"]
+        R2 = self.stored[id_2]["bpv"]
+        PSNR2 = self.stored[id_2]["PSNR"]
+        bitcount2 = self.stored[id_2]["bitcount"]
+        bd_psnr = bj_delta(R1, PSNR1, R2, PSNR2, mode=0)
+        bd_rate = bj_delta(R1, PSNR1, R2, PSNR2, mode=1)
+        for i,q in enumerate(qsteps):
+            print(f"Quantization Step: {q} - Bitcount diff {abs(bitcount2[i]-bitcount1[i])}\n ==================================================")
+        result_str = f"Bjontegaard Metrics: \n BD-PSNR: {bd_psnr} - BD-Rate: {bd_rate} \n =================================================="
+        print(result_str)
 
 
 
@@ -338,15 +355,25 @@ if __name__ == "__main__":
     # shutil.copy2(Path("config/config.yaml"), export_folder)
     # researcher = Researcher()
     # researcher(params)
+    experiments = ["BE01", "TE12"]
+    descriptions = ["Standard", "Dynamic"]
+    linestyles = ["solid", "dashed"]
+    description_map = dict(zip(experiments,descriptions)) 
+    linestyle_map = dict(zip(experiments,  linestyles))
+    bsizes = ["16","8","4"]
+    colors = ["red","green","blue"]
+    color_map = dict(zip(bsizes,  colors))
     analyst = Analyst()
-
-    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Standard", color='red')
-    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Standard", color='blue')
-    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size4_data.h5"),label="Block 4 GFT Standard", color='green')
-    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE12/longdress_vox10_1051/block_size16_data.h5"),label="Block 16 GFT Dynamic", color='orange')
-    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE12/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Dynamic", color='purple')
-    analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE12/longdress_vox10_1051/block_size4_data.h5"),label="Block 4 GFT Dynamic", color='cyan')
-    
+    for bsize in bsizes:
+        for experiment in experiments:
+            analyst(Path(f"/media/simao/TOSHIBA EXT/Experiments/{experiment}/longdress_vox10_1051/block_size{bsize}_data.h5"),id=f"b{bsize}-{experiment}")
+            analyst.rate_distortion_curve(label=f"Block {bsize} - {description_map[experiment]} GFT", color=color_map[bsize], linestyle=linestyle_map[experiment])
+            analyst.decision_stats()
+            plt.show()
+        print(f"Analysis for Block of size {bsize}\n ==================================================")
+        analyst.bjontegaard_delta(f"b{bsize}-{experiments[0]}", f"b{bsize}-{experiments[1]}")
+    analyst.plot_rd_curve()
+    plt.show()
     # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Standard", color='blue')
     # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE05/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Dynamic", color='cyan')
     # analyst.decision_stats()
@@ -362,6 +389,3 @@ if __name__ == "__main__":
     # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR02/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='orange')
     # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR06/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='black')
 # # 
-
-    analyst.plot_rd_curve()
-    plt.show()

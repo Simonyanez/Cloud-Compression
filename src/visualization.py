@@ -209,8 +209,8 @@ class Visualizer:
         self.fig.tight_layout()
         self.fig.show()
 
-    def add_rd_data(self, qsteps, bpvs, psnrs, color, label):
-        self.ax.plot(bpvs, psnrs, marker='o', linestyle='-', color=color, label=label)
+    def add_rd_data(self, qsteps, bpvs, psnrs, color, label, linestyle):
+        self.ax.plot(bpvs, psnrs, marker='o', linestyle=linestyle, color=color, label=label)
         for q, x, y in zip(qsteps, bpvs, psnrs):
             self.ax.text(x, y, f"q={q}", fontsize=8, ha="right", va="bottom")
 

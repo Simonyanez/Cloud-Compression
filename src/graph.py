@@ -78,10 +78,11 @@ class StructuralGraph(Graph):
         return weights, edges
 
 class AttributeGraph(StructuralGraph):
-    def __init__(self, block_id: int, sl_weight: float, sl_percentage: float):
+    def __init__(self, block_id: int, sl_weight: float, sl_percentage: Optional[float] = None, sl_threshold: Optional[float] = None):
         super().__init__(block_id)
         self.sl_weight = sl_weight
         self.sl_percentage = sl_percentage
+        self.sl_threshold = sl_threshold
         self.id = f"{sl_weight}_{sl_percentage}"
 
     def _init_data(
@@ -112,18 +113,33 @@ class AttributeGraph(StructuralGraph):
         # TODO: Refactor and optimize this process. This implementation is horrible
         self.M = self._attribute_motion_matrix(A)
         self.S = self._sink_nodes_vector(self.M)
-        most_pointed = np.argsort(self.S)[::-1]
-        num_nodes = int(np.round((len(most_pointed)*self.sl_percentage)))
-        self.selected_nodes = most_pointed[:num_nodes]
+        self._self_loops_selection()
+
+    def _self_loops_selection(self):
+        """
+        Selects nodes for self-loops based on sink vector `self.S`.
+
+        - If `threshold` is provided, selects nodes with sink values >= threshold.
+        - Else, selects the top `sl_percentage` of nodes by sink score.
+        """
+        self.most_pointed = np.argsort(self.S)[::-1]
+
+        if self.sl_threshold is not None:
+            self.selected_nodes = np.argwhere(self.S >= self.sl_threshold)
+        elif self.sl_percentage is not None:
+            num_nodes = int(np.round(len(self.most_pointed) * self.sl_percentage))
+            self.selected_nodes = self.most_pointed[:num_nodes]
+        else:
+            raise ValueError("There is no value selected")
         pairs = np.column_stack((self.selected_nodes, self.selected_nodes))
-        self.weights[pairs[:,0], pairs[:,1]] = self.sl_weight
+        self.weights[pairs[:, 0], pairs[:, 1]] = self.sl_weight
         self.edges = np.append(self.edges, pairs, axis=0)
-        
+
     def _attribute_motion_matrix(self, A: np.ndarray) -> np.ndarray:
         Y = A[:, 0]
-        row_wise = self.weights * Y
-        col_wise = self.weights * Y[:, np.newaxis]
-        M = (row_wise - col_wise)/ 255*2
+        row_wise = Y
+        col_wise = Y[:, np.newaxis]
+        M = self.weights*(row_wise - col_wise)/ 255*2
         return M
 
     def _sink_nodes_vector(self, M: np.ndarray) -> np.ndarray:
@@ -131,55 +147,74 @@ class AttributeGraph(StructuralGraph):
         sink_vector = np.zeros(M.shape[0])
         unique, count = self._get_decreasing_count(M)
         sink_vector[unique] = count
+
         # Normalization
         neighbors_count = np.sum(self.weights > 0, axis=1)
-        sink_vector = sink_vector/neighbors_count 
+        with np.errstate(divide='ignore', invalid='ignore'):
+            sink_vector = np.true_divide(sink_vector, neighbors_count)
+            sink_vector[~np.isfinite(sink_vector)] = 0
         return sink_vector
 
     def _get_decreasing_count(self, M: np.ndarray) -> np.ndarray:
-        np.fill_diagonal(M, np.inf)
-        dec_i = np.argmin(M, axis=1)
+        M_masked = np.copy(M)
+        M_masked[self.weights == 0] = np.inf
+        np.fill_diagonal(M_masked, np.inf)
+        dec_i = np.argmin(M_masked, axis=1)
         unique, count = np.unique(dec_i, return_counts=True)
-        return unique, count 
+        return unique, count
 
 if __name__ == "__main__":
     from src.objects import *
     from src.visualization import *
     import src.ply as ply
     from transforms import *
+    import matplotlib.pyplot as plt
+    from pathlib import Path
+    import numpy as np
+    from tqdm import tqdm
 
-    file_conditions = os.path.exists('V_longdress.npy') and os.path.exists('C_longdress.npy')
-    if file_conditions:
-        V = np.load('V_longdress.npy')
-        C_rgb = np.load('C_longdress.npy')
-    else:
-        V,C_rgb,_ = ply.ply_read8i("res/longdress_vox10_1051.ply")  
-        np.save('V_longdress.npy',V)
-        np.save('C_longdress.npy',C_rgb) 
-    
-    point_cloud = PointCloud(V,C_rgb, bsize=16)
-    block = point_cloud.get_block(2400)
-    Vblock, Ablock = block.Vblock, block.Ablock
-    
-    graph = AttributeGraph(Vblock, Ablock,block_fraction=0.01)
-    # M = graph._attribute_motion_matrix(Ablock)
-    # print(f"This is attribute motion matrix {M}")
-    # S = graph._sink_nodes_vector(M)
-    # print(f"This is sink vector {S}")
-    GFT_processor = GFT()
-    GFT_matrix, Coeffs = GFT_processor(graph, block)
-    visualizer = Visualizer()
-    visualizer(graph, block)
-    visualizer.visualize_block()
-    visualizer.add_selected_nodes()
-    visualizer.display()
-    print(min(GFT_matrix[:,0]), max(GFT_matrix[:,0]))
-    visualizer.visualize_base(GFT_matrix[:,0])
-    visualizer.add_selected_nodes()
-    visualizer.display()
-    visualizer.visualize_motion_matrix()
-    visualizer.display()
-    visualizer.visualize_sink()
-    visualizer.display()
-    visualizer.visualize_graph()
-    visualizer.display()
+    point_cloud = PointCloud()
+    point_cloud(Path("res/longdress_vox10_1051.ply"))
+    point_cloud.do_block_partitioning(bsize=16)
+
+    V = point_cloud.V
+    A = point_cloud.A
+    blocks = point_cloud.get_all_blocks()
+    degree = 4
+
+    for i, block in tqdm(enumerate(blocks), "Polyfit per block"):
+        block._init_data(V, A)
+
+        # Use AttributeGraph just to get access to graph.S
+        graph = AttributeGraph(block.id, sl_weight=1.2, sl_threshold=0.5)
+        graph._init_data(block.Vblock, block.Ablock)
+        ordered_idx = np.argsort(graph.S)[::-1]
+        print(f"Ordered_idx {ordered_idx} \n Ordered value {graph.S[ordered_idx]} \n Ordered positions {block.Vblock[ordered_idx]} vs Unordered positions: {block.Vblock} ")
+        # Prepare data
+        x = np.arange(len(graph.S))
+        y = np.array(graph.S)
+
+        # If y is multidimensional, pick the first attribute
+        if y.ndim > 1:
+            y = y[:, 0]
+
+        i0 = np.argwhere(y>0)
+        # Fit polynomial of degree 2
+        fit = np.polyfit(x[i0][:,0], y[i0][:,0], degree)
+        p = np.poly1d(fit)
+        y_fit = p(x)
+
+        # Plot
+        plt.figure(figsize=(8, 4))
+        plt.plot(x, y, 'bo', label='Original Data')
+        plt.plot(x, y_fit, 'r-', label=f'Polyfit (degree {degree})')
+        plt.title(f'Polynomial Fit of graph.S for Block {block.id}')
+        plt.xlabel('Node Index')
+        plt.ylabel('Attribute Value')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+        graph._del_data()
+        block._del_data()
