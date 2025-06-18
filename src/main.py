@@ -72,7 +72,7 @@ class Researcher():
                 self.point_cloud.do_block_partitioning(bsize=param[1])   # Restart blocks
             if param[2] != self.param[2] or param[3] != self.param[3]:
                 # self.graphs.clear()
-                self._block_processing(self_loop_weight=param[2], self_loop_percentage=param[3])
+                self._block_processing(self_loop_weight=param[2], self_loop_threshold = 0.7)#, self_loop_percentage=param[3])
             if i == len(param_combinations)-1:
                 self._exec_encoding(params.quantization_steps)
             self.param = param
@@ -123,7 +123,7 @@ class Researcher():
         if sl_percentage > 0: # Self-loop percentage
             log_msg = f""" Attribute Graph: 
                 Self-Loop Weight: {sl_weight}
-                Self-Loop Percentage: {sl_percentage}
+                Self-Loop Percentage / Threshold: {sl_percentage}
                 Self-Loop Count: {sl_count}
             """
         else:
@@ -140,29 +140,57 @@ class Researcher():
         return list(product(*multiple_params))
     
     @profile
-    def _block_processing(self, self_loop_weight: float, self_loop_percentage: float):
-        self.blocks = self.point_cloud.get_all_blocks()         # Start end tuples
+    def _block_processing(
+        self, 
+        self_loop_weight: float, 
+        self_loop_percentage: Optional[float] = None, 
+        self_loop_threshold: Optional[float] = None
+    ):
+        self.blocks = self.point_cloud.get_all_blocks()
         V = self.point_cloud.V
         A = self.point_cloud.A
-       
+
         self.bugs_idx = []
+
         for block in tqdm(self.blocks, desc="Processing blocks: "):
-            self._process_block(V, A, block, self_loop_weight, self_loop_percentage)
+            self._process_block(
+                V, A, block, 
+                sl_weight=self_loop_weight,
+                sl_percentage=self_loop_percentage,
+                sl_threshold=self_loop_threshold
+            )
+            
         logger.info(f"Bad working blocks {self.bugs_idx}")
 
+
     @profile
-    def _process_block(self,V: np.ndarray, A:np.ndarray, block: Block, sl_weight: float, sl_percentage: float):
+    def _process_block(
+        self,
+        V: np.ndarray,
+        A: np.ndarray,
+        block: Block,
+        sl_weight: float,
+        sl_percentage: Optional[float] = None,
+        sl_threshold: Optional[float] = None
+    ):
         block._init_data(V, A)
-        if block.id not in self.block_manager.list_blocks(): # Check if block is in file
+
+        if block.id not in self.block_manager.list_blocks():
             struct_graph = StructuralGraph(block.id)
-            # self.graphs.append(struct_graph)
             struct_graph._init_data(V=block.Vblock)
             self._add_block(block)
             self._add_graph(struct_graph, block)
             struct_graph._del_data()
-        attr_graph = AttributeGraph(block.id, sl_weight=sl_weight, sl_percentage=sl_percentage)
+
+        # Pass the correct mode to AttributeGraph
+        attr_graph = AttributeGraph(
+            block.id,
+            sl_weight=sl_weight,
+            sl_percentage=sl_percentage,
+            sl_threshold=sl_threshold
+        )
+
         attr_graph._init_data(block.Vblock, block.Ablock)
-        # self.graphs.append(attr_graph)
         self._add_graph(attr_graph, block)
         attr_graph._del_data()
         block._del_data()
@@ -347,15 +375,15 @@ class Analyst():
         result_str = f"Bjontegaard Metrics: \n BD-PSNR: {bd_psnr} - BD-Rate: {bd_rate} \n =================================================="
         print(result_str)
 
+def run_experiments():
+    params = load_experiment_parameters(Path("config/config.yaml"))
+    export_folder = Path(params.export_folder)
+    shutil.copy2(Path("config/config.yaml"), export_folder)
+    researcher = Researcher()
+    researcher(params)
 
-
-if __name__ == "__main__":
-    # params = load_experiment_parameters(Path("config/config.yaml"))
-    # export_folder = Path(params.export_folder)
-    # shutil.copy2(Path("config/config.yaml"), export_folder)
-    # researcher = Researcher()
-    # researcher(params)
-    experiments = ["BE01", "TE12"]
+def run_results():
+    experiments = ["BE01", "TH01"]
     descriptions = ["Standard", "Dynamic"]
     linestyles = ["solid", "dashed"]
     description_map = dict(zip(experiments,descriptions)) 
@@ -374,18 +402,7 @@ if __name__ == "__main__":
         analyst.bjontegaard_delta(f"b{bsize}-{experiments[0]}", f"b{bsize}-{experiments[1]}")
     analyst.plot_rd_curve()
     plt.show()
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/BE01/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Standard", color='blue')
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE05/longdress_vox10_1051/block_size8_data.h5"),label="Block 8 GFT Dynamic", color='cyan')
-    # analyst.decision_stats()
 
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE03/longdress_vox10_1051/block_size16_data.h5"),label="Block GFT Standard", color='cyan')
-    # analyst.decision_stats()
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE02/longdress_vox10_1051/block_size16_data.h5"),label="Block GFT Standard", color='cyan')
-
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/TE01/longdress_vox10_1051/block_size16_data.h5"),label="Block GFT Standard", color='cyan')
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/NT01/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT RDO Self-looped", color='red')
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR01/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='green')
-    # analyst.decision_stats()
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR02/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='orange')
-    # analyst(Path("/media/simao/TOSHIBA EXT/Experiments/MR06/longdress_vox10_1051/block_size16_data.h5"), label="Block GFT Modified RDO Self-looped", color='black')
-# # 
+if __name__ == "__main__":
+    run_experiments()
+    # pass

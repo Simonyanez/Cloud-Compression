@@ -35,14 +35,14 @@ class Visualizer:
         normalized_base = (vector - vector_min) / (vector_max - vector_min)
         return normalized_base
 
-    def _init_3d_figure(self):
+    def _init_3d_figure(self, title: str):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection = '3d')
         ax.grid(True)
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
-        ax.set_title(f'Scatter plot of block')
+        ax.set_title(title)
         ax.view_init(elev=60, azim=30)
         self.fig = fig 
         self.ax = ax
@@ -89,19 +89,19 @@ class Visualizer:
         self.ax3 = ax3
 
 
-    def visualize_graph(self):
-        self._init_3d_figure()
+    def visualize_graph(self, title: str = "Graph Visualization"):
+        self._init_3d_figure(title)
         self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c='k', s=20)
         self.add_graph_edges()
 
-    def visualize_block(self):
+    def visualize_block(self, title: str = "Block Visualization"):
         Ablock = self.colourist._YUVtoRGB(self.block.Ablock).astype(float) / 256
-        self._init_3d_figure()
-        self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c=Ablock, s=20)
+        self._init_3d_figure(title)
+        self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c=Ablock, s=40)
         
-    def visualize_base(self, base: np.ndarray):
+    def visualize_base(self, base: np.ndarray, title: str = "Base Visualization"):
         normalized_base = self._min_max_norm(base)
-        self._init_3d_figure()
+        self._init_3d_figure(title)
         sc = self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c=normalized_base, 
                      cmap='inferno', vmin=0, vmax=1, s=50, alpha=0.8)
         self.fig.colorbar(sc)
@@ -277,8 +277,15 @@ class Visualizer:
     def add_selected_nodes(self):
         assert isinstance(self.graph, AttributeGraph), "This visualizations is for AttributeGraph only"
         selected_nodes = self.graph.selected_nodes
-        self.ax.scatter3D(self.Xblock[selected_nodes], self.Yblock[selected_nodes], self.Zblock[selected_nodes]
-                          ,c='cyan', s =120, alpha=0.3)
+        self.ax.scatter3D(
+            self.Xblock[selected_nodes],
+            self.Yblock[selected_nodes],
+            self.Zblock[selected_nodes],
+            facecolors='none',       # Hollow inside
+            edgecolors='cyan',       # Cyan outline
+            s=120,
+            alpha=0.8                # You can tweak this
+)
             
     def display(self):
         plt.show()
