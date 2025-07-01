@@ -21,11 +21,11 @@ class Visualizer:
     def __call__(self, graph: Graph, block: Block):
         self.graph = graph
         self.block = block
+        self.Vblock, self.Ablock = self.block.Vblock, self.block.Ablock
         self._split_block()
         self.fig = None
 
     def _split_block(self):
-        self.Vblock, self.Ablock = self.block.Vblock, self.block.Ablock
         self.Xblock, self.Yblock, self.Zblock = np.hsplit(self.Vblock, 3)
     
 
@@ -88,7 +88,15 @@ class Visualizer:
         self.ax2 = ax2
         self.ax3 = ax3
 
+    # NOTE: All transformations of Vblock are applied in visualizer class only so it doesn't modify original data
+    def set_Vblock(self, Vblock_new: np.ndarray):
+        self.Vblock = Vblock_new
+        self._split_block()
 
+    def set_Ablock(self, Ablock_new: np.ndarray):
+        self.Ablock = Ablock_new
+        self._split_block()
+        
     def visualize_graph(self, title: str = "Graph Visualization"):
         self._init_3d_figure(title)
         self.ax.scatter3D(self.Xblock, self.Yblock, self.Zblock, c='k', s=20)
@@ -126,7 +134,7 @@ class Visualizer:
             self.ax.quiver(og_x, og_y, og_z, dir_x - og_x, dir_y - og_y, dir_z - og_z, color='b', normalize=True)
             self.ax.scatter3D(og_x, og_y, og_z, c= 'gray', s=10)
 
-    def visualize_block_coeffs(self, result: tuple[np.ndarray, np.ndarray],title: str, num_of_coeffs: int = 10, vis_gft: Optional[bool] = False):
+    def visualize_block_coeffs(self, result: tuple[np.ndarray, np.ndarray],title: str = "Energy Compaction", num_of_coeffs: int = 10, vis_gft: Optional[bool] = False):
         """Visualizes the top GFT coefficients for Y, U, V channels."""
         gft_mat, coeffs = result 
          
