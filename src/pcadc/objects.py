@@ -1,11 +1,11 @@
 # from utils.color import *
-import ply as ply
+from . import ply
 import h5py
 from uuid import *
 from pathlib import Path
-from graph import *
+from .graph import *
 from typing import List, Dict, Union
-from color import *
+from .color import *
 import numpy as np
 import logging
 logging.basicConfig(filename="logs/objects.log", 
@@ -197,8 +197,8 @@ class PointCloud():
         return [self.get_block(index) for index, _ in enumerate(self.indexes)]
 
 if __name__ == "__main__":
-    from transforms import *
-    from visualization import *
+    from .transforms import *
+    from .visualization import *
     GFT_computer = GFT()
     visualizer = Visualizer()
     point_cloud = PointCloud()

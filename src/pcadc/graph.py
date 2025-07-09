@@ -142,7 +142,7 @@ class AttributeGraph(StructuralGraph):
         Y = A[:, 0]
         row_wise = Y
         col_wise = Y[:, np.newaxis]
-        M = self.weights*(row_wise - col_wise)/ 255*2
+        M = self.weights*(row_wise - col_wise)/ 255
         return M
 
     def _sink_nodes_vector(self, M: np.ndarray, normalization: str = "standard") -> np.ndarray:
@@ -230,9 +230,9 @@ def run_length_encoding(arr):
 
 if __name__ == "__main__":
     from scipy.spatial import cKDTree
-    from src.objects import *
-    from src.visualization import *
-    import src.ply as ply
+    from objects import *
+    from visualization import *
+    import ply as ply
     from transforms import *
     import matplotlib.pyplot as plt
     from pathlib import Path

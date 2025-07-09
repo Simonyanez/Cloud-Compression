@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from line_profiler import profile
 # from graph.create import *
-from graph import *
-from objects import *
-from visualization import *
+from .graph import *
+from .objects import *
+from .visualization import *
 from sklearn.preprocessing import normalize
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse.csgraph import connected_components
