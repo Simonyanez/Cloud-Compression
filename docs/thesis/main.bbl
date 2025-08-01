@@ -1,0 +1,88 @@
+\begin{thebibliography}{10}
+  \providecommand\backrefparscanfalse{}
+  \providecommand\backrefparscantrue{}
+  \providecommand\backrefprint{}
+
+\backrefparscanfalse
+\bibitem{loop2016microsoft}
+Loop, C., Cai, Q., Escolano, S.~O., y Chou, P.~A., ``Microsoft voxelized upper bodies: A voxelized point cloud dataset''. ISO/IEC JTC1/SC29 Joint WG11/WG1 (MPEG/JPEG) Input Document M38673, 2016.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{chen1975enhancement}
+Chen, W. y Fralick, S.~C., ``Image enhancement using cosine transform filtering'', en {Proceedings of the Symposium on Current Mathematical Problems in Image Science}, (Monterey, California), November 1975.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{jpeg1992}
+{CCITT}, ``T.81 -- digital compression and coding of continuous-tone still images -- requirements and guidelines'', 1992.
+\newblock JPEG Standard Specification.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{ortega2022gsp}
+Ortega, A., {Introduction to Graph Signal Processing}.
+\newblock Cambridge University Press, 2022.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{pavez2020region}
+Pavez, E., Girault, B., Ortega, A., y Chou, P.~A., ``Region adaptive graph fourier transform for 3d point clouds'', {arXiv preprint arXiv:2003.01866}, May 2020, \href{https://dx.doi.org/10.48550/arXiv.2003.01866} {\nolinkurl{doi:\detokenize{10.48550/arXiv.2003.01866}}}.
+\newblock Accepted at ICIP 2020.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{ortega1998rate}
+Ortega, A. y Ramchandran, K., ``Rate-distortion methods for image and video compression'', {IEEE Signal Processing Magazine}, vol.~15, pp.~23--50, November 1998, \href{https://ieeexplore.ieee.org/abstract/document/733495/} {\nolinkurl{\detokenize{https://ieeexplore.ieee.org/abstract/document/733495/}}}.
+\newblock Publisher: IEEE.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{pavez2017separable}
+Pavez, E., Ortega, A., y Mukherjee, D., ``Learning separable transforms by inverse covariance estimation'', en {Proceedings of the IEEE International Conference on Image Processing (ICIP)}, (Beijing, China), pp.~285--289, 2017, \href{https://dx.doi.org/10.1109/ICIP.2017.8296288} {\nolinkurl{doi:\detokenize{10.1109/ICIP.2017.8296288}}}.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{mackay_nodate}
+MacKay, D. J.~C., ``Information theory, inference, and learning algorithms'',, \href{http://www.inference.org.uk/mackay/itila/} {\nolinkurl{\detokenize{http://www.inference.org.uk/mackay/itila/}}}.
+\newblock Book available online.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{sayood2006introduction}
+Sayood, K., {Introduction to Data Compression}.
+\newblock Morgan Kaufmann series in multimedia information and systems, Amsterdam; Boston: Elsevier, 3rd~ed., 2006.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{goyal2001theoretical}
+Goyal, V.~K., ``Theoretical foundations of transform coding'', {IEEE Signal Processing Magazine}, vol.~18, no.~5, pp.~9--21, 2001, \href{https://dx.doi.org/10.1109/79.952802} {\nolinkurl{doi:\detokenize{10.1109/79.952802}}}.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{morton1966zorder}
+Morton, G.~M., ``A computer oriented geodetic data base and a new technique in file sequencing'', 1966.
+\newblock IBM Ltd., Ottawa, Ontario.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{meagher1982geometric}
+Meagher, D., ``Geometric modeling using octree encoding'', {Computer Graphics and Image Processing}, vol.~19, no.~2, pp.~129--147, 1982, \href{https://dx.doi.org/10.1016/0146-664X(82)90104-6} {\nolinkurl{doi:\detokenize{10.1016/0146-664X(82)90104-6}}}.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{malvar2006adaptive}
+Malvar, H.~S., ``Adaptive run-length/golomb-rice encoding of quantized generalized gaussian sources with unknown statistics'', en {Data Compression Conference (DCC'06)}, pp.~23--32, 2006, \href{https://dx.doi.org/10.1109/DCC.2006.5} {\nolinkurl{doi:\detokenize{10.1109/DCC.2006.5}}}.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{zhang2014point}
+Zhang, C., Florêncio, D., y Loop, C., ``Point cloud attribute compression with graph transform'', en {2014 IEEE International Conference on Image Processing (ICIP)}, pp.~2066--2070, 2014, \href{https://dx.doi.org/10.1109/ICIP.2014.7025414} {\nolinkurl{doi:\detokenize{10.1109/ICIP.2014.7025414}}}.
+\backrefprint\backrefparscantrue
+
+\backrefparscanfalse
+\bibitem{deon2017voxelized}
+d'Eon, E., Harrison, B., Myers, T., y Chou, P.~A., ``{8i Voxelized Full Bodies - A Voxelized Point Cloud Dataset}''. ISO/IEC JTC1/SC29 Joint WG11/WG1 (MPEG/JPEG) input document WG11M40059/WG1M74006, January 2017.
+\backrefprint\backrefparscantrue
+
+\end{thebibliography}

@@ -1,7 +1,7 @@
 # from utils.color import *
 from . import ply
 import h5py
-import uuid
+from uuid import *
 from pathlib import Path
 from .graph import *
 from typing import List, Dict, Union
@@ -28,7 +28,7 @@ class BlockManager:
         if "blocks" not in self.file:
             self.file.create_group("blocks")
     
-    def add_block(self, block: "Block") -> None:
+    def add_block(self, block: "Block") -> UUID:
         """Register a new block with metadata."""
         block_grp = self.file.create_group(f"blocks/{block.id}")
         block_grp.create_dataset("idxs", data=block.idxs)
@@ -36,7 +36,7 @@ class BlockManager:
 
     def add_result(
         self,
-        graph: StructuralGraph | AttributeGraph,
+        graph: Graph,
         result: tuple[np.ndarray, np.ndarray]):
         """Add a graph configuration + GFT results to a block."""
 
@@ -61,7 +61,7 @@ class BlockManager:
         
 
 
-    def matched_metadata(self, graph: StructuralGraph | AttributeGraph, rewrite=False):
+    def matched_metadata(self, graph: Graph, rewrite=False):
         if rewrite:
             return False
         graph_id = graph.id
@@ -131,23 +131,11 @@ class Block():
         self.Vblock = Vblock
         self.Ablock = Ablock
         self.subidxs = subidxs
-    
+
     def _del_data(self):
         self.Vblock = None
         self.Ablock = None
-    
-    def get_data(self) -> tuple[np.ndarray, np.ndarray]:
-        assert self.Vblock is not None, "Vblock hasn't been initialized"
-        assert self.Ablock is not None, "Ablock hasn't been initialized"
-        return (self.Vblock, self.Ablock)
 
-    def set_data(self, Vblock: np.ndarray, Ablock: np.ndarray):
-        assert self.Vblock is not None, "Vblock hasn't been initialized"
-        assert self.Ablock is not None, "Ablock hasn't been initialized"
-        self.Vblock = Vblock
-        self.Ablock = Ablock
-
-        
     def as_index(self):
         return np.arange(start=self.idxs[0], stop=self.idxs[1]+1) # Include end index       
 

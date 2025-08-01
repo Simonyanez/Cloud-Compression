@@ -1,0 +1,59 @@
+
+\chapter{Resultados}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{img/resultados/RD_Curves/BE01_vs_TE12.png}
+    \caption{Comparativa versión base contra versión dinámica 16 opciones}
+    \label{fig:BE01_vs_TE12}
+\end{figure}
+
+
+\begin{table}[ht]
+\centering
+\caption{Bitcount Differences and Bjontegaard Metrics for Various Block Sizes}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Block Size} & \textbf{Quantization Step} & \textbf{Bitcount Difference} \\
+\hline
+\multirow{7}{*}{4} 
+& 24 & 160008 \\
+& 28 & 147088 \\
+& 32 & 134920 \\
+& 40 & 113208 \\
+& 48 & 95416 \\
+& 56 & 79536 \\
+& 64 & 67320 \\
+\hline
+\multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.399 \\
+\multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -14.38 \\
+\hline
+
+\multirow{7}{*}{8} 
+& 24 & 181208 \\
+& 28 & 172928 \\
+& 32 & 166048 \\
+& 40 & 149064 \\
+& 48 & 135344 \\
+& 56 & 122512 \\
+& 64 & 110296 \\
+\hline
+\multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.544 \\
+\multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -24.22 \\
+\hline
+
+\multirow{7}{*}{16} 
+& 24 & 88800 \\
+& 28 & 89720 \\
+& 32 & 87024 \\
+& 40 & 86984 \\
+& 48 & 81168 \\
+& 56 & 76872 \\
+& 64 & 73464 \\
+\hline
+\multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.065 \\
+\multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -19.05 \\
+\hline
+\end{tabular}
+\label{tab:block_analysis}
+\end{table}

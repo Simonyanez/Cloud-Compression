@@ -1,17 +1,32 @@
 
 ### Signal Dependant 3D Point Cloud Compression
 
-Instal Python Run Length Golomb Rice encoder via:
+Use Python 3.10 to avoid pybind11 conflicts with Python >=3.11
+Install Python Run Length Golomb Rice encoder via:
 
 ```bash
-cd PyRLGR
-# Install PyRLGR
-pip install .
+git submodule update --init --recursive
+
 ```
 
+Ensure you have needed packages to build
 Sometimes the PyRLGR build can fail because it doesn't find the "Python.h" in that case just do:
 
+# Arch
 ```bash
-# Install Python development headers
-sudo apt-get install python3-dev
+sudo pacman -S cmake python-setuptools base-devel
+sudo pacman -Syu cmake
 ```
+
+# Ubuntu
+```bash
+sudo apt-get install cmake python-setuptools python3-dev
+```
+
+Install Point Cloud Attribute Dependant Compression (PCADC) and needed libraries
+```bash
+pip install .
+pip install -r requirements
+```
+
+

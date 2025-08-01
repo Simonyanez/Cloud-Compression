@@ -1,0 +1,58 @@
+\chapter{Introducción}
+
+Las \textit{nubes de puntos 3D} constituyen una representación eficiente y flexible para describir objetos, personas y entornos tanto interiores como exteriores. Estas representaciones tienen aplicaciones clave en campos como la realidad aumentada y virtual (AR/VR), la telepresencia y los vehículos autónomos. Una nube de puntos 3D está compuesta por una lista de coordenadas espaciales acompañadas de atributos asociados, siendo el color uno de los más comunes.
+
+Gracias a los recientes avances tecnológicos, este tipo de datos puede capturarse en alta resolución, en tiempo real y a bajo costo, utilizando sensores \textit{LiDAR} integrados en dispositivos móviles o vehículos. Esta facilidad de adquisición ha llevado a una rápida proliferación de datos 3D, lo que ha motivado el desarrollo de técnicas de compresión eficientes, tanto para la geometría como para los atributos de color de las nubes de puntos~\scite{loop2016microsoft}.
+\\
+
+En imágenes y video tradicionales, la compresión con pérdida se realiza eficientemente mediante procesamiento por bloques y transformadas como la \textit{Discrete Cosine Transform} (DCT)~\scite{chen1975enhancement}, utilizada en estándares como \textit{JPEG}~\scite{jpeg1992}. Sin embargo, las nubes de puntos presentan una geometría irregular, desordenada y carente de estructura temporal coherente, lo que impide la aplicación directa de técnicas convencionales.
+\\
+
+Ante este desafío, el procesamiento de señales sobre grafos (\textit{Graph Signal Processing}, GSP) ha emergido como una herramienta poderosa para tratar datos no estructurados como las nubes de puntos. Mediante la construcción de grafos según reglas simples, es posible dotar de estructura a estos datos y procesarlos como señales definidas sobre vértices.
+\\
+
+Actualmente, esta perspectiva se ha aplicado en compresión mediante el uso de la transformada de Fourier sobre grafos (GFT), estableciendo un claro paralelismo con la DCT en el contexto de señales clásicas~\scite{ortega2022gsp}. A partir de esta base, se han propuesto múltiples variantes orientadas a minimizar la tasa de bits requerida y la distorsión introducida, priorizando la conservación de la información visualmente más relevante~\scite{pavez2020region}. Sin embargo, dichas técnicas suelen centrarse en reglas estructurales de la nube para comprimir el espacio de color, sin explorar en profundidad el uso de la señal misma para construir bases más compactas e informativas.
+\\
+
+En esta investigación se plantea la hipótesis de que, al analizar el comportamiento del espacio de color, es posible construir estructuras matemáticas adaptativas que permitan una compresión más eficiente. Se propone generar un conjunto de transformadas personalizadas, donde a nivel de bloques se puedan tomar decisiones óptimas~\scite{ortega1998rate} en función de la tasa, la distorsión y el \textit{overhead}. Como resultado, se desarrollará un algoritmo completo capaz de aprovechar la información contenida en el color para lograr una compresión de mayor calidad y menor tamaño.
+
+\section{Justificación}
+
+La creciente disponibilidad de sensores 3D de bajo costo ha permitido la adquisición masiva de nubes de puntos en diversas aplicaciones prácticas. Sin embargo, este avance también ha generado desafíos significativos en términos de almacenamiento, transmisión y procesamiento eficiente de grandes volúmenes de datos. La compresión efectiva de estos datos es, por tanto, una necesidad urgente para garantizar su escalabilidad en contextos como la realidad aumentada, la telepresencia o los sistemas de navegación autónoma.
+
+A diferencia de las imágenes tradicionales, las nubes de puntos no cuentan con una estructura regular subyacente, lo que impide la aplicación directa de técnicas de compresión convencionales. Aunque las herramientas del procesamiento de señales sobre grafos han mostrado avances notables~\scite{ortega2022gsp}, la compresión de atributos como el color sigue siendo limitada por el uso de heurísticas estructurales generales, sin aprovechar completamente la información contenida en la señal misma.
+
+Esta investigación busca abordar esa brecha mediante el diseño de transformadas informadas por el comportamiento de la señal de color, lo que no sólo puede mejorar la eficiencia de la compresión, sino también ofrecer una alternativa adaptable, interpretable y más alineada con la naturaleza del contenido visual.
+
+\section{Objetivos}
+
+\textbf{Objetivo general:}
+
+\begin{itemize}
+    \item \textit{Desarrollar un algoritmo de compresión para los atributos de nubes de puntos dependientes de la señal, adaptativo y superior al estado del arte de manera cuantitativa y cualitativa.}
+\end{itemize}
+
+\textbf{Objetivos específicos:}
+
+\begin{itemize}
+    \item \textit{Explorar y entender las técnicas de transform based coding aplicadas al contexto de Graph Signal Processing.}
+    \item \textit{Estudiar y proponer herramientas matemáticas para la representación de la dinámica de los atributos de color.}
+    \item \textit{Observar, analizar e implementar experimentos sobre el efecto de los self-loops en la construcción de bases.\scite{pavez2017separable}}
+    \item \textit{Plantear y visualizar la ganancia en tasa-distorsión de la implementación estratégica de self-loops mediante estrategias de optimización por bloques.}
+    \item \textit{Estudiar la distribución de las decisiones y el overhead de las instrucciones de las transformadas alcanzadas.}
+    \item \textit{Plantear un algoritmo final de compresión cuya ganancia sea demostrable y competitiva frente al estado del arte.}
+\end{itemize}
+
+\section{Metodología general}
+
+Para abordar este problema, se propone un enfoque basado en el diseño de transformadas adaptativas a nivel de bloques, cuya construcción se guía por la distribución del color en cada segmento. A partir de reglas heurísticas y métricas de tasa-distorsión, se evaluarán variantes estructurales que permitan identificar bases eficientes para la compresión. Los experimentos incluirán comparaciones con métodos gráficos tradicionales, utilizando métricas estándar de compresión y calidad visual. Se realizarán validaciones cuantitativas (PSNR, bitrate) y cualitativas (análisis perceptual) en conjuntos de datos sintéticos y reales.
+
+\section{Contribuciones esperadas}
+
+\begin{itemize}
+    \item \textit{Propuesta de un esquema de compresión adaptativo que explota la dinámica local del espacio de color.}
+    \item \textit{Desarrollo de nuevas variantes de transformadas gráficas construidas a partir de la señal, no sólo de la estructura.}
+    \item \textit{Estudio sistemático del efecto de self-loops en la compacidad de la representación espectral.}
+    \item \textit{Implementación de un algoritmo completo de compresión de atributos, con mejoras comprobables frente a métodos existentes.}
+    \item \textit{Generación de código abierto con documentación técnica para su reproducción y uso en futuras investigaciones.}
+\end{itemize}

@@ -1,0 +1,59 @@
+This is BibTeX, Version 0.99d (TeX Live 2026/dev/Arch Linux)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: natnumurl.bst
+Database file #1: library.bib
+Warning--string name "sep" is undefined
+--line 47 of file library.bib
+Warning--string name "sep" is undefined
+--line 91 of file library.bib
+Warning--string name "mar" is undefined
+--line 101 of file library.bib
+Warning--string name "oct" is undefined
+--line 129 of file library.bib
+Warning--string name "jun" is undefined
+--line 143 of file library.bib
+Warning--vacio journal en mackay_nodate
+Warning--vacio year en mackay_nodate
+You've used 15 entries,
+            1986 wiz_defined-function locations,
+            544 strings with 6143 characters,
+and the built_in function-call counts, 3611 in all, are:
+= -- 357
+> -- 112
+< -- 0
++ -- 45
+- -- 30
+* -- 273
+:= -- 487
+add.period$ -- 22
+call.type$ -- 15
+change.case$ -- 14
+chr.to.int$ -- 0
+cite$ -- 17
+duplicate$ -- 171
+empty$ -- 395
+format.name$ -- 30
+if$ -- 884
+int.to.chr$ -- 0
+int.to.str$ -- 15
+missing$ -- 13
+newline$ -- 88
+num.names$ -- 15
+pop$ -- 72
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 102
+stack$ -- 0
+substring$ -- 171
+swap$ -- 52
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 0
+warning$ -- 2
+while$ -- 33
+width$ -- 17
+write$ -- 178
+(There were 7 warnings)
