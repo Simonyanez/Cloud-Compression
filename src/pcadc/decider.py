@@ -17,8 +17,8 @@ class Decider:
         self.q_step = q_step
         Coeffs_list = list(coeff_dict.values())
         graph_ids = list(coeff_dict.keys())
-        selected_graph_id, selected_coeffs = self._RDO(Coeffs_list, graph_ids)
-        return selected_graph_id, selected_coeffs
+        selected_graph_id, selected_coeffs, rd_cost = self._RDO(Coeffs_list, graph_ids)
+        return selected_graph_id, selected_coeffs, rd_cost
 
     def _quantize(self, Coeffs):
         Coeffs_quant = np.round(Coeffs / self.q_step)
@@ -89,11 +89,11 @@ class Decider:
                 min_cost = res
                 selected_coeff = coeff # Reshape back to original shape
                 selected_graph_id = graph_id
-            if graph_id == "0.0_0.0":
+            if graph_id == "0.0_0.0" or graph_id == "Structural Graph":
                 struct_coeff = coeff
 
         if self.mode == "0":
             selected_coeff[:,1:] = struct_coeff[:,1:]
 
         logger.debug(f"Selected graph id {selected_graph_id}")
-        return selected_graph_id, selected_coeff
+        return selected_graph_id, selected_coeff, min_cost
