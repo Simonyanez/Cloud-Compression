@@ -1,0 +1,3 @@
+/home/simao/Repositories/Cloud-Compression/engine/CMakeFiles/engine.dir
+/home/simao/Repositories/Cloud-Compression/engine/CMakeFiles/edit_cache.dir
+/home/simao/Repositories/Cloud-Compression/engine/CMakeFiles/rebuild_cache.dir

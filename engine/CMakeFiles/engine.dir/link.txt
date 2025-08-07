@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Werror -std=c++14 -g -Wl,--dependency-file=CMakeFiles/engine.dir/link.d CMakeFiles/engine.dir/src/Main.cpp.o -o engine
