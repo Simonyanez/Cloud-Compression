@@ -89,6 +89,7 @@ def block_luminansce_fit(
     Returns:
     - Y_pred: predicted Y values
     - coeffs: final polynomial coefficients
+    - RMSE: the root mean squared error for the linear prediction
     """
     # Normalized block
     Vblock, Ablock = block.get_data()
@@ -114,7 +115,7 @@ def block_luminansce_fit(
     logger.debug("🔧 Coefficients:")
     for name, coeff in zip(feature_names, coeffs):
         logger.debug(f"  {name:>6s}: {coeff:.6f}")
-    return Y_pred, coeffs
+    return Y_pred, coeffs, rmse
 
 def graph_from_fit(block: Block, Y_pred: np.ndarray):
     # Use luminansce from prediction
@@ -134,7 +135,7 @@ def visualize_luminansce_fit(visualizer: Visualizer, block: Block, attribute_gra
     Vblock, Ablock = block.get_data()    
     visualizer.visualize_base(Ablock[:,0],title="Original Y Block Visualization")
 
-    Y_pred, model_coeffs = block_luminansce_fit(block)
+    Y_pred, model_coeffs, rmse = block_luminansce_fit(block)
     visualizer.visualize_base(Y_pred,title="Predicted Y Block Visualization")
 
     # Display the Luminansce (Y) visualization
@@ -150,22 +151,20 @@ def visualize_luminansce_fit(visualizer: Visualizer, block: Block, attribute_gra
     
     # Display the Sink Vector visualization 
     visualizer.display()
-    return Y_pred, model_coeffs, approximated_graph
+    return Y_pred, model_coeffs,rmse, approximated_graph
 
 def evaluate_graphs(
     graphs_dict: Dict[str, AttributeGraph | StructuralGraph],
     block: Block,
     qsteps: List[int],
     decider: Decider,
-    experiment_df: pd.DataFrame,
+    evaluation_res: List,
 ) -> None:
     GFT_computer = GFT()
 
     entropy_by_kind = {}
-    psnr_by_kind = {}
-
-    # Compute coefficient dictionary
     coeff_dict = {}
+
     for graph_kind, graph_obj in graphs_dict.items():
         _, graph_coeffs = GFT_computer(graph_obj, block)
         coeff_dict[graph_kind] = graph_coeffs
@@ -177,22 +176,19 @@ def evaluate_graphs(
         entropy = -np.sum(coeff_hist * np.log2(coeff_hist))
         entropy_by_kind[graph_kind] = entropy
 
+        logger.info(f"Block ID: {block.id}")
+        logger.info(f"Graph Kind: {graph_kind}")
+        logger.info(f"Entropy: {entropy}")
+        logger.info(f"PSNR Values:      ")
+
         # PSNR for each QStep
         psnr_list = []
         for qstep in qsteps:
             q_Y = np.round(Y_Coeffs / qstep) * qstep
             mse = np.mean((Y_Coeffs - q_Y) ** 2)
             psnr = -10 * np.log10(mse / (255.0 ** 2)) if mse != 0 else float('inf')
-            psnr_list.append(psnr)
-        psnr_by_kind[graph_kind] = psnr_list
+            logger.info(f"  For Q Step = {qstep} -> {psnr}")
 
-        # Save per-graph metrics (entropy + psnr per qstep)
-        experiment_df.loc[len(experiment_df)] = {
-            "Block ID": block.id,
-            "Graph Kind": graph_kind,
-            "Entropy Y_Coeffs": entropy,
-            **{f"PSNR_Y Q {q}": p for q, p in zip(qsteps, psnr_list)}
-        }
 
     # RD selection part
     for qstep in qsteps:
@@ -209,14 +205,13 @@ def evaluate_graphs(
             f"RD Cost: {min_cost:.6f} | Gain: {rd_gain:.6f}"
         )
 
-        experiment_df.loc[len(experiment_df)] = {
+        evaluation_res.append({
             "Block ID": block.id,
-            "Graph Kind": f"Best Graph Q {qstep}",
-            "Best Graph Kind": selected_name,
+            "Q Step": qstep,
+            "Best Graph": selected_name,
             "RD Cost": min_cost,
             "RD Gain": rd_gain,
-            "QStep": qstep,
-        }
+                            })
 
 def analyze_rdcost_by_qstep(experiment_df: pd.DataFrame):
     """
@@ -329,28 +324,61 @@ def analyze_entropy_psnr(experiment_df: pd.DataFrame):
         plt.tight_layout()
         plt.show()
 
-def run_experiment_logs(experiment_df: pd.DataFrame):
-    # best_rd_df = experiment_df[experiment_df["Graph Kind"].str.startswith("Best Graph Q")].copy()
-    # print(f"This is best_rd_df in run experiment_logs {best_rd_df.head()}")
-    # if not best_rd_df.empty and "QStep" in best_rd_df.columns:
-    #     rd_summary = (
-    #         best_rd_df.groupby(["QStep", "Best Graph Kind"])
-    #         .agg({
-    #             "RD Gain": ["count", "mean"],
-    #             "RD Cost": "mean"
-    #         })
-    #         .sort_index()
-    #     )
-    #     logger.info("Best Graphs by RD Cost per QStep:\n%s", rd_summary.to_string())
-    # else:
-    #     logger.warning("No valid RD data found in experiment_df.")
+def run_processing_analysis(processing_df: pd.DataFrame):
+    if processing_df.empty:
+        logger.warning("Processing DataFrame is empty.")
+        return
 
-    # Standard RD log
-    logger.info("=== Full RD Cost Analysis ===")
-    analyze_rdcost_by_qstep(experiment_df)
+    logger.info("=== Processing DataFrame Summary ===")
+    logger.info(processing_df.describe(include='all').to_string())
 
-    logger.info("=== Full Entropy & PSNR Analysis ===")
-    analyze_entropy_psnr(experiment_df)
+    # RMSE histogram
+    plt.figure(figsize=(8,4))
+    sns.histplot(processing_df['RMSE'], bins=40, kde=True)
+    plt.title('Distribution of RMSE per Block')
+    plt.xlabel('RMSE')
+    plt.ylabel('Count')
+    plt.tight_layout()
+    plt.show()
+
+    # Luminance STD histogram
+    plt.figure(figsize=(8,4))
+    sns.histplot(processing_df['Luminansce STD'], bins=40, kde=True)
+    plt.title('Distribution of Luminance STD per Block')
+    plt.xlabel('Luminance STD')
+    plt.ylabel('Count')
+    plt.tight_layout()
+    plt.show()
+
+    # Coefficient norms or specific coeff histograms
+    coeffs = np.vstack(processing_df['Fit Coeffs'])
+    coeff_names = [f'Coeff_{i}' for i in range(coeffs.shape[1])]
+    coeffs_df = pd.DataFrame(coeffs, columns=coeff_names)
+
+    plt.figure(figsize=(12,6))
+    sns.boxplot(data=coeffs_df)
+    plt.title("Distribution of Polynomial Fit Coefficients")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+    run_coeffs_logs(coeffs)  # Your existing logging function
+
+def run_evaluation_analysis(evaluation_df: pd.DataFrame):
+    if evaluation_df.empty:
+        logger.warning("Evaluation DataFrame is empty.")
+        return
+
+    logger.info("=== Evaluation DataFrame Summary ===")
+    logger.info(evaluation_df.describe(include='all').to_string())
+
+    # Ensure column naming consistency
+    if 'Q Step' in evaluation_df.columns:
+        evaluation_df = evaluation_df.rename(columns={'Q Step': 'QStep'})
+    if 'Best Graph' in evaluation_df.columns:
+        evaluation_df = evaluation_df.rename(columns={'Best Graph': 'Best Graph Kind'})
+
+    analyze_rdcost_by_qstep(evaluation_df)
 
 
 def run_coeffs_logs(poly_coeffs: np.ndarray) -> None:
@@ -477,12 +505,25 @@ def fixed_centroid_kmeans(X: np.ndarray, n_clusters: int,
 
     return centers, labels
 
-def plot_cluster_centers_3d(centers: np.ndarray, point_labels=True, point_color='red', title='Cluster Centers in 3D Beta Space'):
+from sklearn.metrics import r2_score
+
+
+def plot_cluster_centers_3d(
+    centers: np.ndarray,
+    labels: np.ndarray,
+    betas: np.ndarray,
+    point_labels=True,
+    point_color='red',
+    title='Cluster Centers in 3D Beta Space'
+):
     """
     Plots cluster centers in 3D space with axes beta_1, beta_2, beta_3.
+    Logs membership statistics and a representation metric (R²).
 
     Parameters:
     - centers: numpy array of shape (K,3) with cluster centers
+    - labels: numpy array of shape (N,) with cluster assignment for each point
+    - betas: numpy array of shape (N,3) with the points' beta values
     - point_labels: bool, if True labels each point with C0, C1, ...
     - point_color: color string for the points
     - title: title of the plot
@@ -490,20 +531,39 @@ def plot_cluster_centers_3d(centers: np.ndarray, point_labels=True, point_color=
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    # Plot points
-    ax.scatter(centers[:,0], centers[:,1], centers[:,2], color=point_color, s=50)
+    # Plot cluster centers
+    ax.scatter(centers[:, 0], centers[:, 1], centers[:, 2], color=point_color, s=50)
 
-    # Label points if enabled
-    if point_labels:
-        for i, (x, y, z) in enumerate(centers):
-            ax.text(x, y, z, f'C{i}', fontsize=10)
+    for i, (x, y, z) in enumerate(centers):
+        num_members = np.sum(labels == i)
+        ax.text(x, y, z, f'C{i} ({num_members})', fontsize=10)
 
-    # Set axis labels
+        cluster_points = betas[labels == i]
+        if cluster_points.size > 0:
+            mean_vals = np.mean(cluster_points, axis=0)
+            std_vals = np.std(cluster_points, axis=0)
+            min_vals = np.min(cluster_points, axis=0)
+            max_vals = np.max(cluster_points, axis=0)
+
+            # R² goodness-of-fit between center and members
+            repeated_center = np.tile(centers[i], (cluster_points.shape[0], 1))
+            r2 = r2_score(cluster_points, repeated_center)
+
+            logger.info(f"Cluster {i} statistics:")
+            logger.info(f"  Members: {num_members}")
+            logger.info(f"  Centroid: {centers[i]}")
+            logger.info(f"  Mean β:  {mean_vals}")
+            logger.info(f"  Std β:   {std_vals}")
+            logger.info(f"  Min β:   {min_vals}")
+            logger.info(f"  Max β:   {max_vals}")
+            logger.info(f"  R² fit:  {r2:.4f}")
+            logger.info("-" * 40)
+
     ax.set_xlabel('beta_1 (x)')
     ax.set_ylabel('beta_2 (y)')
     ax.set_zlabel('beta_3 (z)')
-
     ax.set_title(title)
+
     plt.show()
 
 def compute_luminansce_estimate(block: Block, poly_coeff: np.ndarray) -> tuple[StructuralGraph, AttributeGraph]:
@@ -530,12 +590,13 @@ def compute_custom_score(X: np.ndarray,V: np.ndarray, Y_Coeffs: np.ndarray,
     return -mean_intra + lambda_penalty * len(centers)
 
 if __name__ == "__main__":
-    rewrite_coeffs_df = False
+    rewrite_processing_df = True
     rewrite_cluster_df = False
+
 
     point_cloud = PointCloud()
     point_cloud(Path("res/longdress_vox10_1051.ply"))
-    point_cloud.do_block_partitioning(bsize=16)
+    point_cloud.do_block_partitioning(bsize=8)
 
     qsteps = [24,28,32,40,48,56,64]
     V = point_cloud.V
@@ -546,30 +607,19 @@ if __name__ == "__main__":
     visualize = False
 
     decider = Decider(mode="0")
-    poly_coeffs = []
-
-    PSNR_cols = [f"PSNR_Y Q {q}" for q in qsteps]
-
-    experiment_df = pd.DataFrame(columns=[
-        "Block ID",
-        "Graph Kind",
-        "Entropy Y_Coeffs",
-        "Best Graph Kind",
-        "RD Cost",
-        "RD Gain",
-        "QStep",
-    ] + PSNR_cols)
 
     experiment_path = Path.cwd() / "tmp/color_prediction"
     experiment_path.mkdir(exist_ok=True)
-    df_path = experiment_path / "experiment_df.csv"
-    poly_path = experiment_path / "experiment_poly.npy"
+    processing_path = experiment_path / "processing_df.parquet"
+    evaluation_path = experiment_path / "evaluation_df.parquet"
+    processing_res = []
+    evaluation_res = []
 
     # --- Process each block ---
     for i, block in tqdm(enumerate(blocks), "Polyfit per block"):
-        if df_path.exists() and poly_path.exists() and not rewrite_coeffs_df:
-            experiment_df = pd.read_csv(df_path)
-            poly_coeffs = np.load(poly_path)
+        if processing_path.exists() and not rewrite_processing_df:
+            processing_df = pd.read_parquet(processing_path)
+            evaluation_df = pd.read_parquet(evaluation_path)
             break
 
         block._init_data(V, A)
@@ -581,22 +631,31 @@ if __name__ == "__main__":
 
         if visualize:
             visualize_normalization(visualizer, block, structural_graph)
-            Y_pred, model_coeffs, approximated_graph = visualize_luminansce_fit(visualizer, block, attribute_graph)
+            Y_pred, model_coeffs, rmse, approximated_graph = visualize_luminansce_fit(visualizer, block, attribute_graph)
         else:
             normalize_block(block)
-            Y_pred, model_coeffs = block_luminansce_fit(block)
+            Y_pred, model_coeffs, rmse = block_luminansce_fit(block)
             approximated_graph = graph_from_fit(block, Y_pred)
 
+        # Restart block original data
         block._init_data(V, A)
-
+        
+        # Initiliaze dict for comparison
         graphs_dict = {
             "Structural Graph": structural_graph,
             "Attribute Graph": attribute_graph,
             "Approximated Graph": approximated_graph
         }
+        evaluate_graphs(graphs_dict, block, qsteps, decider, evaluation_res)
 
-        evaluate_graphs(graphs_dict, block, qsteps, decider, experiment_df)
-        poly_coeffs.append(model_coeffs)
+        _, Ablock = block.get_data()
+        Y_std = Ablock[:,0].std()
+        processing_res.append({"Block ID": block.id,
+                               "Number of points": Ablock.shape[0],
+                               "RMSE": rmse,
+                               "Fit Coeffs": model_coeffs,
+                               "Luminansce STD": Y_std,
+        })
 
         # Cleanup
         structural_graph._del_data()
@@ -604,66 +663,66 @@ if __name__ == "__main__":
         approximated_graph._del_data()
         block._del_data()
 
-    # Save results
-    if not poly_path.exists() or rewrite_coeffs_df:
-        poly_coeffs = np.array(poly_coeffs)
-        np.save(poly_path, np.array(poly_coeffs))
-    if not df_path.exists() or rewrite_coeffs_df:
-        experiment_df.to_csv(df_path, index=False)
+    if not processing_path.exists() or rewrite_processing_df:
+        processing_df = pd.DataFrame(data=processing_res)
+        processing_df.to_parquet(processing_path)
+        evaluation_df = pd.DataFrame(data=evaluation_res)
+        evaluation_df.to_parquet(evaluation_path)
 
     # Run summary
-    run_experiment_logs(experiment_df)
+    run_processing_analysis(processing_df)
+    run_evaluation_analysis(evaluation_df)
 
-    # --- Cluster evaluation ---
-    slope_matrix = np.array(poly_coeffs)[:,1:]  # skip bias
-    run_coeffs_logs(poly_coeffs)
-    run_slopes_visualization(slope_matrix)
-    slope_matrix = normalize_coefficients(slope_matrix)
+    # # --- Cluster evaluation ---
+    # slope_matrix = np.array(poly_coeffs)[:,1:]  # skip bias
+    # run_coeffs_logs(poly_coeffs)
+    # run_slopes_visualization(slope_matrix)
+    # slope_matrix = normalize_coefficients(slope_matrix)
 
-    n_clusters = 4
-    centers, labels = fixed_centroid_kmeans(slope_matrix, n_clusters)
-    plot_cluster_centers_3d(centers)
-
-    # Cluster fit
-    clusterfit_df = pd.DataFrame(columns=[
-        "Block ID",
-        "Graph Kind",
-        "Entropy Y_Coeffs",
-        "Best Graph Kind",
-        "RD Cost",
-        "RD Gain",
-        "QStep",
-    ] + PSNR_cols)
-    clusterfit_path = experiment_path / "clusterfit_df.csv"
-    j = 0
-
-    for i, block in tqdm(enumerate(blocks), "Best cluster per block"):
-        if clusterfit_path.exists() and not rewrite_cluster_df:
-            clusterfit_df = pd.read_csv(clusterfit_path)
-            break
-
-        block._init_data(V, A)
-        if block.Vblock.shape[0] == 1:
-            continue
-
-        block_poly_coeff = centers[labels[j]]
-        structural_graph, estimated_graph = compute_luminansce_estimate(block, block_poly_coeff)
-        block._init_data(V, A)
-
-        graphs_dict = {
-            "Structural Graph": structural_graph,
-            "Estimated Graph": estimated_graph
-        }
-
-        evaluate_graphs(graphs_dict, block, qsteps, decider, clusterfit_df)
-
-        structural_graph._del_data()
-        estimated_graph._del_data()
-        block._del_data()
-        j += 1
-
-    if not clusterfit_path.exists() or rewrite_coeffs_df:
-        clusterfit_df.to_csv(clusterfit_path, index=False)
-
-    run_experiment_logs(clusterfit_df)
-
+    # n_clusters = 16
+    # centers, labels = fixed_centroid_kmeans(slope_matrix, n_clusters)
+    # plot_cluster_centers_3d(centers, labels, slope_matrix)
+    #
+    # # Cluster fit
+    # clusterfit_df = pd.DataFrame(columns=[
+    #     "Block ID",
+    #     "Graph Kind",
+    #     "Entropy Y_Coeffs",
+    #     "Best Graph Kind",
+    #     "RD Cost",
+    #     "RD Gain",
+    #     "QStep",
+    # ] + PSNR_cols)
+    # clusterfit_path = experiment_path / "clusterfit_df.csv"
+    # j = 0
+    #
+    # for i, block in tqdm(enumerate(blocks), "Best cluster per block"):
+    #     if clusterfit_path.exists() and not rewrite_cluster_df:
+    #         clusterfit_df = pd.read_csv(clusterfit_path)
+    #         break
+    #
+    #     block._init_data(V, A)
+    #     if block.Vblock.shape[0] == 1:
+    #         continue
+    #
+    #     block_poly_coeff = centers[labels[j]]
+    #     structural_graph, estimated_graph = compute_luminansce_estimate(block, block_poly_coeff)
+    #     block._init_data(V, A)
+    #
+    #     graphs_dict = {
+    #         "Structural Graph": structural_graph,
+    #         "Estimated Graph": estimated_graph
+    #     }
+    #
+    #     evaluate_graphs(graphs_dict, block, qsteps, decider, clusterfit_df)
+    #
+    #     structural_graph._del_data()
+    #     estimated_graph._del_data()
+    #     block._del_data()
+    #     j += 1
+    #
+    # if not clusterfit_path.exists() or rewrite_coeffs_df:
+    #     clusterfit_df.to_csv(clusterfit_path, index=False)
+    #
+    # run_experiment_logs(clusterfit_df)
+    #
