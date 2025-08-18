@@ -6,19 +6,20 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import root_mean_squared_error
 from src.pcadc.objects import *
 import logging
-logging.basicConfig(filename="logs/color.log", 
-                    filemode="w", 
-                    level=logging.DEBUG, 
+logging.basicConfig(filename="logs/color.log",
+                    filemode="w",
+                    level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s - %(message)s",
                     )
 logger = logging.getLogger(__name__)
+
 
 class Colourist():
 
     def __init__(self):
         self.__init__transformations()
         pass
-        
+
     def __init__transformations(self):
         self.Q_RGBtoYUV = np.array(
             [
@@ -38,17 +39,19 @@ class Colourist():
             ]
         )
 
-    def _YUVtoRGB(self, A_yuv:np.ndarray, rounding: bool = True):
-        A_yuv_1 = np.concatenate((A_yuv / 255, np.ones((A_yuv.shape[0], 1))), axis=1)
+    def _YUVtoRGB(self, A_yuv: np.ndarray, rounding: bool = True):
+        A_yuv_1 = np.concatenate(
+            (A_yuv / 255, np.ones((A_yuv.shape[0], 1))), axis=1)
         A_rgb = np.dot(A_yuv_1, self.M_YUVtoRGB)
         A_rgb = 255 * np.clip(A_rgb, 0, 1)
         if rounding:
             A_rgb = A_rgb.round().astype(np.uint8)
 
         return A_rgb
-    
+
     def _RGBtoYUV(self, A_rgb: np.ndarray, rounding=False) -> np.ndarray:
-        A_rgb_1 = np.concatenate((A_rgb / 255, np.ones((A_rgb.shape[0], 1))), axis=1)
+        A_rgb_1 = np.concatenate(
+            (A_rgb / 255, np.ones((A_rgb.shape[0], 1))), axis=1)
         A_yuv = np.dot(A_rgb_1, self.Q_RGBtoYUV)
         A_yuv = 255 * np.clip(A_yuv, 0, 1)
         if rounding:
@@ -73,6 +76,9 @@ class FitCollection:
     def get_coeffs(self):
         return [r.coeffs for r in self._results]
 
+    def get_slopes(self) -> np.ndarray:
+        return np.array([r.coeffs[1:] for r in self._results])
+
     def get_rmses(self):
         return [r.rmse for r in self._results]
 
@@ -82,9 +88,10 @@ class FitCollection:
     def worst_fit(self):
         return max(self._results, key=lambda r: r.rmse)
 
+
 class Approximator:
-    def __init__(self, linear_fit_degree: int = 1):
-        self.linear_fit_degree = linear_fit_degree
+    def __init__(self, fit_degree: int = 1):
+        self.fit_degree = fit_degree
 
     def __call__(self, block: "Block") -> FitResult:
         Vblock, Ablock = block.get_data()
@@ -102,7 +109,7 @@ class Approximator:
         Ablock: np.ndarray
     ) -> FitResult:
         Y = Ablock[:, 0]
-        poly = PolynomialFeatures(degree=self.linear_fit_degree, include_bias=True)
+        poly = PolynomialFeatures(degree=self.fit_degree, include_bias=True)
         Vblock_poly = poly.fit_transform(Vblock)
 
         model = LinearRegression(fit_intercept=False)
