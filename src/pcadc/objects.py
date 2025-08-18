@@ -115,9 +115,10 @@ class BlockManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+# TODO: Make blocks a more abstract class. Just represent a set of blocks, the way its initialized can vary yet it should be the definition
 class Block():
-    def __init__(self ,idxs: tuple[int, int], block_num: int | np.ndarray):
-        self.id: int = block_num
+    def __init__(self ,idxs: tuple[int, int], block_num: str):
+        self.id: str = block_num
         self.idxs: tuple[int, int] = idxs
 
     def __str__(self):
@@ -142,12 +143,11 @@ class Block():
         return (self.Vblock, self.Ablock)
 
     def set_data(self, Vblock: np.ndarray, Ablock: np.ndarray):
-        assert self.Vblock is not None, "Vblock hasn't been initialized"
-        assert self.Ablock is not None, "Ablock hasn't been initialized"
+        # assert self.Vblock is not None, "Vblock hasn't been initialized"
+        # assert self.Ablock is not None, "Ablock hasn't been initialized"
         self.Vblock = Vblock
         self.Ablock = Ablock
 
-        
     def as_index(self):
         return np.arange(start=self.idxs[0], stop=self.idxs[1]+1) # Include end index       
 

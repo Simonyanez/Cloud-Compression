@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import logging
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from pathlib import Path
 from tqdm import tqdm
 from sklearn.preprocessing import PolynomialFeatures
@@ -116,6 +116,99 @@ def block_luminansce_fit(
     for name, coeff in zip(feature_names, coeffs):
         logger.debug(f"  {name:>6s}: {coeff:.6f}")
     return Y_pred, coeffs, rmse
+
+def split_block(block):
+    Vblock, Ablock = block.get_data()
+    half = Vblock.shape[0] // 2
+    
+    b1 = Block(idxs=(-1,-1), block_num=f"{block.id}.1")
+    b1.set_data(Vblock[half:, :], Ablock[half:, :])
+    
+    b2 = Block(idxs=(-1,-1), block_num=f"{block.id}.2")
+    b2.set_data(Vblock[:half, :], Ablock[:half, :])
+    
+    return [b1, b2]
+
+def compute_rd_cost(
+    blocks: List[Block], n_clusters: int, split_flags_count: int, lagrange_const=0.85,
+    bits_per_split_flag=1.0
+) -> Tuple[float, List[np.ndarray], List[float], List[np.ndarray]]:
+    """
+    Compute RD cost and return lists of predictions, coeffs, rmses for given blocks,
+    considering the cost of split flags explicitly.
+    """
+    naive_coding = np.log2(n_clusters + 1)
+    
+    Y_preds = []
+    rmses = []
+    coeffs_list = []
+
+    for block in blocks:
+        Y_pred, coeffs, rmse = block_luminansce_fit(block)
+        Y_preds.append(Y_pred)
+        coeffs_list.append(coeffs)
+        rmses.append(rmse)
+    
+    distortion = np.mean(rmses)
+    # Rate includes coding clusters + split flags bits
+    rate = naive_coding * len(blocks) + split_flags_count * bits_per_split_flag
+    rd_cost = distortion + lagrange_const * rate
+    
+    return rd_cost, coeffs_list, rmses, Y_preds
+
+
+def recursive_split(
+    block: Block, n_clusters: int, lagrange_const=0.85,
+    bits_per_split_flag=1.0, depth=0
+) -> Tuple[np.ndarray, List[np.ndarray], int]:
+    """
+    Recursively decide whether to split a block to reduce RD cost.
+    Returns:
+        final_preds: np.ndarray (concatenated predictions)
+        final_coeffs: list of np.ndarray
+        split_flags_count: total split flags count emitted (1 if split here, plus from children)
+    """
+    indent = "  " * depth
+
+    # Cost without splitting: no split flags emitted here
+    cost_no_split, coeffs_no_split, rmses_no_split, preds_no_split = compute_rd_cost(
+        [block], n_clusters, split_flags_count=0, lagrange_const=lagrange_const,
+        bits_per_split_flag=bits_per_split_flag
+    )
+    logger.info(f"{indent}Block {block.id}: No split -> RD={cost_no_split:.4f}, RMSE={np.mean(rmses_no_split):.4f}")
+
+    # Try splitting
+    sub_blocks = split_block(block)
+    # If split here, 1 split flag emitted + sum split flags from sub-blocks
+    # For initial estimation, just count 1 split flag for this split
+    cost_with_split, coeffs_with_split, rmses_with_split, preds_with_split = compute_rd_cost(
+        sub_blocks, n_clusters, split_flags_count=1, lagrange_const=lagrange_const,
+        bits_per_split_flag=bits_per_split_flag
+    )
+    logger.info(f"{indent}Block {block.id}: Split into {len(sub_blocks)} -> RD={cost_with_split:.4f}, RMSE={np.mean(rmses_with_split):.4f}")
+
+    if cost_with_split < cost_no_split:
+        logger.info(f"{indent}Splitting block {block.id} (gain={cost_no_split - cost_with_split:.4f})")
+
+        final_preds_list = []
+        final_coeffs = []
+        total_split_flags = 1  # current split flag emitted
+
+        for sub_block in sub_blocks:
+            preds, coeffs, sub_split_flags = recursive_split(
+                sub_block, n_clusters, lagrange_const,
+                bits_per_split_flag, depth=depth+1
+            )
+            final_preds_list.append(preds)
+            final_coeffs.extend(coeffs)
+            total_split_flags += sub_split_flags
+
+        final_preds = np.hstack(final_preds_list)
+        return final_preds, final_coeffs, total_split_flags
+
+    else:
+        logger.info(f"{indent}Keeping result depth {depth}")
+        return np.hstack(preds_no_split), coeffs_no_split, 0  # no split flags emitted here
 
 def graph_from_fit(block: Block, Y_pred: np.ndarray):
     # Use luminansce from prediction
@@ -599,6 +692,7 @@ if __name__ == "__main__":
     point_cloud.do_block_partitioning(bsize=8)
 
     qsteps = [24,28,32,40,48,56,64]
+    n_clusters = 3
     V = point_cloud.V
     A = point_cloud.A
     blocks = point_cloud.get_all_blocks()
@@ -623,7 +717,9 @@ if __name__ == "__main__":
             break
 
         block._init_data(V, A)
-        if block.Vblock.shape[0] == 1:
+        Vblock, Ablock = block.get_data()
+        n_points = Vblock.shape[0]
+        if n_points == 1:
             continue
 
         # Graph construction
@@ -634,7 +730,23 @@ if __name__ == "__main__":
             Y_pred, model_coeffs, rmse, approximated_graph = visualize_luminansce_fit(visualizer, block, attribute_graph)
         else:
             normalize_block(block)
-            Y_pred, model_coeffs, rmse = block_luminansce_fit(block)
+
+            # Run recursive split with RD cost
+            Y_pred, model_coeffs, total_split_flags = recursive_split(block, n_clusters)
+            Y_true = Ablock[:, 0]
+            rmse_final = root_mean_squared_error(Y_true, Y_pred)
+            
+            lum_mean = np.mean(Y_true)
+            lum_std = np.std(Y_true)
+
+            logger.info("="*50)
+            logger.info(f"Block {block.id} summary:")
+            logger.info(f"  Number of points: {n_points}")
+            logger.info(f"  Luminance mean: {lum_mean:.4f}, std: {lum_std:.4f}")
+            logger.info(f"  Recursive fit RMSE: {rmse_final:.4f}")
+            logger.info(f"  Split flags emitted: {total_split_flags}")
+            logger.info("="*50)
+
             approximated_graph = graph_from_fit(block, Y_pred)
 
         # Restart block original data
@@ -652,8 +764,6 @@ if __name__ == "__main__":
         Y_std = Ablock[:,0].std()
         processing_res.append({"Block ID": block.id,
                                "Number of points": Ablock.shape[0],
-                               "RMSE": rmse,
-                               "Fit Coeffs": model_coeffs,
                                "Luminansce STD": Y_std,
         })
 
@@ -679,7 +789,6 @@ if __name__ == "__main__":
     # run_slopes_visualization(slope_matrix)
     # slope_matrix = normalize_coefficients(slope_matrix)
 
-    # n_clusters = 16
     # centers, labels = fixed_centroid_kmeans(slope_matrix, n_clusters)
     # plot_cluster_centers_3d(centers, labels, slope_matrix)
     #
