@@ -28,7 +28,7 @@ numpy==1.26.4
 packaging==24.0
 pandas==2.2.2
 parso==0.8.4
--e git+ssh://git@github.com/Simonyanez/Cloud-Compression.git@52b4e90c1cb26bc639f5f520937f8ebdeb588705#egg=pcadc
+-e git+ssh://git@github.com/Simonyanez/Cloud-Compression.git#egg=pcadc # Always pulls latest
 pexpect==4.9.0
 pillow==10.2.0
 platformdirs==4.2.0
@@ -42,7 +42,7 @@ pyparsing==3.1.2
 PyQt5==5.15.11
 PyQt5-Qt5==5.15.16
 PyQt5_sip==12.16.1
--e git+https://github.com/IENT/PyRLGR@6347675f3ab3e36bb122b05aaa571f2ca5b2c622#egg=pyrlgr&subdirectory=../../PyRLGR
+# -e git+https://github.com/IENT/PyRLGR@6347675f3ab3e36bb122b05aaa571f2ca5b2c622#egg=pyrlgr&subdirectory=../../PyRLGR
 python-dateutil==2.9.0.post0
 pytz==2024.1
 pyvis==0.3.2

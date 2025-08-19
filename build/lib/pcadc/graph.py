@@ -2,9 +2,11 @@ import numpy as np
 import os
 main_folder = os.getcwd()
 import sys
+from uuid import *
 sys.path.insert(0, main_folder)
 from typing import Optional
-from uuid import *
+from scipy.spatial.distance import cdist
+
 
 class Graph():
     def __init__(self, block_id: int):
@@ -55,9 +57,10 @@ class StructuralGraph(Graph):
         
     def _euclidean_distance_matrix(self, V: np.ndarray):
         # FIXME: Has no self calls
-        N = V.shape[0]
-        squared_norms = np.sum(V**2, axis=1)  # Compute Euclidean Distance Matrix (EDM)
-        D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
+        # N = V.shape[0]
+        # squared_norms = np.sum(V**2, axis=1)  # Compute Euclidean Distance Matrix (EDM)
+        # D = np.sqrt(np.tile(squared_norms, (N, 1)) + np.tile(squared_norms[:, np.newaxis], (1, N)) - 2 * np.dot(V, V.T))
+        D = cdist(V, V)
         return D 
 
     def _inverse_distance_matrix(self, D: np.ndarray):

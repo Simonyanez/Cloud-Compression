@@ -1,7 +1,7 @@
 # experiment_config.yaml
-experiment_name: "Test Experiment"
-experiment_code: "BE01"
-experiment_date: "2025-05-01"
+experiment_name: "Added overhead decision"
+experiment_code: "SL01"
+experiment_date: "2025-08-19"
 experiment_info: "Different Weight"
 
 # File and paths
@@ -15,10 +15,9 @@ export_folder: /media/simao/TOSHIBA EXT/Experiments
 
 # Method parameters
 self_loop_weight:
-  - 0.8
   - 0.4
+  - 0.8
   - 1.6
-  -
 
 self_loop_percentage:
   - 0.05
@@ -26,6 +25,11 @@ self_loop_percentage:
   - 0.2
   - 0.3
 
+self_loop_threshold:
+  - 0.6
+  - 0.7
+  - 0.8
+  - 0.9
 
 # Encoding ranges parameters
 quantization_steps:
@@ -38,4 +42,4 @@ quantization_steps:
   - 64
 
 block_size:
-  - 4
+  - 16

@@ -6,7 +6,8 @@ Install Python Run Length Golomb Rice encoder via:
 
 ```bash
 git submodule update --init --recursive
-
+cd PyRLGR
+pip install .
 ```
 
 Ensure you have needed packages to build
@@ -26,7 +27,7 @@ sudo apt-get install cmake python-setuptools python3-dev
 Install Point Cloud Attribute Dependant Compression (PCADC) and needed libraries
 ```bash
 pip install .
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 

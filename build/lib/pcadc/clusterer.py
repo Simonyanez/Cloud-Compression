@@ -5,8 +5,8 @@ from sklearn.metrics import pairwise_distances_argmin_min, root_mean_squared_err
 import logging
 
 # Assume you already have these implemented
-from .objects import Block
-from .color import FitCollection
+from src.pcadc.objects import Block
+from src.pcadc.color import FitCollection
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from typing import Optional, Tuple, Dict, List
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import root_mean_squared_error
-from src.pcadc.objects import *
+from .objects import *
 import logging
 logging.basicConfig(filename="logs/color.log",
                     filemode="w",
