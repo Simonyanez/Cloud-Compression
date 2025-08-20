@@ -1,0 +1,6 @@
+# Ignore pyenv local version file
+.python-version
+
+# Ignore local virtual environment
+.venv/
+
