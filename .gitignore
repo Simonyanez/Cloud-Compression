@@ -4,3 +4,13 @@
 # Ignore local virtual environment
 .venv/
 
+# Ignore .toml build
+build/
+
+# Ignore temporal folder
+tmp/
+
+# Ignore logs folder
+logs/
+
+
