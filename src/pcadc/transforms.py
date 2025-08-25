@@ -1,4 +1,5 @@
 # Other imports
+from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 from line_profiler import profile
@@ -6,25 +7,28 @@ from line_profiler import profile
 from .graph import *
 from .blocks import *
 from .visualization import *
+from .factories import *
 from sklearn.preprocessing import normalize
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
 from scipy.linalg import fractional_matrix_power, eigh
-#from scipy.linalg import eigh
+# from scipy.linalg import eigh
 import logging
-logging.basicConfig(filename="logs/graph.log", filemode="w", level=logging.DEBUG)
+logging.basicConfig(filename="logs/graph.log",
+                    filemode="w", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-from typing import Optional
 
 # NOTE: This is a Strategy Pattern
+
 class GFTProcessorStrategy(ABC):
     @abstractmethod
     def compute(self, block: Block, graph: StructuralGraph | AttributeGraph, Q: Optional[np.ndarray] = None):
         self.block = block
         self.graph = graph
         pass
+
 
 class ConnectedGFTProcessor(GFTProcessorStrategy):
     # First strategy for fully connected graph in block
@@ -56,7 +60,7 @@ class ConnectedGFTProcessor(GFTProcessorStrategy):
         return Qm
 
     def _compute_laplacian(self, Qm: np.ndarray) -> np.ndarray:
-        A, _ = self.graph.get_data() # Adjacency matrix
+        A, _ = self.graph.get_data()  # Adjacency matrix
         D = np.diag(np.sum(A, axis=0))  # Degree matrix
         C = np.zeros(A.shape)
         if isinstance(self.graph, AttributeGraph):
@@ -78,7 +82,7 @@ class ConnectedGFTProcessor(GFTProcessorStrategy):
         return GFT_matrix, Gfreq
 
     def _compute_coeffs(self, GFT_mat: np.ndarray, Ablock: np.ndarray):
-        Coeffs = GFT_mat.T @ Ablock 
+        Coeffs = GFT_mat.T @ Ablock
         return Coeffs
 
 
@@ -103,12 +107,13 @@ class GFT():
         self.sl_flag = sl_flag
         GFT_matrix, Coeffs = self._exec(Q)
         return GFT_matrix, Coeffs
-    
+
     def _exec(self, Q):
         n_components, labels = self._check_connected()
         if n_components > 1:
             logger.debug("Found disconnected graph")
-            GFT_matrix, Coeffs = self._process_disconnected(n_components,labels)
+            GFT_matrix, Coeffs = self._process_disconnected(
+                n_components, labels)
         else:
             GFT_matrix, Coeffs = self._process_connected(Q)
         return GFT_matrix, Coeffs
@@ -116,10 +121,11 @@ class GFT():
     def _check_connected(self) -> tuple[np.ndarray, np.ndarray]:
         Adj = self.graph.weights
         Adj_sparse = csr_matrix(Adj)
-        num_components, labels = connected_components(Adj_sparse, directed=False, return_labels=True)
+        num_components, labels = connected_components(
+            Adj_sparse, directed=False, return_labels=True)
         return num_components, labels
 
-    @profile 
+    @profile
     def _process_disconnected(self, num_components, labels):
         GFT_processor = GFT()
         Q_norm = np.zeros((num_components, num_components))
@@ -133,101 +139,107 @@ class GFT():
             subgraph_indexes = np.where(labels == component)[0]
             Q_norm[pos, pos] = len(subgraph_indexes)
             subgraph, subblock = self._create_subobjects(subgraph_indexes)
-            GFT_sub, _ = GFT_processor(subgraph, subblock)  
+            GFT_sub, _ = GFT_processor(subgraph, subblock)
             U = self._fill_disconnected_transform(subgraph_indexes, GFT_sub, U)
             isDC[i] = 1
             i += len(subgraph_indexes)
-            Vmean[component, :] = np.mean(self.block.Vblock[subgraph_indexes, :], axis = 0)
+            Vmean[component, :] = np.mean(
+                self.block.Vblock[subgraph_indexes, :], axis=0)
         Coeffs = U.T @ self.block.Ablock
-        Coeffs_low, Coeffs_high = Coeffs[isDC,:], Coeffs[np.logical_not(isDC),:]
+        Coeffs_low, Coeffs_high = Coeffs[isDC,
+                                         :], Coeffs[np.logical_not(isDC), :]
         meangraph, meanblock = self._create_meanobjects(Vmean)
         self.visualizer(meangraph, meanblock)
-        GFT_mean, _ = GFT_processor(meangraph, meanblock, Q_norm, sl_flag=False)
+        GFT_mean, _ = GFT_processor(
+            meangraph, meanblock, Q_norm, sl_flag=False)
         Coeffs_low_fixed = GFT_mean.T @ Coeffs_low
         Coeffs_fix = np.concatenate([Coeffs_low_fixed, Coeffs_high])
         return U, Coeffs_fix
 
     def _create_subobjects(self, subgraph_indexes) -> tuple[Graph, Block]:
-        Asubblock = self.block.Ablock[subgraph_indexes,:]
-        Vsubblock = self.block.Vblock[subgraph_indexes,:]
+        Asubblock = self.block.Ablock[subgraph_indexes, :]
+        Vsubblock = self.block.Vblock[subgraph_indexes, :]
         W = self.graph.weights
         W_sub = W[subgraph_indexes, :][:, subgraph_indexes]
-        aux_tuple = (-1,-1)
-        subblock = Block((-1,-1), block_num=-1)
-        subblock._init_auxiliary(Vblock=Vsubblock, Ablock =Asubblock, subidxs=subgraph_indexes)
+        aux_tuple = (-1, -1)
+        subblock = Block((-1, -1), block_num=-1)
+        subblock._init_auxiliary(
+            Vblock=Vsubblock, Ablock=Asubblock, subidxs=subgraph_indexes)
         subgraph = Graph(subblock.id)
-        subgraph._init_data(weights=W_sub,edges=[]) # Creates a subgraph without connections
+        # Creates a subgraph without connections
+        subgraph._init_data(weights=W_sub, edges=[])
         return subgraph, subblock
 
     def _create_meanobjects(self, Vmean: np.ndarray):
-        meanblock = Block(idxs=(-1,-1), block_num=-2)
-        meanblock._init_auxiliary(Vblock=Vmean, Ablock=Vmean, subidxs=None) # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        meanblock = Block(idxs=(-1, -1), block_num=-2)
+        # Use Vmean auxiliary for attributes only for calling. Coeffs will be useless
+        meanblock._init_auxiliary(Vblock=Vmean, Ablock=Vmean, subidxs=None)
         meangraph = StructuralGraph(meanblock.id)
-        meangraph._init_data(Vmean, threshold= np.inf)
+        meangraph._init_data(Vmean, threshold=np.inf)
         return meangraph, meanblock
-    
+
     def _fill_disconnected_transform(self, subgraph_indexes: np.ndarray, GFT_matrix: np.ndarray, U: np.ndarray):
         """
         Fill an auxiliary
         """
         num_nodes = self.graph.weights.shape[0]
-        Utmp    = np.zeros((num_nodes, len(subgraph_indexes)))
+        Utmp = np.zeros((num_nodes, len(subgraph_indexes)))
         Utmp[subgraph_indexes, :] = GFT_matrix
         if U is None:
             return Utmp
-        return np.concatenate([U, Utmp], axis = 1)
+        return np.concatenate([U, Utmp], axis=1)
 
-    def reorder_coeffs_by_vmean(self, Vmean: np.ndarray, Coeffs_low_fixed: np.ndarray) -> np.ndarray:
-        """
-        Reorder the rows of Coeffs_low_fixed to match the spatial order in Vmean.
-        This fixes random flips/swaps from spectral decomposition.
-        """
-        from sklearn.preprocessing import normalize
-        from scipy.optimize import linear_sum_assignment
-
-        Vmean_norm = normalize(Vmean)
-        coeffs_norm = normalize(Coeffs_low_fixed)
-
-        # Compute cosine similarity
-        similarity = Vmean_norm @ coeffs_norm.T  # shape: (num_components, num_components)
-        cost = -np.abs(similarity)
-        row_ind, col_ind = linear_sum_assignment(cost)
-
-        # Reorder rows
-        Coeffs_low_sorted = Coeffs_low_fixed[col_ind]
-        return Coeffs_low_sorted
+    # def reorder_coeffs_by_vmean(self, Vmean: np.ndarray, Coeffs_low_fixed: np.ndarray) -> np.ndarray:
+    #     """
+    #     Reorder the rows of Coeffs_low_fixed to match the spatial order in Vmean.
+    #     This fixes random flips/swaps from spectral decomposition.
+    #     """
+    #     from sklearn.preprocessing import normalize
+    #     from scipy.optimize import linear_sum_assignment
+    #
+    #     Vmean_norm = normalize(Vmean)
+    #     coeffs_norm = normalize(Coeffs_low_fixed)
+    #
+    #     # Compute cosine similarity
+    #     similarity = Vmean_norm @ coeffs_norm.T  # shape: (num_components, num_components)
+    #     cost = -np.abs(similarity)
+    #     row_ind, col_ind = linear_sum_assignment(cost)
+    #
+    #     # Reorder rows
+    #     Coeffs_low_sorted = Coeffs_low_fixed[col_ind]
+    #     return Coeffs_low_sorted
 
     @profile
     def _process_connected(self, Q: Optional[np.ndarray] = None):
-            """
-            Process a connected block to compute the GFT matrix and coefficients.
+        """
+        Process a connected block to compute the GFT matrix and coefficients.
 
-            Args:
-                Q (Optional[np.ndarray]): The weighting matrix. Defaults to the identity matrix.
+        Args:
+            Q (Optional[np.ndarray]): The weighting matrix. Defaults to the identity matrix.
 
-            Returns:
-                tuple[np.ndarray, np.ndarray]: The GFT matrix and the coefficients.
-            """
-            if Q is None:
-                n = self.block.Ablock.shape[0]
-                Q = np.identity(n)
-                Qm = Q
+        Returns:
+            tuple[np.ndarray, np.ndarray]: The GFT matrix and the coefficients.
+        """
+        if Q is None:
+            n = self.block.Ablock.shape[0]
+            Q = np.identity(n)
+            Qm = Q
 
-            else:
-                Qm = fractional_matrix_power(Q, -0.5)
-            # Handle 1-point blocks
-            if Q.shape[0] == 1:
-                GFT_matrix = np.array([[1.0]])
-                Coeffs = self.block.Ablock
-                return GFT_matrix, Coeffs
-            try:
-                L = self._get_laplacian(Qm)
-                GFT_matrix, _ = self._compute_GFT(L)
-                A = self.block.Ablock
-                Coeffs = GFT_matrix.T @ A
-                return GFT_matrix, Coeffs
-            except:
-                logger.debug(f"Q is {Q.shape}  --> {Q}")
+        else:
+            Qm = fractional_matrix_power(Q, -0.5)
+        # Handle 1-point blocks
+        if Q.shape[0] == 1:
+            GFT_matrix = np.array([[1.0]])
+            Coeffs = self.block.Ablock
+            return GFT_matrix, Coeffs
+        try:
+            L = self._get_laplacian(Qm)
+            GFT_matrix, _ = self._compute_GFT(L)
+            A = self.block.Ablock
+            Coeffs = GFT_matrix.T @ A
+            return GFT_matrix, Coeffs
+        except:
+            logger.debug(f"Q is {Q.shape}  --> {Q}")
 
     def _get_laplacian(self, Qm: np.ndarray) -> np.ndarray:
         """
@@ -274,6 +286,7 @@ class GFT():
                     GFT_matrix[i, :] = GFT_matrix[i, :] * (-1)
             Gfreq = eigvals[eigvals_idxsorted]
         return GFT_matrix, Gfreq
+
 
 if __name__ == "__main__":
     pass
