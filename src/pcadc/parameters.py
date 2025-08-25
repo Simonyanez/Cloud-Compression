@@ -11,6 +11,20 @@ logging.basicConfig(filename="logs/parameters.log",
 logger = logging.getLogger(__name__)
 
 @dataclass
+class SequentialParameter:
+    # Point Cloud path
+    point_cloud_path: Path
+
+    # Algorithm parameters
+    self_loop_weight: float
+    self_loop_threshold: float
+    
+    # Encoding parameters
+    quantization_steps: List[int]
+    block_size: int
+    
+
+@dataclass
 class ExperimentParameters:
     # Experiment general data
     experiment_name: str

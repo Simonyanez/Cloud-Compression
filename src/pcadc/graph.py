@@ -53,16 +53,14 @@ class GraphBase(ABC):
 
 
 class StructuralGraph(GraphBase):
-    def __init__(self, block_metadata: BlockMetadata, luminance_centroid: np.ndarray):
-        assert np.array_equal(luminance_centroid, np.array([0, 0, 0])), \
-            "Shouldn't use structural graph if centroid is not flat"
+    def __init__(self, block_metadata: BlockMetadata):
 
         block_id = block_metadata.get_block_id()
         metadata = GraphMetadata(
             block_id=block_id,
             graph_type="Structural",
             distance_threshold=np.sqrt(3),
-            luminance_centroid=luminance_centroid,
+            luminance_centroid=np.array([0, 0 ,0]),
             self_loop_threshold=None,
             self_loop_weight=None
         )

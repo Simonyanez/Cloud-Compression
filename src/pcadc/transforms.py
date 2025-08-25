@@ -1,12 +1,10 @@
-
-
 # Other imports
 import matplotlib.pyplot as plt
 import numpy as np
 from line_profiler import profile
 # from graph.create import *
 from .graph import *
-from .objects import *
+from .blocks import *
 from .visualization import *
 from sklearn.preprocessing import normalize
 from scipy.optimize import linear_sum_assignment
@@ -19,6 +17,78 @@ logging.basicConfig(filename="logs/graph.log", filemode="w", level=logging.DEBUG
 logger = logging.getLogger(__name__)
 
 from typing import Optional
+
+# NOTE: This is a Strategy Pattern
+class GFTProcessorStrategy(ABC):
+    @abstractmethod
+    def compute(self, block: Block, graph: StructuralGraph | AttributeGraph, Q: Optional[np.ndarray] = None):
+        self.block = block
+        self.graph = graph
+        pass
+
+class ConnectedGFTProcessor(GFTProcessorStrategy):
+    # First strategy for fully connected graph in block
+    def compute(self, block: Block, graph: StructuralGraph | AttributeGraph, Q: Optional[np.ndarray] = None):
+        super().compute(block, graph)
+        Vblock, Ablock = self.block.get_data()
+
+        # One point solution
+        if Vblock.shape[0] == 1:
+            # Handle 1-point blocks
+            GFT_matrix = np.array([[1.0]])
+            Gfreq = np.array([0.0])
+
+        # Multiple points solution
+        else:
+            N = Ablock.shape[0]
+            Qm = self._prepare_Q(N, Q)
+            L_q = self._compute_laplacian(Qm)
+            GFT_mat, G_freqs = self._compute_GFT(L_q)
+        Coeffs = self._compute_coeffs(GFT_mat, Ablock)
+        return Coeffs
+
+    def _prepare_Q(self, N: int, Q: Optional[np.ndarray]) -> np.ndarray:
+        if Q is None:
+            Q = np.identity(N)
+            Qm = Q
+        else:
+            Qm = fractional_matrix_power(Q, -0.5)
+        return Qm
+
+    def _compute_laplacian(self, Qm: np.ndarray) -> np.ndarray:
+        A, _ = self.graph.get_data() # Adjacency matrix
+        D = np.diag(np.sum(A, axis=0))  # Degree matrix
+        C = np.zeros(A.shape)
+        if isinstance(self.graph, AttributeGraph):
+            C = np.diag(np.diag(A))  # Self-loops matrix
+        L = D - A + C
+        L_q = Qm @ L @ Qm
+        return L_q
+
+    def _compute_GFT(self, L: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        # Compute eigenvalues and eigenvectors for larger blocks
+        eigvals, eigvecs = np.linalg.eigh(L)
+        eigvals_idxsorted = np.argsort(eigvals)  # Changed from abs value
+        GFT_matrix = eigvecs[:, eigvals_idxsorted]
+        # Ensure the first eigenvector is positive
+        for i in range(GFT_matrix.shape[0]):
+            if GFT_matrix[i, 0] < 0:
+                GFT_matrix[i, :] = GFT_matrix[i, :] * (-1)
+        Gfreq = eigvals[eigvals_idxsorted]
+        return GFT_matrix, Gfreq
+
+    def _compute_coeffs(self, GFT_mat: np.ndarray, Ablock: np.ndarray):
+        Coeffs = GFT_mat.T @ Ablock 
+        return Coeffs
+
+
+class DisconnectedGFTProcessor(GFTProcessorStrategy):
+    # Second strategy for disconnected graph in block
+    def compute(self, block: Block, graph: StructuralGraph | AttributeGraph, num_components: int, labels: np.ndarray, Q: Optional[np.ndarray] = None):
+        for pos, component in enumerate(range(num_components)):
+            AuxiliarFactory
+        return gft._process_connected(num_components, gft.labels)
+
 
 class GFT():
     # FIXME: Disconnected components not working correctly
@@ -205,294 +275,5 @@ class GFT():
             Gfreq = eigvals[eigvals_idxsorted]
         return GFT_matrix, Gfreq
 
-
-        
-
-def w2l(W, idx_closest_map=None, iter=None):
-    """
-    Convert weight matrix to Laplacian matrix.
-
-    Args:
-        W (numpy.ndarray): Weight matrix.
-        idx_closest (numpy.ndarray): Indices of the closest points (optional).
-
-    Returns:
-        L (numpy.ndarray): Laplacian matrix.
-    """
-    sz_W = W.shape
-    C = np.zeros(sz_W)
-
-    if np.any(W < 0):
-        if iter is not None:
-            print(f"This is the block that has complex values {iter}")
-        # Handle negative weights differently if needed
-
-    if idx_closest_map is not None:
-        # TODO: Make this from structure and not hardcoded
-        for idx in idx_closest_map.keys():
-            C[idx, idx] = idx_closest_map[idx]
-            #W[idx,idx] = idx_closest_map[idx]
-
-    D = np.diag(np.sum(W, axis=0))
-
-    # Be careful that C = np.diag(np.diag(W)) if the self-loops are originally at the structure of the graph
-
-    L = D - W + np.diag(np.diag(W)) + C
-    return L
-
-def check_connected(W):
-    """
-    Check if Graph is connected so it can be splitted in its results
-    """
-    # Convert the adjacency matrix to a sparse matrix (for efficiency)
-    W_sparse = csr_matrix(W)
-
-    # Use connected_components to find the number of connected components and labels for each node
-    num_components, labels = connected_components(W_sparse, directed=False, return_labels=True)
-    return num_components, labels
-
-def iterative_GFT(W, A, V, idx_map=None, debug=False):
-    """
-    Compute the Graph Fourier Transform (GFT) iteratively for each disconnected component of the graph.
-    """
-    num_components, labels = check_connected(W)
-    if num_components == 1:
-        GFT, Gfreq, Coeff = compute_GFT_noQ(W, A, idx_closest=idx_map,debug=debug)
-        return GFT, Gfreq, Coeff
-    
-    
-    GFT = []
-    Gfreq = []
-    Ahat = []
-    DC_pos = []  # To store the indices of nodes for each component
-    U = []
-    isDC = []
-    V_new = np.zeros((num_components, 3))  # Assuming V has shape (n, 3) for 3D coordinates
-    Q_norm = np.zeros((num_components,num_components))
-    for pos,component in enumerate(range(num_components)):  # Loop through each component (0, 1, ..., num_components-1)
-        # Get the indices of nodes belonging to the current component
-        component_indices = np.where(labels == component)[0]
-        Q_norm[pos,pos] = len(component_indices)
-        # Create the subgraph (W_curr and A_curr) for the current component
-        W_curr = W[component_indices, :][:, component_indices]  # W_curr is subgraph for the component
-        A_curr = A[component_indices, :]  # A_curr is the signal matrix for the component
-        
-        DC_pos.append(component_indices[0])
-        
-        # Compute GFT for this subgraph
-        
-        GFT_curr, Gfreq_curr, Ahat_curr = compute_GFT_noQ(W_curr, A_curr,idx_closest=None,debug=debug)  # Assume this function is implemented
-        
-        Utmp = np.zeros((W.shape[0], len(component_indices)))
-        Utmp[component_indices, :] = GFT_curr
-        U.append(Utmp)  # Add the subgraph GFT to the U list
-        
-        # Create isDC array, which marks the first node as DC
-        isDCtmp = np.zeros(len(component_indices), dtype=bool)
-        isDCtmp[0] = 1  # First node in the component is DC
-        isDC.append(isDCtmp)  # Append to the isDC list
-        
-        # Append results
-        GFT.append(GFT_curr)
-        Gfreq.append(Gfreq_curr)
-        Ahat.append(Ahat_curr)
-
-        # Average position of connected points per connection
-        V_new[component, :] = np.mean(V[component_indices, :], axis=0)
-        
-        
-    # Convert lists to numpy arrays
-    U = np.concatenate(U, axis=1)  # Concatenate along axis 1 to form the full U matrix
-    isDC = np.concatenate(isDC, axis=0)  # Concatenate isDC for all components
-    Ahat_1 = U.T @ A
-    Ahat_low = Ahat_1[isDC, :]
-    Ahat_high = Ahat_1[np.logical_not(isDC), :]
-
-    # Complete graph creation
-    Wnew = complete_graph(V_new)
-    
-    # Assuming compute_GFT_noQ works and returns the appropriate GFT for Wnew
-    # A[:Wnew.shape[0]]
-    
-    GFT_new, Gfreq_new = compute_GFT(Wnew,Q_norm, debug=False)  # Use Wnew's shape for A
-
-    Gfreq = np.hstack(Gfreq)
-    Coeff = np.concatenate([GFT_new.T @ Ahat_low, Ahat_high], axis=0)
-    Gfreq = np.concatenate([Gfreq_new, Gfreq[np.logical_not(isDC)]], axis=0)
-
-    return GFT_new, Gfreq, Coeff
-
-def compute_GFT_noQ(Adj, A, idx_closest=None, iter=None, debug=False):
-    """
-    Compute the Graph Fourier Transform (GFT) without using the quality matrix.
-
-    Parameters:
-        Adj (numpy.ndarray): Adjacency matrix of the graph.
-        A (numpy.ndarray): Attribute matrix.
-        idx_closest (numpy.ndarray or None): Index of the closest points (optional)
-    if Adj.shape[0] > 1:
-        if idx_closest is not None:
-            L = w2l(Adj, idx_closest, iter = iter)
-        else:
-            L = w2l(Adj, iter = iter)
-        if debug:
-            print(f"L: {L}")
-        # L is normalized by the way it's build
-        D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
-        idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
-        GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
-
-        for i in range(GFT.shape[0]):
-            if GFT[i,0] < 0:
-                GFT[i,:] =  GFT[i,:]*(-1) 
-        # GFT[:,0] = np.abs(GFT[:,0])
-        # GFT = GFT.T         # Because the matrix that do the transform is this one
-        Gfreq = np.sort(D)
- 
-        Gfreq[0] = np.abs(Gfreq[0])
-        
-        Ahat = np.matmul(GFT.T, A)      # @ is a shortcut for matmul, yet i dont like it
-        if np.iscomplexobj(Ahat) and iter is not None:
-            print(f"This is the block that has complex values {iter}")
-
-    else:  # 1D-case, DC only
-        GFT = np.array([1.0])
-        Gfreq = np.array([0.0])
-        Ahat = np.matmul(GFT.T, A)
-
-    return GFT, Gfreq, Ahat.
-
-    Returns:
-        numpy.ndarray: Graph Fourier Transform.
-        numpy.ndarray: Eigenvalues of the Laplacian matrix (sorted in ascending order).
-        numpy.ndarray: Transformed attribute matrix.
-    """
-
-    if Adj.shape[0] > 1:
-        if idx_closest is not None:
-            L = w2l(Adj, idx_closest, iter = iter)
-        else:
-            L = w2l(Adj, iter = iter)
-        if debug:
-            print(f"L: {L}")
-        # L is normalized by the way it's build
-        D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
-        idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
-        GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
-
-        for i in range(GFT.shape[0]):
-            if GFT[i,0] < 0:
-                GFT[i,:] =  GFT[i,:]*(-1) 
-        # GFT[:,0] = np.abs(GFT[:,0])
-        # GFT = GFT.T         # Because the matrix that do the transform is this one
-        Gfreq = np.sort(D)
- 
-        Gfreq[0] = np.abs(Gfreq[0])
-        
-        Ahat = np.matmul(GFT.T, A)      # @ is a shortcut for matmul, yet i dont like it
-        if np.iscomplexobj(Ahat) and iter is not None:
-            print(f"This is the block that has complex values {iter}")
-
-    else:  # 1D-case, DC only
-        GFT = np.array([1.0])
-        Gfreq = np.array([0.0])
-        Ahat = np.matmul(GFT.T, A)
-
-    return GFT, Gfreq, Ahat
-
-def compute_iGFT_noQ(Adj, Ahat_val, idx_closest=None):
-    if Adj.shape[0] > 1:
-        if idx_closest is not None:
-            L = w2l(Adj, idx_closest, iter = iter)
-        else:
-            L = w2l(Adj, iter = iter)
-        # L is normalized by the way it's build
-        D, GFT = np.linalg.eigh(L) # D eigen values and GFT eigenvectors
-        idxSorted = np.argsort(np.abs(D))      # Order of the eigenvalues. # np.abs(D) 
-        GFT = GFT[:,idxSorted]         # GFT ordered by eigenvalues order first less
-
-        for i in range(GFT.shape[0]):
-            if GFT[i,0] < 0:
-                GFT[i,:] =  GFT[i,:]*(-1) 
-    GFT_inv = np.linalg.inv(GFT.T)
-
-    Arec = np.matmul(GFT_inv, Ahat_val)
-    return GFT_inv, Arec
-
-def compute_GFT(Adj, Q, debug=False):
-    """
-    Compute the Graph Fourier Transform (GFT) using the adjacency matrix and quality matrix Q.
-
-    Parameters:
-        Adj (numpy.ndarray): Adjacency matrix of the graph.
-        Q (numpy.ndarray): Quality matrix (assumed to be a vector).
-
-    Returns:
-        numpy.ndarray: Graph Fourier Transform (GFT).
-        numpy.ndarray: Eigenvalues of the Laplacian matrix (sorted in ascending order).
-    """
-    # Qm is the diagonal matrix with 1/sqrt(Q) on the diagonal
-    # Q = np.maximum(Q, 1e-8)  # Avoid division by zero and negative square roots
-    Qm = fractional_matrix_power(Q,-0.5)  # Q is assumed to be a vector, so Q^(-1/2) gives the inverse square root of Q
-    # Compute the Laplacian matrix using Qm
-    L = w2l(Adj)
-    L_q = Qm @ L @ Qm  # Matrix multiplication
-    if debug:
-        print(f"This is the Adjacency {Adj} \n Q original matrix {Q} \n Q normalization matriz {Qm} \n Normalized Laplacian {L_q}")
-        print(f'Inverse check {fractional_matrix_power(Qm,-2)}')
-    # Eigenvalue decomposition of the Laplacian matrix L
-    if Adj.shape[0] > 1:
-        # Compute the eigenvalues and eigenvectors
-        D, GFT = np.linalg.eigh(L_q)  # D is eigenvalues, GFT is eigenvectors
-        idxSorted = np.argsort(np.abs(D))  # Sort eigenvalues in ascending order
-        GFT = GFT[:, idxSorted]  # Sort eigenvectors accordingly
-        
-        # Ensure positive eigenvectors (if necessary)
-        for i in range(GFT.shape[0]):
-            if GFT[i,0] < 0:
-                GFT[i,:] =  GFT[i,:]*(-1) 
-        
-
-        # Gfreq corresponds to the eigenvalues
-        Gfreq = np.sort(D)
-    else:  # Handle the case where the graph is just a single point
-        GFT = np.array([1.0])
-        Gfreq = np.array([0.0])
-    
-    if debug:
-        print(f"This is the Adjacency {Adj} \n Q normalization matriz {Qm} \n Normalized Laplacian {L_q} \n GFT values {GFT}")
-
-    return GFT, Gfreq
-
-def eig_vector_rotation(repeated_eig_pos, repeated_eig, GFT):
-    random_matrix = np.random.randn(repeated_eig.shape[1], repeated_eig.shape[1])
-    Q, _ = np.linalg.qr(random_matrix)
-    
-    # Apply rotation to the eigenvectors
-    rotated_eigenvectors = repeated_eig @ Q
-    
-    # Update the GFT matrix with rotated eigenvectors
-    GFT_new = GFT.copy()  # Make a copy to avoid modifying the original GFT
-    GFT_new[:, repeated_eig_pos] = rotated_eigenvectors
-    
-    # Compute new coefficients
-    Coeff_new = GFT_new.T @ Ablock
-    return GFT_new, Coeff_new
-
-
 if __name__ == "__main__":
-    from create import *
-    from . import visualization as vis
-    V = np.load('V_longdress.npy')
-    C_rgb = np.load('C_longdress.npy')
-    indexes = get_block_indexes(V,8)
-    Vblock = V[indexes[1906][0]: indexes[1906][1]]
-    Ablock = C_rgb[indexes[1906][0]: indexes[1906][1]]
-    print(Vblock.shape)
-    #vis.visualization(Vblock, Ablock, 'None', 'None', 'None')
-    W, edge = compute_graph_MSR(Vblock)
-    GFT, Gfreq, Ahat = iterative_GFT(W, Ablock, Vblock, 1906)
-    plt.matshow(GFT)
-    plt.title('GFT transform for normalized complete graph')
-    # plt.plot(Ahat)
-    plt.show()
+    pass
