@@ -5,7 +5,7 @@ from sklearn.metrics import pairwise_distances_argmin_min, root_mean_squared_err
 import logging
 
 # Assume you already have these implemented
-from .objects import Block
+from .blocks import Block
 from .color import FitCollection
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class Codebook:
         rmse_mat = root_mean_squared_error(Y_truth, Y_estimates)
         best_idx = np.argmin(rmse_mat, axis=1)
 
-        return self.centroids[best_idx]
+        return self.centroids[best_idx], best_idx
 
 
 class Clusterer:

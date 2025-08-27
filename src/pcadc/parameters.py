@@ -1,123 +1,131 @@
+from .io import *
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 import yaml
 import logging
-logging.basicConfig(filename="logs/parameters.log", 
-                    filemode="w", 
-                    level=logging.DEBUG, 
-                    format="%(asctime)s - %(levelname)s - %(message)s",
-                    )
+
+# ------------------- Logging Setup -------------------
+logging.basicConfig(
+    filename="logs/parameters.log",
+    filemode="w",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
+
+# ------------------- Data Classes -------------------
+
 
 @dataclass
 class SequentialParameter:
-    # Point Cloud path
+    """
+    Parameters for a single experiment run (pipeline).
+    """
     point_cloud_path: Path
-
-    # Algorithm parameters
+    number_of_clusters: int
     self_loop_weight: float
     self_loop_threshold: float
-    
-    # Encoding parameters
     quantization_steps: List[int]
     block_size: int
-    
+
 
 @dataclass
-class ExperimentParameters:
-    # Experiment general data
+class ExperimentMetadata:
+    """
+    Metadata for the experiment.
+    """
     experiment_name: str
     experiment_code: str
     experiment_date: str
     experiment_info: str
-
-    # File and paths
-    point_cloud_path: List[Path]  # Always a list of paths
     export_folder: Path
-    rewrite_results: bool
-    debugging: bool
 
-    # Method parameters
-    self_loop_weight: List[float]  # Always a list of floats
-    self_loop_percentage: List[float]  # Always a list of floats
 
-    # Encoding ranges parameters
-    quantization_steps: List[int]  # Always a list of ints
-    block_size: List[int]  # Always a list of ints
-
-    def __post_init__(self):
-        # Ensure lists have consistent lengths (all lists should have the same length)
-        max_len = max(len(self.point_cloud_path), len(self.self_loop_weight), len(self.self_loop_percentage), 
-                      len(self.quantization_steps), len(self.block_size))
-
-        self.point_cloud_path = self._normalize_to_list(self.point_cloud_path, max_len)
-        self.self_loop_weight = self._normalize_to_list(self.self_loop_weight, max_len)
-        self.self_loop_percentage = self._normalize_to_list(self.self_loop_percentage, max_len)
-        self.quantization_steps = self._normalize_to_list(self.quantization_steps, max_len)
-        self.block_size = self._normalize_to_list(self.block_size, max_len)
-
-        # Validate ranges
-        for value in self.self_loop_percentage:
-            if value < 0 or value > 1:
-                raise ValueError(f"Applied self-loop percentage should be in range [0,1], but got {value}")
-
-        if not self.experiment_name:
-            raise ValueError("Experiment must have a name.")
-
-    def _normalize_to_list(self, param, max_len):
-        # If the parameter is a single value, convert it into a list of the appropriate length
-        if not isinstance(param, list):
-            param = [param] * max_len
-        return param
+@dataclass
+class ExperimentConfig:
+    """
+    Full experiment configuration: metadata + sequential parameters.
+    """
+    metadata: ExperimentMetadata
+    sequential_params: SequentialParameter
+    rewrite_results: bool = False
+    debugging: bool = False
 
     def __str__(self):
-            """
-            Custom string representation for logging and display.
-            """
-            return f""""
-                        ExperimentParameters
-                ============================================
-                  Name: {self.experiment_name}
-                  Code: {self.experiment_code}
-                  Date: {self.experiment_date}
-                  Info: {self.experiment_info}
-                  Point Cloud: {self.point_cloud_path}
-                  Export Path: {self.export_folder}
-                  Self-loop Weights: {self.self_loop_weight}
-                  Self-loop Percentages: {self.self_loop_percentage}
-                  Quantization Steps: {self.quantization_steps}
-                  Block Size: {self.block_size}
-                """
-        
-# Parser method to load YAML into ExperimentParameters
-def load_experiment_parameters(yaml_file: Path) -> ExperimentParameters:
-    """
-    Load experiment parameters from a YAML file and log the loaded parameters.
-    """
+        return (
+            f"ExperimentConfig\n"
+            f"==============================\n"
+            f"Name: {self.metadata.experiment_name}\n"
+            f"Code: {self.metadata.experiment_code}\n"
+            f"Date: {self.metadata.experiment_date}\n"
+            f"Info: {self.metadata.experiment_info}\n"
+            f"Export Path: {self.metadata.export_folder}\n"
+            f"Point Cloud: {self.sequential_params.point_cloud_path}\n"
+            f"Number of Clusters: {self.sequential_params.number_of_clusters}\n"
+            f"Self-loop Weight: {self.sequential_params.self_loop_weight}\n"
+            f"Self-loop Threshold: {self.sequential_params.self_loop_threshold}\n"
+            f"Quantization Steps: {self.sequential_params.quantization_steps}\n"
+            f"Block Size: {self.sequential_params.block_size}\n"
+            f"Rewrite Results: {self.rewrite_results}\n"
+            f"Debugging: {self.debugging}\n"
+        )
+
+# ------------------- YAML Loader -------------------
+
+
+def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
+    """Load experiment configuration from YAML file."""
     try:
-        logger.info(f"Loading parameters from YAML file: {yaml_file}")
-        with open(yaml_file, "r") as file:
-            config = yaml.safe_load(file)
+        logger.info(f"Loading configuration from {yaml_file}")
+        with open(yaml_file, "r") as f:
+            config = yaml.safe_load(f)
 
-        # Convert paths to Path objects
-        config["point_cloud_path"] = [Path(p) for p in config["point_cloud_path"]]
-        config["export_folder"] = Path(config["export_folder"])
+        # Parse sections
+        metadata = ExperimentMetadata(
+            experiment_name=config["experiment_metadata"]["experiment_name"],
+            experiment_code=config["experiment_metadata"]["experiment_code"],
+            experiment_date=config["experiment_metadata"]["experiment_date"],
+            experiment_info=config["experiment_metadata"]["experiment_info"],
+            export_folder=Path(config["experiment_metadata"]["export_folder"]),
+        )
 
-        # Create an instance of ExperimentParameters
-        params = ExperimentParameters(**config)
+        pointcloud = PointCloudMetadata(
+            dataset=config["pointcloud_metadata"]["point_cloud_dataset"],
+            sequence=config["pointcloud_metadata"]["point_cloud_sequence"],
+            depth=config["pointcloud_metadata"]["point_cloud_depth"],
+            frame=config["pointcloud_metadata"]["point_cloud_frame"],
+        )
 
-        # Log the loaded parameters
-        logger.info("Successfully loaded parameters:")
-        logger.info(params)
+        sequential_params = SequentialParameters(
+            point_cloud_path=Path(
+                config["sequential_params"]["point_cloud_path"]),
+            number_of_clusters=config["sequential_params"]["number_of_clusters"],
+            self_loop_weight=config["sequential_params"]["self_loop_weight"],
+            self_loop_threshold=config["sequential_params"]["self_loop_threshold"],
+            quantization_steps=config["sequential_params"]["quantization_steps"],
+            block_size=config["sequential_params"]["block_size"],
+        )
 
-        return params
+        exp_config = ExperimentConfig(
+            metadata=metadata,
+            pointcloud=pointcloud,
+            sequential_params=sequential_params,
+            rewrite_results=config.get("rewrite_results", False),
+            debugging=config.get("debugging", False),
+        )
+
+        logger.info(f"Configuration loaded successfully: {exp_config}")
+        return exp_config
+
     except Exception as e:
-        logger.error(f"Failed to load parameters from {yaml_file}: {e}")
+        logger.error(f"Failed to load configuration: {e}")
         raise
 
-# Example usage
+# ------------------- Example Usage -------------------
+
+
 if __name__ == "__main__":
     yaml_file = "experiment_config.yaml"
-    params = load_experiment_parameters(yaml_file)
-    print(params)
+    exp_config = load_experiment_config(yaml_file)
+    print(exp_config)

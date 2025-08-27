@@ -7,14 +7,22 @@ from typing import List, Dict, Union
 from .color import *
 import numpy as np
 import logging
-logging.basicConfig(filename="logs/blocks.log", 
-                    filemode="w", 
-                    level=logging.DEBUG, 
+logging.basicConfig(filename="logs/blocks.log",
+                    filemode="w",
+                    level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s - %(message)s",
                     )
 logger = logging.getLogger(__name__)
 
 # NOTE: This is a good example of the Template Pattern
+
+
+@dataclass
+class CoeffsContainer:
+    block: Block
+    graphs: List[StructuralGraph | AttributeGraph]
+    coeffs: List[np.ndarray]
+
 
 @dataclass
 class BaseMetadata:
@@ -24,15 +32,17 @@ class BaseMetadata:
     def return_index(self):
         return np.arange(start=self.start, stop=self.end+1)
 
+
 @dataclass
 class BlockMetadata(BaseMetadata):
-    source: str  
+    source: str
     frame: int
     block_size: int
     block_idx: int
 
     def get_block_id(self):
         return f"{self.source}_{self.frame}_b{self.block_size}_{self.block_idx}"
+
 
 @dataclass
 class AuxiliaryBlockMetadata(BaseMetadata):
@@ -41,6 +51,7 @@ class AuxiliaryBlockMetadata(BaseMetadata):
 
     def get_block_id(self):
         return f"{self.parent_id}_aux_{self.task}"
+
 
 class BlockBase(ABC):
     def __init__(self, metadata) -> None:
@@ -72,11 +83,10 @@ class BlockBase(ABC):
 
 # TODO: Make blocks a more abstract class. Just represent a set of blocks, the way its initialized can vary yet it should be the definition
 class Block(BlockBase):
-    def __init__(self , metadata: BlockMetadata) -> None:
+    def __init__(self, metadata: BlockMetadata) -> None:
         super().__init__(metadata)
 
-    
+
 class AuxiliaryBlock(BlockBase):
-    def __init__(self , metadata: AuxiliaryBlockMetadata) -> None:
+    def __init__(self, metadata: AuxiliaryBlockMetadata) -> None:
         super().__init__(metadata)
-

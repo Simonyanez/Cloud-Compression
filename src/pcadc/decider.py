@@ -4,20 +4,23 @@ from line_profiler import profile
 import numpy as np
 from scipy.optimize import minimize
 import logging
-logging.basicConfig(filename="logs/decider.log", filemode="w", level=logging.DEBUG)
+logging.basicConfig(filename="logs/decider.log",
+                    filemode="w", level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 class Decider:
-    def __init__(self, mode:str):
+    def __init__(self, mode: str):
         self.mode = mode
 
     @profile
     def __call__(self, q_step: int, coeff_dict: Dict[str, np.ndarray], r=0.85):
-        self.lagrange_mult = r * q_step**2   
+        self.lagrange_mult = r * q_step**2
         self.q_step = q_step
         Coeffs_list = list(coeff_dict.values())
         graph_ids = list(coeff_dict.keys())
-        selected_graph_id, selected_coeffs, rd_cost = self._RDO(Coeffs_list, graph_ids)
+        selected_graph_id, selected_coeffs, rd_cost = self._RDO(
+            Coeffs_list, graph_ids)
         return selected_graph_id, selected_coeffs, rd_cost
 
     def _quantize(self, Coeffs):
@@ -31,7 +34,7 @@ class Decider:
         if self.mode == "2":
             proportion = np.array([0.695, 0.130, 0.175])
             norm_value = norm_value * proportion
-        if self.mode in ["1","2"]:
+        if self.mode in ["1", "2"]:
             norm_value = np.sum(norm_value, axis=1)
         # psnr_Y = -10 * np.log10((norm_value**2) / (N * 255**2))
         return norm_value
@@ -46,11 +49,11 @@ class Decider:
         """
         Rate-Distorsion cost
         """
-        #TODO: Better mode naming
+        # TODO: Better mode naming
         if self.mode == "0":
-            obj_coeffs = Coeffs[:,0]
+            obj_coeffs = Coeffs[:, 0]
             pass
-        if self.mode in ["1","2"]:
+        if self.mode in ["1", "2"]:
             obj_coeffs = Coeffs
             pass
 
@@ -58,7 +61,8 @@ class Decider:
         qerror = self._qError(obj_coeffs, obj_coeffs_quant)
         sparsity = self._zeroNorm(obj_coeffs_quant)
         logger.debug(f"Quality error {qerror} - Sparsity {sparsity}")
-        return (self.lagrange_mult * sparsity) + qerror # OG: qerror + self.lagrange_mult * sparsity
+        # OG: qerror + self.lagrange_mult * sparsity
+        return (self.lagrange_mult * sparsity) + qerror
 
     @profile
     def _RDO(self, Coeffs_list: list[np.ndarray], graph_ids: list[str]):
@@ -87,13 +91,13 @@ class Decider:
             # Check if this is the best result so far
             if res < min_cost:
                 min_cost = res
-                selected_coeff = coeff # Reshape back to original shape
+                selected_coeff = coeff  # Reshape back to original shape
                 selected_graph_id = graph_id
-            if graph_id == "0.0_0.0" or graph_id == "Structural Graph":
+            if graph_id == "Structural":
                 struct_coeff = coeff
 
         if self.mode == "0":
-            selected_coeff[:,1:] = struct_coeff[:,1:]
+            selected_coeff[:, 1:] = struct_coeff[:, 1:]
 
         logger.debug(f"Selected graph id {selected_graph_id}")
         return selected_graph_id, selected_coeff, min_cost
