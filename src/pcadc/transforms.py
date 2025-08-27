@@ -21,8 +21,8 @@ logging.basicConfig(filename="logs/graph.log",
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 # NOTE: This is a Strategy Pattern
-
 class GFTProcessorStrategy(ABC):
     @abstractmethod
     def compute(self, block: Block, graph: StructuralGraph | AttributeGraph, Q: Optional[np.ndarray] = None):

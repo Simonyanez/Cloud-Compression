@@ -93,8 +93,6 @@ class Decider:
                 min_cost = res
                 selected_coeff = coeff  # Reshape back to original shape
                 selected_graph_id = graph_id
-            if graph_id == "Structural":
-                struct_coeff = coeff
 
         if self.mode == "0":
             selected_coeff[:, 1:] = struct_coeff[:, 1:]

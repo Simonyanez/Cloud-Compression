@@ -7,12 +7,13 @@ from typing import Optional, List, Dict, Protocol
 from .color import *
 import numpy as np
 import logging
-logging.basicConfig(filename="logs/pointcloud.log", 
-                    filemode="w", 
-                    level=logging.DEBUG, 
+logging.basicConfig(filename="logs/pointcloud.log",
+                    filemode="w",
+                    level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s - %(message)s",
                     )
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PointCloudMetadata:
@@ -29,6 +30,7 @@ class PointCloudMetadata:
 
     def get_frame(self) -> int:
         return self.frame
+
 
 class PointCloud:
     def __init__(self, metadata: PointCloudMetadata):
@@ -71,6 +73,7 @@ class PointCloud:
         if self.A is not None:
             self.A = fn(self.A)
 
+
 class BlockPartitionStrategy(Protocol):
     def partition(self, pc: PointCloud, **kwargs) -> List[Block]:
         ...
@@ -80,7 +83,8 @@ class MortonBlockPartition(BlockPartitionStrategy):
     def partition(self, pc: PointCloud, bsize: int) -> List[Block]:
         assert pc.V is not None, "Vertices not initialized"
         base_bsize = np.log2(bsize)
-        assert np.floor(base_bsize) == base_bsize, "Block size must be a power of 2"
+        assert np.floor(
+            base_bsize) == base_bsize, "Block size must be a power of 2"
 
         V_coarse = np.floor(pc.V / bsize) * bsize
         variation = np.sum(np.abs(V_coarse[1:] - V_coarse[:-1]), axis=1)
@@ -101,7 +105,7 @@ class MortonBlockPartition(BlockPartitionStrategy):
                 block_idx=i
             ))
             for i, idx in enumerate(indexes)
-        ]
+        ], indexes
 
 
 # --- Cache wrapper ---

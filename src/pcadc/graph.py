@@ -6,15 +6,16 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from scipy.spatial.distance import cdist
 import logging
-logging.basicConfig(filename="logs/graphs.log", 
-                    filemode="w", 
-                    level=logging.DEBUG, 
+logging.basicConfig(filename="logs/graphs.log",
+                    filemode="w",
+                    level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s - %(message)s",
                     )
 logger = logging.getLogger(__name__)
 
 # NOTE: This is a good example of the Decorator Pattern
 # NOTE: This is a good example of the Template Pattern
+
 
 @dataclass
 class GraphMetadata:
@@ -60,7 +61,7 @@ class StructuralGraph(GraphBase):
             block_id=block_id,
             graph_type="Structural",
             distance_threshold=np.sqrt(3),
-            luminance_centroid=np.array([0, 0 ,0]),
+            luminance_centroid=np.array([0, 0, 0]),
             self_loop_threshold=None,
             self_loop_weight=None
         )
@@ -86,7 +87,8 @@ class StructuralGraph(GraphBase):
 
     def _inverse_distance_matrix(self, D: np.ndarray, epsilon=1e-5):
         iD = np.zeros_like(D)
-        non_zero_mask = (D > 0) & (D <= self.metadata.distance_threshold + epsilon)
+        non_zero_mask = (D > 0) & (
+            D <= self.metadata.distance_threshold + epsilon)
         iD[non_zero_mask] = 1 / D[non_zero_mask]
         return iD
 
@@ -139,7 +141,8 @@ class AttributeGraph(GraphBase):
             self.weights = weights
             self.edges = edges
         else:
-            raise ValueError("Either (V, A) or (weights, edges) must be provided")
+            raise ValueError(
+                "Either (V, A) or (weights, edges) must be provided")
 
     def _compute_attribute_graph(self, A: np.ndarray) -> None:
         self.M = self._attribute_motion_matrix(A)
@@ -153,7 +156,8 @@ class AttributeGraph(GraphBase):
         if self.self_loop_threshold is None:
             raise ValueError("No threshold provided for self-loops")
 
-        self.selected_nodes = np.argwhere(self.S >= self.self_loop_threshold).flatten()
+        self.selected_nodes = np.argwhere(
+            self.S >= self.self_loop_threshold).flatten()
         pairs = np.column_stack((self.selected_nodes, self.selected_nodes))
         self.weights[pairs[:, 0], pairs[:, 1]] = self.self_loop_weight
         self.edges = np.vstack([self.edges, pairs])
