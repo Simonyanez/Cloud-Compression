@@ -9,10 +9,11 @@ import matplotlib.pyplot as plt
 from pyvis.network import Network
 from matplotlib import cm
 from matplotlib.colors import Normalize
-from .objects import *
+from .color import *
 from .graph import *
 # from utils.color import YUVtoRGB
 
+# TODO: FIX VISUALIZER
 class Visualizer:
     def __init__(self):
         self.colourist = Colourist()

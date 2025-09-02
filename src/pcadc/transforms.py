@@ -6,7 +6,7 @@ from line_profiler import profile
 # from graph.create import *
 from .graph import *
 from .blocks import *
-from .visualization import *
+# from .visualization import *
 from .factories import *
 from abc import ABC, abstractmethod
 from sklearn.preprocessing import normalize
@@ -22,6 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class CoeffsContainer:
+    block: Block
+    graphs: List[GraphMetadata]
+    coeffs: List[np.ndarray]
+
+@dataclass
 # NOTE: This is a Strategy Pattern
 class GFTProcessorStrategy(ABC):
     @abstractmethod
@@ -31,7 +37,7 @@ class GFTProcessorStrategy(ABC):
 
 class ConnectedGFTProcessor(GFTProcessorStrategy):
     # First strategy for fully connected graph in block
-    def compute(self, block: Block, graph: StructuralGraph | AttributeGraph, Q: Optional[np.ndarray] = None):
+    def compute(self, block: Block | AuxiliaryBlock, graph: StructuralGraph | AttributeGraph | GraphBase, Q: Optional[np.ndarray] = None):
         Vblock, Ablock = block.get_data()
         logger.info(
             f"[ConnectedGFT] Computing GFT for block with {Vblock.shape[0]} nodes")
@@ -59,12 +65,13 @@ class ConnectedGFTProcessor(GFTProcessorStrategy):
     def _prepare_Q(self, N: int, Q: Optional[np.ndarray]) -> np.ndarray:
         return np.identity(N) if Q is None else fractional_matrix_power(Q, -0.5)
 
-    def _compute_laplacian(self, graph: StructuralGraph | AttributeGraph, Qm: np.ndarray) -> np.ndarray:
+    def _compute_laplacian(self, graph: StructuralGraph | AttributeGraph | GraphBase, Qm: np.ndarray) -> np.ndarray:
         A, _ = graph.get_data()  # Adjacency matrix
         D = np.diag(np.sum(A, axis=0))  # Degree matrix
         C = np.zeros(A.shape)
         if isinstance(graph, AttributeGraph):
             C = np.diag(np.diag(A))  # Self-loops matrix
+        logger.debug(f"[ConnectedGFT] D,A,C shapes: {D.shape} {A.shape} {C.shape}")
         L = D - A + C
         L_q = Qm @ L @ Qm
         logger.debug(f"[ConnectedGFT] Laplacian shape: {L_q.shape}")
@@ -105,10 +112,10 @@ class DisconnectedGFTProcessor(GFTProcessorStrategy):
             logger.debug(
                 f"[DisconnectedGFT] Component {comp_id}: {len(sub_idxs)} nodes")
 
-            subgraph, subblock = self._build_subobjects(
+            subblock, subgraph = self._build_subobjects(
                 block, graph, sub_idxs, comp_id)
 
-            GFT_sub, _ = ConnectedGFTProcessor().compute(subblock, subgraph)
+            GFT_sub, _ = ConnectedGFTProcessor().compute(block=subblock, graph=subgraph)
             logger.debug(
                 f"[DisconnectedGFT] Sub-GFT matrix shape: {GFT_sub.shape}")
 
@@ -150,7 +157,7 @@ class DisconnectedGFTProcessor(GFTProcessorStrategy):
         logger.debug(
             f"[DisconnectedGFT] Low coeffs: {Coeffs_low.shape}, High coeffs: {Coeffs_high.shape}")
 
-        meangraph, meanblock = self._build_meanobjects(
+        meanblock, meangraph = self._build_meanobjects(
             block, Vmean, num_components)
 
         GFT_mean, _ = ConnectedGFTProcessor().compute(meanblock, meangraph, Q_norm)
@@ -164,7 +171,7 @@ class DisconnectedGFTProcessor(GFTProcessorStrategy):
         return U, Coeffs_fix
 
     @staticmethod
-    def _build_subobjects(block: Block, graph: Graph,
+    def _build_subobjects(block: Block, graph: StructuralGraph | AttributeGraph,
                           subgraph_indexes: np.ndarray, component: int):
         factory = SubGraphCreator(parent_block=block,
                                   parent_graph=graph,
@@ -193,16 +200,16 @@ class DisconnectedGFTProcessor(GFTProcessorStrategy):
 class GFTStrategyWraper:
     def __call__(self, block, graph):
         num_components, labels = self._check_connected(graph)
-        if n_components > 1:
+        if num_components == 1:
             logger.debug("Found disconnected graph")
             GFT_mat, Coeffs = ConnectedGFTProcessor().compute(block, graph)
         else:
             GFT_mat, Coeffs = DisconnectedGFTProcessor().compute(
-                block, graph, num_components, labels)
+                block, graph, int(num_components), labels)
         return GFT_mat, Coeffs
 
     @staticmethod
-    def _check_connected(self, graph: StructuralGraph | AttributeGraph) -> tuple[np.ndarray, np.ndarray]:
+    def _check_connected(graph: StructuralGraph | AttributeGraph) -> tuple[np.ndarray, np.ndarray]:
         Adj = graph.weights
         Adj_sparse = csr_matrix(Adj)
         num_components, labels = connected_components(

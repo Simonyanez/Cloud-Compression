@@ -1,7 +1,8 @@
 from .io import *
-from dataclasses import dataclass
+from .pointcloud import *
+from dataclasses import dataclass,asdict
 from pathlib import Path
-from typing import List
+from typing import List, Any
 import yaml
 import logging
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class SequentialParameter:
+class SequentialParameters:
     """
     Parameters for a single experiment run (pipeline).
     """
@@ -48,7 +49,8 @@ class ExperimentConfig:
     Full experiment configuration: metadata + sequential parameters.
     """
     metadata: ExperimentMetadata
-    sequential_params: SequentialParameter
+    sequential_params: SequentialParameters
+    pointcloud: PointCloudMetadata
     rewrite_results: bool = False
     debugging: bool = False
 
@@ -70,6 +72,27 @@ class ExperimentConfig:
             f"Rewrite Results: {self.rewrite_results}\n"
             f"Debugging: {self.debugging}\n"
         )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns a JSON-serializable dictionary representation of the ExperimentConfig.
+        """
+        # Start with the default dataclass-to-dict conversion
+        config_dict = asdict(self)
+        
+        # Recursively convert Path objects to strings
+        return self._convert_paths(config_dict)
+
+    def _convert_paths(self, data: Any) -> Any:
+        """Private helper to recursively convert Path objects to strings."""
+        if isinstance(data, Path):
+            return str(data)
+        if isinstance(data, dict):
+            return {k: self._convert_paths(v) for k, v in data.items()}
+        if isinstance(data, (list, tuple)):
+            return [self._convert_paths(item) for item in data]
+        return data
+
 
 # ------------------- YAML Loader -------------------
 

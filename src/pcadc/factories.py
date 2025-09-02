@@ -19,6 +19,7 @@ logging.basicConfig(filename="logs/objects.log",
                     )
 logger = logging.getLogger(__name__)
 
+# FIXME: EDGES ARE NOT CORRECT. YET THEY ARE NEVER USED SO I DONT CARE
 # NOTE: This is a really simple Factory Pattern
 # TODO: Improve to a real Factory Pattern
 
@@ -35,7 +36,7 @@ class GraphBlockCreator(Creator):
                  A: np.ndarray,
                  block: Block,
                  luminance_centroid: np.ndarray,
-                 parameters: SequentialParameter):
+                 parameters: SequentialParameters):
         self.V = V
         self.A = A
         self.block = block
@@ -43,23 +44,41 @@ class GraphBlockCreator(Creator):
         self.self_loop_threshold = parameters.self_loop_threshold
         self.self_loop_weight = parameters.self_loop_weight
 
-    def factory_method(self) -> Tuple[Block, Graph]:
+    def factory_method(self) -> Tuple[Block, StructuralGraph | AttributeGraph]:
         self.block.init_data(self.V, self.A)
         Vblock, Ablock = self.block.get_data()
 
         structural_graph = StructuralGraph(self.block.metadata)
         structural_graph.set_data(V=Vblock)
 
-        if np.not_equal(self.luminance_centroid, np.array([0, 0, 0])).any():
+        if not self.is_structural:
             attribute_graph = AttributeGraph(structural_graph, self.luminance_centroid,
                                              self.self_loop_threshold, self.self_loop_weight)
             Ablock_app = Ablock.copy()
-            Ablock_app[:, 0] = self.luminance_centroid @ Vblock
+            Ablock_app[:, 0] = Vblock @ self.luminance_centroid.T
             # decorate graph with attributes
             attribute_graph.set_data(V=Vblock, A=Ablock_app)
-            return block, attribute_graph
+            return self.block, attribute_graph
+        self.block.clear_data()
+        return self.block, structural_graph
 
-        return block, structural_graph
+    def get_all_products(self):
+        _, graph = self.factory_method()
+        if not self.is_structural:
+            structural_graph = self._force_structural_graph()
+            return [structural_graph, graph]
+        return [graph]
+
+    def _force_structural_graph(self):
+        _centroid_cache = self.luminance_centroid.copy()
+        self.luminance_centroid = np.array([0,0,0])
+        _, structural_graph = self.factory_method()
+        self.luminance_centroid = _centroid_cache
+        return structural_graph
+
+    @property
+    def is_structural(self):
+        return np.equal(self.luminance_centroid, np.array([0, 0, 0])).any()
 
 
 class SubGraphCreator(Creator):
@@ -76,24 +95,28 @@ class SubGraphCreator(Creator):
 
     def factory_method(self):
         Vblock, Ablock = self.parent_block.get_data()
-        Asubblock = Ablock[self.sub_idx, :]
-        Vsubblock = Vblock[self.sub_idx, :]
+        Asubblock = Ablock[self.sub_idxs, :]
+        Vsubblock = Vblock[self.sub_idxs, :]
         weights, edges = self.parent_graph.get_data()
-        weights_sub = weights[self.sub_idx, :][:, self.sub_idx]
-        edges_sub = edges[self.sub_idx]  # FIXME: Not sure if this will work
-        sub_block_metadata = AuxiliaryBlockMetadata(start=self.parent_block.get_absolute_idx(self.sub_idx[0]),
+        weights_sub = weights[self.sub_idxs, :][:, self.sub_idxs]
+        # FIXME: This is so Wrong. Edges are not used though
+        edges_sub = np.zeros((0, 2), dtype=np.int64)
+        # NOTE: SUB IDX -1 is quick fix for one point blocks 
+        sub_block_metadata = AuxiliaryBlockMetadata(start=self.parent_block.get_absolute_idx(self.sub_idxs[0]),
                                                     end=self.parent_block.get_absolute_idx(
-                                                        self.sub_idx[1]),
-                                                    parent_id=self.parent_block.metadata.get_block_id(),
+                                                        self.sub_idxs[-1]),
+                                                    parent_id=self.parent_block.block_id,
                                                     task=self.task)
         sub_block = AuxiliaryBlock(sub_block_metadata)
-        sub_block.init_data(Vsubblock, Asubblock)
+        sub_block.set_data(Vsubblock, Asubblock)
 
         # TODO: Not sure is this is a good idea
-        sub_graph_metadata = GraphMetadata(block_id=sub_block_metadata.get_block_id(),
+        sub_graph_metadata = GraphMetadata(block_id=sub_block_metadata.block_id,
                                            graph_type="Sub-graph",
                                            distance_threshold=np.sqrt(3),
-                                           luminance_centroid=np.array([0, 0, 0]))
+                                           luminance_centroid=np.array([0, 0, 0]), 
+                                           self_loop_threshold= None,
+                                            self_loop_weight= None)
         sub_graph = GraphBase(sub_graph_metadata)
         sub_graph.set_data(weights=weights_sub,
                            edges=edges_sub)
@@ -114,17 +137,20 @@ class MeanGraphFactory(Creator):
     def factory_method(self):
         mean_block_metadata = AuxiliaryBlockMetadata(start=0,
                                                      end=self.num_components-1,
-                                                     parent_id=self.parent_block.metadata.get_block_id(),
+                                                     parent_id=self.parent_block.block_id,
                                                      task=self.task
                                                      )
         mean_block = AuxiliaryBlock(mean_block_metadata)
         mean_block.set_data(Vblock=self.components_Vmean,
                             Ablock=self.components_Vmean, subidxs=None)
-        mean_graph_metadata = GraphMetadata(mean_block_metadata.get_block_id(),
+        mean_graph_metadata = GraphMetadata(block_id=mean_block_metadata.block_id,
                                             graph_type="Mean-Graph",
                                             distance_threshold=np.inf,
-                                            luminance_centroid=np.array([0, 0, 0]))
-        mean_graph = StructuralGraph(mean_graph_metadata)
+                                            luminance_centroid=np.array([0, 0, 0]),
+                                            self_loop_threshold= None,
+                                            self_loop_weight=None)
+        mean_graph = StructuralGraph(mean_block_metadata)
+        mean_graph.set_metadata(mean_graph_metadata)
         mean_graph.set_data(self.components_Vmean)
         return mean_block, mean_graph
 

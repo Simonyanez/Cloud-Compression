@@ -1,7 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Optional
+import traceback
 from pathlib import Path
 import numpy as np
+import logging
+
+logging.basicConfig(filename="logs/io.log",
+                    filemode="w",
+                    level=logging.DEBUG,
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    )
+logger = logging.getLogger(__name__)
 
 # NOTE: Strategy pattern
 class PointCloudReader(ABC):
@@ -13,6 +22,7 @@ class PointCloudReader(ABC):
 class PLYReader(PointCloudReader):
 
     def read(self, path: Path, dataset: str = "8iVFB") -> tuple[np.ndarray, np.ndarray]:
+        logger.info(f"Reading {path} as {dataset} dataset")
         if dataset == "8iVFB":
             return self.read_8iVFB(path)
         if dataset == "MVUB":
@@ -71,9 +81,13 @@ class PLYReader(PointCloudReader):
         return V, C
 
 class NPYReader(PointCloudReader):
-    def read(self, path: Path):
-        V = np.load(path.with_suffix("_V.npy"))
-        C = np.load(path.with_suffix("_C.npy"))
+    def read(self, path: Path, dataset: str = "8iVFB"):
+        try:
+            V = np.load(path.with_suffix("_V.npy"))
+            C = np.load(path.with_suffix("_C.npy"))
+            logger.info(f"Data loaded from numpy at {path}")
+        except Exception as e:
+            logger.error(f"Failed to load numpy at {path} with error {e} \n {traceback.format_exc()}")
         return V, C
 
 # NOTE: Strategy pattern
@@ -115,13 +129,19 @@ class PointCloudIO:
     writers = {"ply": PLYWriter()}
     
     @staticmethod
-    def load(path: Path, fmt: str = "ply"):
+    def load(path: Path, fmt: str = "ply", dataset: str = "8iVFB"):
         if fmt not in PointCloudIO.readers:
-            raise ValueError(f"Unsupported format {fmt}")
-        return PointCloudIO.readers[fmt].read(path)
+            err_msg = f"Unsupported format {fmt}"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
+        logger.info(f"Loading pointcloud from {path} with format {fmt}")
+        return PointCloudIO.readers[fmt].read(path, dataset)
 
     @staticmethod
     def save(path: Path, V, C, fmt: str = "ply", F=None):
         if fmt not in PointCloudIO.writers:
-            raise ValueError(f"Unsupported format {fmt}")
+            err_msg = f"Unsupported format {fmt}"
+            logger.error(err_msg)
+            raise ValueError(err_msg)
+        logger.info(f"Saving pointcloud from {path} with format {fmt}")
         return PointCloudIO.writers[fmt].write(path, V, C, F)

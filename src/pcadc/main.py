@@ -1,3 +1,8 @@
+# Configure logging
+import logging
+logging.basicConfig(filename="logs/main.log",
+                    filemode="w", level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 from .parameters import *
 from .blocks import *
 from .graph import *
@@ -6,14 +11,16 @@ from .decider import *
 from .io import *
 from .pointcloud import *
 from .transforms import *
-from .visualization import *
+# from .visualization import *
+from .factories import *
+import dataclasses
+import json
 import numpy as np
-from itertools import product
+import tempfile
+from joblib import dump, load
 from line_profiler import profile
 from utils.bj_delta import bj_delta
 # from memory_profiler import profile
-import logging
-import shutil
 from tqdm import tqdm
 
 """https://stackoverflow.com/questions/38543506/change-logging-print-function-to-tqdm-write-so-logging-doesnt-interfere-wit/38739634#38739634"""
@@ -21,49 +28,57 @@ from tqdm import tqdm
 # Custom logging handler for tqdm
 
 
-class TqdmLoggingHandler(logging.Handler):
-    def __init__(self, level=logging.WARNING):
-        super().__init__(level)
+# class TqdmLoggingHandler(logging.Handler):
+#     def __init__(self, level=logging.WARNING):
+#         super().__init__(level)
+#
+#     def emit(self, record):
+#         try:
+#             msg = self.format(record)
+#             # Use tqdm.write to print logs above the progress bar
+#             tqdm.write(msg)
+#             self.flush()
+#         except Exception:
+#             self.handleError(record)
 
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            # Use tqdm.write to print logs above the progress bar
-            tqdm.write(msg)
-            self.flush()
-        except Exception:
-            self.handleError(record)
 
-
-# Configure logging
-logging.basicConfig(filename="logs/main.log",
-                    filemode="w", level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 # Add custom handler for tqdm output
-logger.addHandler(TqdmLoggingHandler())
+# logger.addHandler(TqdmLoggingHandler())
 
 # Add a file handler to write to the log file
-file_handler = logging.FileHandler('logs/main.log', mode='w')
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+# file_handler = logging.FileHandler('logs/main.log', mode='w')
+# file_handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+# file_handler.setFormatter(formatter)
+# logger.addHandler(file_handler)
 
+class ExperimentResults:
+    def __init__(self):
+        self._results = []
+
+    def add(self, encode_result: EncodeResult):
+        self._results.append(encode_result)
+
+    def as_dict(self):
+        pass
+
+        
+    
 
 class Researcher():
-    # TODO: Use less RAM, currently up to 9Gb of RAM
     def __init__(self):
-        pass
+        self.cache_dir = Path(tempfile.mkdtemp(prefix="coeffs_cache_"))
 
     @profile
     def __call__(self, params: ExperimentConfig):
         self._init_experiment(params)
-        blocks, indexes = self._block_partitioning()
+        indexes, blocks = self._block_partitioning()
         codebook = self._cluster_codebook(blocks)
-        block_graphs, centroid_labels = self._init_graphs(blocks, codebook)
-        block_coeffs = self._compute_coeffs(block_graphs)
-        encode_results = self._exec_encoding(block_coeffs, indexes)
+
+        coeffs_stream = self._compute_coeffs(blocks, codebook)  # generator
+        for result in self._exec_encoding(coeffs_stream, indexes, codebook):
+            self._save_experiment(result, params)  # save each result right away
 
     def _init_experiment(self, params: ExperimentConfig):
         self.sequence_params = params.sequential_params
@@ -73,15 +88,17 @@ class Researcher():
         self.metadata = params.metadata
 
     def _block_partitioning(self):
+        colourist = Colourist()
         point_cloud_path = self.sequence_params.point_cloud_path
         point_cloud = PointCloud.from_file(
             path=point_cloud_path, fmt="ply", metadata=self.pc_metadata)
+        point_cloud.transform_attributes(colourist._RGBtoYUV)
         self.V = point_cloud.vertices
         self.A = point_cloud.attributes
         mortonpartition = MortonBlockPartition()
         return mortonpartition.partition(point_cloud, bsize=self.sequence_params.block_size)
 
-    def _cluster_codebook(self, blocks: List[Blocks]):
+    def _cluster_codebook(self, blocks: List[Block]):
         fit_collection = FitCollection()
         approximator = Approximator()
         for block in tqdm(blocks, "Fitting luminansce by linear approximation"):
@@ -90,264 +107,101 @@ class Researcher():
             fit_collection.add(fit_result)
             block.clear_data()
         clusterer = Clusterer(self.sequence_params.number_of_clusters)
-        return clusterer(fit_collection)
-
-    def _init_graphs(self, blocks: List[Block], codebook: Codebook):
-        centroids_labels = np.zeros((len(blocks), 1))
-        # TODO: Check how much memory this use
-        graphs = []
-        for i, block in tqdm(enumerate(blocks), "Finding best luminansce codebook centroid per block"):
-            # TODO: Fix redundancy doble check of luminance centroid inside factory
-            luminance_centroid, best_idx = self.code_book.find_best_centroid(
-                block)
-            centroids_labels[i] = best_idx
-            graphblock_factory = GraphBlockCreator(
-                self.V, self.A, block, np.array([0, 0, 0]), self.sequence_params)
-            block, structural_graph = graphblock_factory.factory_method()
-            graphs.append([structural_graph])
-            if np.not_equal(luminance_centroid, np.array([0, 0, 0])).any():
-                graphblock_factory = GraphBlockCreator(self.V, self.A, block,
-                                                       luminance_centroid, self.sequence_params)
-                block, attribute_graph = graphblock_factory.factory_method()
-                graphs[i].append(attribute_graph)
-            block.clear_data()
-        return graphs, centroid_labels
-
-    def _compute_coeffs(self, blocks: List[Block], graphs: List[List[StructuralGraph | AttributeGraph]]):
+        codebook = clusterer(fit_collection)
+        codebook.assign(blocks, self.V, self.A)
+        return codebook
+    
+    def _compute_coeffs(self, blocks: List[Block], codebook: Codebook):
         gft_strategy_wraper = GFTStrategyWraper()
-        block_coeffs = []
-        for i, block in tqdm(enumerate(blocks), "Running GFT and decider for blocks"):
+        coeffs_paths = []
+
+        for block_idx, block in tqdm(enumerate(blocks), "Init graphs + coeffs per block"):
+            graphs_list = self._init_graphs(block, block_idx, codebook)
             block.init_data(self.V, self.A)
+
             coeffs_list = []
-            graphs_list = graphs[i]
-            for graph in graphs[i]:
+            metadata_list = []
+            for graph in graphs_list:
                 _, coeffs = gft_strategy_wraper(block, graph)
                 coeffs_list.append(coeffs)
+                metadata_list.append(graph.metadata)
                 graph.clear_data()
             block.clear_data()
-            block_coeffs.append(CoeffsContainer(
-                block, graphs_list, coeffs_list))
-        return block_coeffs
 
-    def _exec_encoding(self, block_coeffs: List[CoeffsContainer], indexes: List, centroid_labels: np.ndarray):
-        encode_results = []
+            
+            coeff_container = CoeffsContainer(block, metadata_list, coeffs_list)
+
+            # dump to disk
+            path = self.cache_dir / f"coeff_{block_idx}.pkl"
+            dump(coeff_container, path)
+            coeffs_paths.append(path)
+
+        return coeffs_paths
+
+    def _init_graphs(self, block: Block, block_idx: int, codebook: Codebook):
+        # luminance_centroid = codebook.get_assigned_centroid(block_idx=block_idx)
+        luminance_centroid = codebook.centroids[codebook.labels[block_idx]]
+        graphblock_factory = GraphBlockCreator(
+            self.V, self.A, block,
+            luminance_centroid,
+            self.sequence_params
+        )
+        return graphblock_factory.get_all_products()
+
+    def _exec_encoding(self, coeffs_paths, indexes: List, codebook: Codebook):
         encoder = Encoder()
         rdo_decider = Decider(mode="0")
+        experiment_results = ExperimentResults()
+
         for q_step in tqdm(self.sequence_params.quantization_steps, "Iterating over quantization steps"):
-            selected_graph_ids = []
+            assignation_with_qstep = codebook.assignation.copy()
             Coeffs = np.zeros(self.A.shape, dtype=np.float64)
-            for coeff_container in tqdm(enumerate(block_coeffs), "RDO decider"):
-                selected_graph_id, selected_coeff, rdo_cost = rdo_decider(
-                    q_step, coeff_container)
-                Coeffs[blocks.as_index(), :] = selected_coeff
-                selected_graph_ids.append(selected_graph_id)
-            encode_results.append(encoder(Coeffs, q_step, indexes))
-        return encode_results
 
-    # @ profile
-    # def _exec_encoding(self, q_steps: List[int]):
-    #     for q_step in tqdm(q_steps, desc="Iterating over quantization steps: "):
-    #         logger.info(f"Quantization Step: {q_step}")
-    #         Coeffs, graph_ids = self._per_block_decider(q_step)
-    #         # selected_graphs = [self.graphs[i] for i,graph_id in enumerate(graph_ids) if self.graphs[i] == graph_id]
-    #         selected_graphs = []
-    #         indexes = self.point_cloud.indexes
-    #         PSNR, bpv, bsize = self.encoder(
-    #             Coeffs, selected_graphs, q_step, indexes)
-    #         self.block_manager.add_overall(
-    #             q_step = q_step, psnr = PSNR, bpv = bpv, bitcount = bsize)
-    #         logger.info(self._result_msg(PSNR, bpv, bsize))
+            for i, path in tqdm(enumerate(coeffs_paths), "RDO decider"):
+                coeff_container = load(path)  # lazy load per block
 
-    # def _result_msg(self, PSNR: float, bpv: float, bsize: int):
-    #     log_msg = f"""Results:
-    #                 Total bitstream = {bsize}
-    #                 Bits per voxel = {bpv}
-    #                 Peak Signal-to-Noise Ratio = {PSNR}"""
-    #     return log_msg
-    #
-    # @ profile
-    # def _per_block_decider(self, q_step: int):
-    #     selected_graph_ids = []
-    #     Coeffs = np.zeros(self.point_cloud.A.shape, dtype=np.float64)
-    #     for block in tqdm(self.blocks, desc=f"Rate-Distorsion Optimization for Quantization Step {q_step}: "):
-    #         selected_graph_id, selected_coeff = self._block_decider(
-    #             block, q_step)
-    #         self.block_manager.add_decision(
-    #             block, q_step, selected_graph_id, selected_coeff)
-    #         Coeffs[block.as_index(), :] = selected_coeff
-    #         selected_graph_ids.append(selected_graph_id)
-    #     return Coeffs, selected_graph_ids
-    #
-    # def _block_decider(self, block: Block, q_step: int):
-    #     coeffs_dict = self.block_manager.get_coefficients(block.id)
-    #     selected_graph_id, selected_coeff = self.decider(
-    #         q_step, coeffs_dict, block.id)
-    #     logger.info(
-    #         f"Selected {self._decision_msg(selected_graph_id, block.id)}")
-    #     return selected_graph_id, selected_coeff
-    #
-    # def _decision_msg(self, selected_graph_id: str, block_id: str):
-    #     # TODO: Create Object factory and avoid circular import
-    #     sl_weight, sl_percentage = map(float, selected_graph_id.split("_"))
-    #     edges = self.block_manager.get_data(
-    #         block_id, selected_graph_id, "edges")
-    #     sl_count = np.sum(edges[:, 0] == edges[:, 1])
-    #     if sl_percentage > 0:  # Self-loop percentage
-    #         log_msg = f""" Attribute Graph:
-    #             Self-Loop Weight: {sl_weight}
-    #             Self-Loop Percentage / Threshold: {sl_percentage}
-    #             Self-Loop Count: {sl_count}
-    #         """
-    #     else:
-    #         log_msg = f""" Structural Graph"""
-    #     return log_msg
-    #
-    # def _generate_combinations(self, params: ExperimentParameters):
-    #     multiple_params = [
-    #         params.point_cloud_path,
-    #         params.block_size,
-    #         params.self_loop_weight,
-    #         params.self_loop_percentage,
-    #     ]
-    #     return list(product(*multiple_params))
-    #
-    # @profile
-    # def _block_processing(
-    #     self,
-    #     self_loop_weight: float,
-    #     self_loop_percentage: Optional[float] = None,
-    #     self_loop_threshold: Optional[float] = None
-    # ):
-    #     self.blocks = self.point_cloud.get_all_blocks()
-    #     V = self.point_cloud.V
-    #     A = self.point_cloud.A
-    #
-    #     self.bugs_idx = []
-    #
-    #     for block in tqdm(self.blocks, desc="Processing blocks: "):
-    #         self._process_block(
-    #             V, A, block,
-    #             sl_weight=self_loop_weight,
-    #             sl_percentage=self_loop_percentage,
-    #             sl_threshold=self_loop_threshold
-    #         )
-    #
-    #     logger.info(f"Bad working blocks {self.bugs_idx}")
-    #
-    # @profile
-    # def _process_block(
-    #     self,
-    #     V: np.ndarray,
-    #     A: np.ndarray,
-    #     block: Block,
-    #     sl_weight: float,
-    #     sl_percentage: Optional[float] = None,
-    #     sl_threshold: Optional[float] = None
-    # ):
-    #     block._init_data(V, A)
-    #
-    #     if block.id not in self.block_manager.list_blocks():
-    #         struct_graph = StructuralGraph(block.id)
-    #         struct_graph._init_data(V=block.Vblock)
-    #         self._add_block(block)
-    #         self._add_graph(struct_graph, block)
-    #         struct_graph._del_data()
-    #
-    #     # Pass the correct mode to AttributeGraph
-    #     attr_graph = AttributeGraph(
-    #         block.id,
-    #         sl_weight=sl_weight,
-    #         sl_percentage=sl_percentage,
-    #         sl_threshold=sl_threshold
-    #     )
-    #
-    #     attr_graph._init_data(block.Vblock, block.Ablock)
-    #     self._add_graph(attr_graph, block)
-    #     attr_graph._del_data()
-    #     block._del_data()
-    #
-    # def _visualize_transform(self, result: tuple[np.ndarray, np.ndarray], vis_gft: bool):
-    #     self.visualizer.visualize_block_coeffs(
-    #         result=result, title=f"Coeffs for block", vis_gft=vis_gft)
-    #     plt.show(block=True)
-    #
-    # def _add_block(self, block: Block):
-    #     if str(block.id) not in self.block_manager.list_blocks():
-    #         self.block_manager.add_block(block)
-    #
-    # @profile
-    # def _add_graph(self, graph: Graph, block: Block):
-    #     """Process and store graph results with configurable debugging.
-    #
-    #     Args:
-    #         graph: Graph object to process
-    #         block: Associated block data
-    #         debug: If True, enables detailed logging (default: False)
-    #     """
-    #     self.visualizer(graph, block)
-    #     if not self.block_manager.matched_metadata(graph):
-    #         # Compute GFT transform
-    #         gft_mat, coeffs = self.GFT_computer(graph, block)
-    #
-    #         # Visualization trigger condition (DC component check)
-    #         dc_check = np.sum(coeffs[0, 0] < coeffs[:, 0]) >= 1
-    #         if self.debugging and dc_check:
-    #             self._block_debugger(graph, block, gft_mat, coeffs)
-    #             self.visualizer.visualize_coeffs(coeffs)
-    #             self.visualizer.visualize_gft(gft_mat)
-    #             self.visualizer.display()
-    #             # self._visualize_transform((gft_mat, coeffs), vis_gft=True)
-    #         self.visualizer.close()
-    #         # Store results
-    #         self.block_manager.add_result(graph, (gft_mat, coeffs))
-    #
-    # def _block_debugger(self, graph: Graph, block: Block, gft_mat: np.ndarray, coeffs: np.ndarray):
-    #     logger.debug("Visualization triggered - DC component not dominant")
-    #     logger.debug("\n=== GFT Computation Debug ===")
-    #     logger.debug(f"Graph ID: {graph.id}")
-    #     logger.debug(f"Graph Type: {type(graph).__name__}")
-    #     logger.debug(f"Block Size: {block.Vblock.shape}")
-    #     logger.debug(f"GFT Matrix Shape: {gft_mat.shape}")
-    #     logger.debug(f"Coefficients Shape: {coeffs.shape}")
-    #
-    #     # Channel statistics
-    #     for i, ch in enumerate(['Y', 'U', 'V']):
-    #         logger.debug(f"{ch} Channel - Min: {np.min(coeffs[:,i]):.4f} "
-    #                      f"DC: {coeffs[0,i]:.4f} "
-    #                      f"Max: {np.max(coeffs[:,i]):.4f} at pos {np.where(coeffs[:,i] == np.max(coeffs[:,i]))}"
-    #                      f"Mean: {np.mean(coeffs[:,i]):.4f}")
-    #
-    #     # Data quality checks
-    #     if np.any(np.isnan(coeffs)):
-    #         logger.warning("NaN values detected in coefficients!")
-    #     if np.any(np.abs(coeffs) > 1e6):
-    #         logger.warning("Extremely large coefficient values detected!")
-    #
-    #     logger.debug("DC coefficients non dominant -> Visualization triggered")
-    #     self.bugs_idx.append(block.id)
-    #
-    # def _encode_coeffs(self, Coeffs: np.ndarray, q_step: int):
-    #     self.encoder(Coeffs, q_step)
-    #
-    # def _params_msg(self, param: list[Path, int, float, float]):
-    #     log_msg = f"""Currently running with parameters:
-    #     ================================================
-    #         Point Cloud: {param[0].stem}
-    #         Block Size: {param[1]}
-    #         Self-loop Weight: {param[2]}
-    #         Self-loop Percentage: {param[3]}
-    #     ================================================
-    #     """
-    #     return log_msg
-    #
-    # def _save_config(self, params: ExperimentParameters):
-    #     pass
-    #
-    # def _save_data(self):
-    #     pass
-    #
-    # def _save_plots(self):
-    #     pass
+                rdo_decision = rdo_decider(q_step, coeff_container)
+                assignation_with_qstep[i] = rdo_decision.get_label_from_luminance(codebook)
+                Coeffs[coeff_container.block.as_index(), :] = rdo_decision.selected_coeffs
+
+            result = encoder(Coeffs, q_step, indexes, assignation_with_qstep)
+            experiment_results.add(result)
+            yield result
+
+
+    def _save_experiment(self, encode_result: EncodeResult, params: ExperimentConfig):
+        # Assuming `encode_result` contains a `q_step` attribute
+        # and has a method to convert itself to a dictionary.
+        
+        # Define the base export path
+        export_base_path = Path(self.metadata.export_folder) / self.metadata.experiment_code
+        export_base_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create a run-specific folder if it doesn't exist
+        run_path = export_base_path
+        run_path.mkdir(parents=True, exist_ok=True)
+
+        # Save the master config file once per run
+        config_file_path = run_path / "config.json"
+        if not config_file_path.exists():
+            # Convert your ExperimentConfig dataclass to a dictionary
+            # You might need a helper function for this
+            config_dict = params.to_dict()
+            with open(config_file_path, 'w') as f:
+                json.dump(config_dict, f, indent=4)
+
+        # Save the results for the current q_step
+        results_dir = run_path / "results"
+        results_dir.mkdir(exist_ok=True)
+        result_file_path = results_dir / f"qstep_{encode_result.q_step}.json"
+
+        result_dict = dataclasses.asdict(encode_result)
+        
+        with open(result_file_path, 'w') as f:
+            json.dump(result_dict, f, indent=4)
+
+        logger.info(f"Saved results for q_step {encode_result.q_step} to {result_file_path}")
+
 
 
 class Analyst():
@@ -451,9 +305,7 @@ class Analyst():
 
 
 def run_experiments():
-    params = load_experiment_parameters(Path("config/config.yaml"))
-    export_folder = Path(params.export_folder)
-    shutil.copy2(Path("config/config.yaml"), export_folder)
+    params = load_experiment_config(Path("config/config.yaml"))
     researcher = Researcher()
     researcher(params)
 

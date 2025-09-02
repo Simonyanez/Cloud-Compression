@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from .blocks import BlockMetadata
+from .blocks import BlockMetadata, AuxiliaryBlockMetadata
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -25,38 +25,47 @@ class GraphMetadata:
     luminance_centroid: np.ndarray
     self_loop_threshold: Optional[float]
     self_loop_weight: Optional[float]
-
-    def get_graph_id(self):
+    
+    @property
+    def graph_id(self):
         graph_id = f"{self.block_id}_{self.graph_type}"
         if self.self_loop_threshold is not None:
             graph_id += f"_sl{self.self_loop_threshold}_{self.self_loop_weight}"
         return graph_id
-
 
 class GraphBase(ABC):
     def __init__(self, metadata: GraphMetadata):
         self.metadata = metadata
         self.weights: Optional[np.ndarray] = None
         self.edges: Optional[np.ndarray] = None
+        logger.debug(f"Graph object initialized with metadata: {self.metadata.graph_id}")
+
+    @property
+    def graph_id(self):
+        return self.metadata.graph_id
 
     def set_data(self, weights: np.ndarray, edges: np.ndarray) -> None:
+        logger.debug(f"Updating weights and edges for graph: {self.graph_id}")
+        logger.debug(f"Weights shape: {weights.shape}, Edges shape: {edges.shape}")
         self.weights = weights
         self.edges = edges
 
     def get_data(self) -> tuple[np.ndarray, np.ndarray]:
         assert self.weights is not None, "Graph weights haven't been initialized"
         assert self.edges is not None, "Graph edges haven't been initialized"
+        logger.debug(f"Retrieving data for graph: {self.graph_id}. Weights shape: {self.weights.shape}, Edges shape: {self.edges.shape}")
         return self.weights, self.edges
 
     def clear_data(self) -> None:
         self.weights = None
         self.edges = None
+        logger.debug(f"Data cleared for graph: {self.graph_id}")
 
 
 class StructuralGraph(GraphBase):
-    def __init__(self, block_metadata: BlockMetadata):
+    def __init__(self, block_metadata: BlockMetadata | AuxiliaryBlockMetadata):
 
-        block_id = block_metadata.get_block_id()
+        block_id = block_metadata.block_id
         metadata = GraphMetadata(
             block_id=block_id,
             graph_type="Structural",
@@ -66,6 +75,9 @@ class StructuralGraph(GraphBase):
             self_loop_weight=None
         )
         super().__init__(metadata)
+
+    def set_metadata(self, metadata: GraphMetadata):
+        self.metadata = metadata
 
     def set_data(self,
                  V: Optional[np.ndarray] = None,

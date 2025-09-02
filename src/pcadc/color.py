@@ -1,10 +1,10 @@
 import numpy as np
+from .blocks import Block
 from dataclasses import dataclass
 from typing import Optional, Tuple, Dict, List
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import root_mean_squared_error
-from .objects import *
 import logging
 logging.basicConfig(filename="logs/color.log",
                     filemode="w",
@@ -63,7 +63,16 @@ class Colourist():
 class FitResult:
     coeffs: np.ndarray
     rmse: float
-    feature_names: List[str]
+    feature_names: np.ndarray
+
+    def __str__(self) -> str:
+        return (
+            f"Fit Result\n"
+            f"==============================\n"
+            f"Coeffs: {self.coeffs}\n"
+            f"RMSE: {self.rmse}\n"
+            f"Feature names: {self.feature_names}\n"
+        )
 
 
 class FitCollection:
@@ -93,10 +102,20 @@ class Approximator:
     def __init__(self, fit_degree: int = 1):
         self.fit_degree = fit_degree
 
-    def __call__(self, block: "Block") -> FitResult:
+    def __call__(self, block: Block) -> FitResult:
         Vblock, Ablock = block.get_data()
+        if Vblock.shape[0] == 1:
+            return self._one_point_block(Ablock)
         Vblock_normed = self._spatial_norm(Vblock)
         return self._luminance_fit(Vblock_normed, Ablock)
+
+    def _one_point_block(self, Ablock) -> FitResult:
+        # FIXME: Check if this is right
+        logger.warning("Block has fewer points than the fit degree. Returning a constant fit.")
+        coeffs = np.array([Ablock[0,0],0,0,0]) 
+        feature_names = np.array(["x", "y", "z"])
+        rmse = 0.0
+        return FitResult(coeffs, rmse, feature_names)
 
     def _spatial_norm(self, Vblock: np.ndarray) -> np.ndarray:
         Vblock_centered = self.center_block(Vblock)
