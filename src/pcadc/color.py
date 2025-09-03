@@ -111,16 +111,12 @@ class Approximator:
 
     def _one_point_block(self, Ablock) -> FitResult:
         # FIXME: Check if this is right
-        logger.warning("Block has fewer points than the fit degree. Returning a constant fit.")
-        coeffs = np.array([Ablock[0,0],0,0,0]) 
+        logger.warning(
+            "Block has fewer points than the fit degree. Returning a constant fit.")
+        coeffs = np.array([Ablock[0, 0], 0, 0, 0])
         feature_names = np.array(["x", "y", "z"])
         rmse = 0.0
         return FitResult(coeffs, rmse, feature_names)
-
-    def _spatial_norm(self, Vblock: np.ndarray) -> np.ndarray:
-        Vblock_centered = self.center_block(Vblock)
-        Vblock_rotated = self.rotate_block(Vblock_centered)
-        return Vblock_rotated
 
     def _luminance_fit(
         self,
@@ -144,6 +140,11 @@ class Approximator:
         logger.info(f"Coefficients: {dict(zip(feature_names, coeffs))}")
 
         return FitResult(coeffs, rmse, feature_names)
+
+    def _spatial_norm(self, Vblock: np.ndarray) -> np.ndarray:
+        Vblock_centered = self.center_block(Vblock)
+        Vblock_rotated = self.rotate_block(Vblock_centered)
+        return Vblock_rotated
 
     @staticmethod
     def center_block(Vblock: np.ndarray) -> np.ndarray:

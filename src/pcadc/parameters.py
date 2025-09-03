@@ -1,6 +1,6 @@
 from .io import *
 from .pointcloud import *
-from dataclasses import dataclass,asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List, Any
 import yaml
@@ -25,9 +25,11 @@ class SequentialParameters:
     """
     point_cloud_path: Path
     number_of_clusters: int
+    normalize_slopes: bool
     self_loop_weight: float
     self_loop_threshold: float
     quantization_steps: List[int]
+    lagrange_proportional: float
     block_size: int
 
 
@@ -65,21 +67,23 @@ class ExperimentConfig:
             f"Export Path: {self.metadata.export_folder}\n"
             f"Point Cloud: {self.sequential_params.point_cloud_path}\n"
             f"Number of Clusters: {self.sequential_params.number_of_clusters}\n"
+            f"Normalize Slopes: {self.sequential_params.normalize_slopes}\n"
             f"Self-loop Weight: {self.sequential_params.self_loop_weight}\n"
             f"Self-loop Threshold: {self.sequential_params.self_loop_threshold}\n"
             f"Quantization Steps: {self.sequential_params.quantization_steps}\n"
+            f"Lagrange Proportional: {self.sequential_params.lagrange_proportional}\n"
             f"Block Size: {self.sequential_params.block_size}\n"
             f"Rewrite Results: {self.rewrite_results}\n"
             f"Debugging: {self.debugging}\n"
         )
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Returns a JSON-serializable dictionary representation of the ExperimentConfig.
         """
         # Start with the default dataclass-to-dict conversion
         config_dict = asdict(self)
-        
+
         # Recursively convert Path objects to strings
         return self._convert_paths(config_dict)
 
@@ -124,9 +128,11 @@ def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
             point_cloud_path=Path(
                 config["sequential_params"]["point_cloud_path"]),
             number_of_clusters=config["sequential_params"]["number_of_clusters"],
+            normalize_slopes=config["sequential_params"]["normalize_slopes"],
             self_loop_weight=config["sequential_params"]["self_loop_weight"],
             self_loop_threshold=config["sequential_params"]["self_loop_threshold"],
             quantization_steps=config["sequential_params"]["quantization_steps"],
+            lagrange_proportional=config["sequential_params"]["lagrange_proportional"],
             block_size=config["sequential_params"]["block_size"],
         )
 

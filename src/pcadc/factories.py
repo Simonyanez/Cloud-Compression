@@ -64,14 +64,19 @@ class GraphBlockCreator(Creator):
 
     def get_all_products(self):
         _, graph = self.factory_method()
+        logger.debug(
+            f"Luminance centroid for this block is: {self.luminance_centroid}")
         if not self.is_structural:
+            logger.debug(
+                f"Block detected as not structural only")
             structural_graph = self._force_structural_graph()
             return [structural_graph, graph]
+        logger.debug(f"Block was structural only")
         return [graph]
 
     def _force_structural_graph(self):
         _centroid_cache = self.luminance_centroid.copy()
-        self.luminance_centroid = np.array([0,0,0])
+        self.luminance_centroid = np.array([0, 0, 0])
         _, structural_graph = self.factory_method()
         self.luminance_centroid = _centroid_cache
         return structural_graph
@@ -101,7 +106,7 @@ class SubGraphCreator(Creator):
         weights_sub = weights[self.sub_idxs, :][:, self.sub_idxs]
         # FIXME: This is so Wrong. Edges are not used though
         edges_sub = np.zeros((0, 2), dtype=np.int64)
-        # NOTE: SUB IDX -1 is quick fix for one point blocks 
+        # NOTE: SUB IDX -1 is quick fix for one point blocks
         sub_block_metadata = AuxiliaryBlockMetadata(start=self.parent_block.get_absolute_idx(self.sub_idxs[0]),
                                                     end=self.parent_block.get_absolute_idx(
                                                         self.sub_idxs[-1]),
@@ -114,9 +119,10 @@ class SubGraphCreator(Creator):
         sub_graph_metadata = GraphMetadata(block_id=sub_block_metadata.block_id,
                                            graph_type="Sub-graph",
                                            distance_threshold=np.sqrt(3),
-                                           luminance_centroid=np.array([0, 0, 0]), 
-                                           self_loop_threshold= None,
-                                            self_loop_weight= None)
+                                           luminance_centroid=np.array(
+                                               [0, 0, 0]),
+                                           self_loop_threshold=None,
+                                           self_loop_weight=None)
         sub_graph = GraphBase(sub_graph_metadata)
         sub_graph.set_data(weights=weights_sub,
                            edges=edges_sub)
@@ -146,8 +152,9 @@ class MeanGraphFactory(Creator):
         mean_graph_metadata = GraphMetadata(block_id=mean_block_metadata.block_id,
                                             graph_type="Mean-Graph",
                                             distance_threshold=np.inf,
-                                            luminance_centroid=np.array([0, 0, 0]),
-                                            self_loop_threshold= None,
+                                            luminance_centroid=np.array(
+                                                [0, 0, 0]),
+                                            self_loop_threshold=None,
                                             self_loop_weight=None)
         mean_graph = StructuralGraph(mean_block_metadata)
         mean_graph.set_metadata(mean_graph_metadata)

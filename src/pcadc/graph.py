@@ -25,7 +25,7 @@ class GraphMetadata:
     luminance_centroid: np.ndarray
     self_loop_threshold: Optional[float]
     self_loop_weight: Optional[float]
-    
+
     @property
     def graph_id(self):
         graph_id = f"{self.block_id}_{self.graph_type}"
@@ -33,12 +33,14 @@ class GraphMetadata:
             graph_id += f"_sl{self.self_loop_threshold}_{self.self_loop_weight}"
         return graph_id
 
+
 class GraphBase(ABC):
     def __init__(self, metadata: GraphMetadata):
         self.metadata = metadata
         self.weights: Optional[np.ndarray] = None
         self.edges: Optional[np.ndarray] = None
-        logger.debug(f"Graph object initialized with metadata: {self.metadata.graph_id}")
+        logger.debug(
+            f"Graph object initialized with metadata: {self.metadata.graph_id}")
 
     @property
     def graph_id(self):
@@ -46,14 +48,16 @@ class GraphBase(ABC):
 
     def set_data(self, weights: np.ndarray, edges: np.ndarray) -> None:
         logger.debug(f"Updating weights and edges for graph: {self.graph_id}")
-        logger.debug(f"Weights shape: {weights.shape}, Edges shape: {edges.shape}")
+        logger.debug(
+            f"Weights shape: {weights.shape}, Edges shape: {edges.shape}")
         self.weights = weights
         self.edges = edges
 
     def get_data(self) -> tuple[np.ndarray, np.ndarray]:
         assert self.weights is not None, "Graph weights haven't been initialized"
         assert self.edges is not None, "Graph edges haven't been initialized"
-        logger.debug(f"Retrieving data for graph: {self.graph_id}. Weights shape: {self.weights.shape}, Edges shape: {self.edges.shape}")
+        logger.debug(
+            f"Retrieving data for graph: {self.graph_id}. Weights shape: {self.weights.shape}, Edges shape: {self.edges.shape}")
         return self.weights, self.edges
 
     def clear_data(self) -> None:
@@ -175,6 +179,7 @@ class AttributeGraph(GraphBase):
         self.edges = np.vstack([self.edges, pairs])
 
     def _attribute_motion_matrix(self, A: np.ndarray) -> np.ndarray:
+        # FIXME: Does it make sense to normalize by max possible value if the Y is an approximated version based in luminance fits?
         Y = A[:, 0]
         return self.weights * np.subtract.outer(Y, Y) / 255
 
@@ -201,9 +206,11 @@ class AttributeGraph(GraphBase):
         return sink_vector
 
     def _get_decreasing_count(self, M: np.ndarray) -> np.ndarray:
+        # NOTE: This workout avoid non-dynamic neighbours and self-node comparison
         M_masked = np.copy(M)
         M_masked[self.weights == 0] = np.inf
         np.fill_diagonal(M_masked, np.inf)
+        # Get the most decreased nodes
         dec_i = np.argmin(M_masked, axis=1)
         return np.unique(dec_i, return_counts=True)
 
