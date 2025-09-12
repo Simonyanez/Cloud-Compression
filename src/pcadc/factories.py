@@ -35,11 +35,13 @@ class GraphBlockCreator(Creator):
                  V: np.ndarray,
                  A: np.ndarray,
                  block: Block,
+                 centroid_label:int,
                  luminance_centroid: np.ndarray,
                  parameters: SequentialParameters):
         self.V = V
         self.A = A
         self.block = block
+        self.centroid_label = centroid_label
         self.luminance_centroid = luminance_centroid
         self.self_loop_threshold = parameters.self_loop_threshold
         self.self_loop_weight = parameters.self_loop_weight
@@ -52,10 +54,11 @@ class GraphBlockCreator(Creator):
         structural_graph.set_data(V=Vblock)
 
         if not self.is_structural:
-            attribute_graph = AttributeGraph(structural_graph, self.luminance_centroid,
+            attribute_graph = AttributeGraph(structural_graph, self.luminance_centroid, self.centroid_label,
                                              self.self_loop_threshold, self.self_loop_weight)
+            Vblock_rotated = Approximator()._spatial_norm(Vblock)
             Ablock_app = Ablock.copy()
-            Ablock_app[:, 0] = Vblock @ self.luminance_centroid.T
+            Ablock_app[:, 0] = Vblock_rotated @ self.luminance_centroid.T
             # decorate graph with attributes
             attribute_graph.set_data(V=Vblock, A=Ablock_app)
             return self.block, attribute_graph
@@ -119,6 +122,7 @@ class SubGraphCreator(Creator):
         sub_graph_metadata = GraphMetadata(block_id=sub_block_metadata.block_id,
                                            graph_type="Sub-graph",
                                            distance_threshold=np.sqrt(3),
+                                           centroid_label=0,
                                            luminance_centroid=np.array(
                                                [0, 0, 0]),
                                            self_loop_threshold=None,
@@ -152,6 +156,7 @@ class MeanGraphFactory(Creator):
         mean_graph_metadata = GraphMetadata(block_id=mean_block_metadata.block_id,
                                             graph_type="Mean-Graph",
                                             distance_threshold=np.inf,
+                                            centroid_label=0,
                                             luminance_centroid=np.array(
                                                 [0, 0, 0]),
                                             self_loop_threshold=None,

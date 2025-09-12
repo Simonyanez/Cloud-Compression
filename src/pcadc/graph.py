@@ -23,6 +23,7 @@ class GraphMetadata:
     graph_type: str
     distance_threshold: float
     luminance_centroid: np.ndarray
+    centroid_label: int
     self_loop_threshold: Optional[float]
     self_loop_weight: Optional[float]
 
@@ -30,8 +31,12 @@ class GraphMetadata:
     def graph_id(self):
         graph_id = f"{self.block_id}_{self.graph_type}"
         if self.self_loop_threshold is not None:
-            graph_id += f"_sl{self.self_loop_threshold}_{self.self_loop_weight}"
+            graph_id += f"_sl_{self.self_loop_threshold}_{self.self_loop_weight}"
         return graph_id
+
+    @property
+    def graph_descriptor(self):
+        return f"{self.graph_type}_{self.centroid_label}"
 
 
 class GraphBase(ABC):
@@ -74,6 +79,7 @@ class StructuralGraph(GraphBase):
             block_id=block_id,
             graph_type="Structural",
             distance_threshold=np.sqrt(3),
+            centroid_label=0,
             luminance_centroid=np.array([0, 0, 0]),
             self_loop_threshold=None,
             self_loop_weight=None
@@ -120,11 +126,13 @@ class AttributeGraph(GraphBase):
     def __init__(self,
                  structural_graph: StructuralGraph,
                  luminance_centroid: np.ndarray,
+                 centroid_label: int,
                  self_loop_threshold: float,
                  self_loop_weight: float):
         metadata = deepcopy(structural_graph.metadata)
         metadata.graph_type = "Attribute"
         metadata.luminance_centroid = luminance_centroid
+        metadata.centroid_label = centroid_label
         metadata.self_loop_threshold = self_loop_threshold
         metadata.self_loop_weight = self_loop_weight
 

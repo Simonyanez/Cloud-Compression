@@ -8,6 +8,7 @@ import numpy as np
 import json
 import dataclasses
 from .factories import *
+from .observer import *
 from .transforms import *
 from .pointcloud import *
 from .io import *
@@ -52,6 +53,7 @@ logger = logging.getLogger(__name__)
 # file_handler.setFormatter(formatter)
 # logger.addHandler(file_handler)
 
+
 class ExperimentResults:
     def __init__(self):
         self._results = []
@@ -63,12 +65,21 @@ class ExperimentResults:
         pass
 
 
+# This is one subject for observer pattern
 class Researcher():
     def __init__(self):
         self.cache_dir = Path(tempfile.mkdtemp(prefix="coeffs_cache_"))
+        self.observers: List[ExperimentObserver] = []
+
+    def attach(self, observer: ExperimentObserver):
+        self.observers.append(observer)
+
+    def _notify(self, event: ExperimentEvent) -> None:
+        for observer in self.observers:
+            observer.update(event)
 
     @profile
-    def __call__(self, params: ExperimentConfig):
+    def run(self, params: ExperimentConfig):
         self._init_experiment(params)
         indexes, blocks = self._block_partitioning()
         codebook = self._cluster_codebook(blocks)
@@ -77,7 +88,7 @@ class Researcher():
         for result in self._exec_encoding(coeffs_stream, indexes, codebook):
             # save each result right away
             self._save_experiment(result, params)
-
+            
     def _init_experiment(self, params: ExperimentConfig):
         self.sequence_params = params.sequential_params
         self.pc_metadata = params.pointcloud
@@ -104,6 +115,7 @@ class Researcher():
             fit_result = approximator(block)
             fit_collection.add(fit_result)
             block.clear_data()
+            self._notify(FitEvent(block, fit_result))
         clusterer = Clusterer(
             self.sequence_params.number_of_clusters, self.sequence_params.normalize_slopes)
         codebook = clusterer(fit_collection)
@@ -121,13 +133,14 @@ class Researcher():
             coeffs_list = []
             metadata_list = []
             for graph in graphs_list:
-                _, coeffs = gft_strategy_wraper(block, graph)
+                GFT_mat, coeffs = gft_strategy_wraper(block, graph)
                 coeffs_list.append(coeffs)
                 metadata_list.append(graph.metadata)
+                self._notify(CoeffsEvent(block, graph, coeffs, GFT_mat))
                 graph.clear_data()
             block.clear_data()
 
-            coeff_container = CoeffsContainer(
+            coeff_container =CoeffsContainer(
                 block, metadata_list, coeffs_list)
 
             # dump to disk
@@ -139,12 +152,15 @@ class Researcher():
 
     def _init_graphs(self, block: Block, block_idx: int, codebook: Codebook):
         # luminance_centroid = codebook.get_assigned_centroid(block_idx=block_idx)
-        luminance_centroid = codebook.centroids[codebook.labels[block_idx]]
+        codebook_label = codebook.labels[block_idx]
+        luminance_centroid = codebook.centroids[codebook_label]
         graphblock_factory = GraphBlockCreator(
             self.V, self.A, block,
+            codebook_label,
             luminance_centroid,
             self.sequence_params
         )
+        self._notify(CodebookEvent(block, codebook))
         return graphblock_factory.get_all_products()
 
     def _exec_encoding(self, coeffs_paths, indexes: List, codebook: Codebook):
@@ -159,16 +175,19 @@ class Researcher():
 
             for i, path in tqdm(enumerate(coeffs_paths), "RDO decider"):
                 coeff_container = load(path)  # lazy load per block
-
                 rdo_decision = rdo_decider(q_step, coeff_container)
+                self._notify(RDOEvent(q_step, rdo_decision, coeff_container))
+                # FIXME: What is this?
                 assignation_with_qstep[i] = rdo_decision.get_label_from_luminance(
                     codebook)
                 Coeffs[coeff_container.block.as_index(
                 ), :] = rdo_decision.selected_coeffs
 
             result = encoder(Coeffs, q_step, indexes, assignation_with_qstep)
+            self._notify(EncodeEvent(self.metadata.experiment_code, result))
             experiment_results.add(result)
             yield result
+
 
     def _save_experiment(self, encode_result: EncodeResult, params: ExperimentConfig):
         # Assuming `encode_result` contains a `q_step` attribute
@@ -309,7 +328,17 @@ class Researcher():
 def run_experiments():
     params = load_experiment_config(Path("config/config.yaml"))
     researcher = Researcher()
-    researcher(params)
+    
+    # Create the directory structure first
+    db_dir = params.metadata.export_folder / Path(params.metadata.experiment_code)
+    db_dir.mkdir(exist_ok=True, parents=True)
+    
+    # Then create the database file path
+    db_path = db_dir / f"{params.metadata.experiment_code}.db"
+    
+    experiment_observer = SQLiteSink(db_path)
+    researcher.attach(experiment_observer)
+    researcher.run(params)
 #
 #
 # def run_results():

@@ -29,6 +29,7 @@ class Codebook:
     def assign(self, blocks: List[Block], V: np.ndarray, A: np.ndarray):
         # NOTE: This assignation is made based on TRUE LUMINANSCE
         # While the previous clusters are made based on LINEAR FIT
+        # FIXME: Block should be normalized for calculation
         for i, block in enumerate(blocks):
             block.init_data(V, A)
             self.assignation[i] = self.find_best_centroid(block)

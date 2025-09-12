@@ -84,6 +84,10 @@ class Block(BlockBase):
     def block_id(self):
         return self.metadata.block_id
 
+    @property
+    def block_idx(self):
+        return self.metadata.block_idx
+
     def as_index(self):
         return self.metadata.return_index()
     

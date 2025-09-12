@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from .transforms import CoeffsContainer
 from .graph import GraphMetadata
 from .clusterer import Codebook
@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class RDO_Decision:
     mode: str
     cost: float
+    rates: List[float]
+    distorsions: List[float]
     selected_coeffs: np.ndarray
     selected_graph_metadata: GraphMetadata
 
@@ -76,7 +78,7 @@ class Decider:
         rd_cost = (self.lagrange_mult * sparsity) + qerror
         logger.debug(
             f"Calculated RD cost. Quantization Error: {qerror:.4f}, Sparsity: {sparsity}, Total Cost: {rd_cost:.4f}.")
-        return rd_cost
+        return rd_cost, sparsity, qerror
 
     @profile
     def _RDO(self, coeffs_container: CoeffsContainer) -> RDO_Decision:
@@ -91,13 +93,17 @@ class Decider:
         selected_coeff = None
         selected_metadata = None
         struct_coeff = None
+        distorsions = []
+        rates = []
 
         logger.info(
             f"Evaluating {len(coeff_id_pairs)} candidate coefficient-graph pairs.")
         for i, (coeff, graph_obj) in enumerate(coeff_id_pairs):
-            res = self._RDcost(coeff)
+            res, sparsity, qerror = self._RDcost(coeff)
             logger.info(
                 f"Candidate {i+1}/{len(coeff_id_pairs)} (Graph ID: {graph_obj.graph_id}) has a total cost of {res:.4f}.")
+            rates.append(sparsity)
+            distorsions.append(qerror)
 
             if res < min_cost:
                 min_cost = res
@@ -127,5 +133,7 @@ class Decider:
 
         return RDO_Decision(mode=self.mode,
                             cost=min_cost,
+                            rates=rates,
+                            distorsions=distorsions,
                             selected_coeffs=selected_coeff,
                             selected_graph_metadata=selected_metadata)
