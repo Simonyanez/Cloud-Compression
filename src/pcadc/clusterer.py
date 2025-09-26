@@ -90,6 +90,9 @@ class Codebook:
     def get_assigned_centroid(self, block_idx: int):
         return self.centroids[self.assignation[block_idx]]
 
+    def get_labeled_centroid(self, block_idx: int):
+        return self.centroids[self.labels[block_idx]]
+
     def find_centroid_label(self, centroid: np.ndarray) -> int:
         """
         Return the index (label) of the given centroid in the codebook.

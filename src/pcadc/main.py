@@ -65,6 +65,8 @@ class ExperimentResults:
         pass
 
 
+# TODO: Experiment Results Summary Dataclass
+
 # This is one subject for observer pattern
 class Researcher():
     def __init__(self):
@@ -336,8 +338,10 @@ def run_experiments():
     # Then create the database file path
     db_path = db_dir / f"{params.metadata.experiment_code}.db"
     
-    experiment_observer = SQLiteSink(db_path)
-    researcher.attach(experiment_observer)
+    database_observer = SQLiteSink(db_path)
+    visualization_observer = DiagnosticVisualizer()
+    researcher.attach(database_observer)
+    researcher.attach(visualization_observer)
     researcher.run(params)
 #
 #

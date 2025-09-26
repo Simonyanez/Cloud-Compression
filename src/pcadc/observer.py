@@ -8,11 +8,12 @@ import numpy as np
 
 from .blocks import Block
 from .graph import StructuralGraph, AttributeGraph
-from .color import FitResult
+from .color import FitResult, Approximator
 from .decider import RDO_Decision
 from .encoder import EncodeResult
 from .clusterer import Codebook
 from .transforms import CoeffsContainer
+from .visualization import Visualizer
 
 
 # ------------------------
@@ -38,9 +39,7 @@ class RDOEvent:
 @dataclass
 class EncodeEvent:
     experiment_code: str
-    result: EncodeResult
-
-@dataclass
+    result: EncodeResult @dataclass
 class CoeffsEvent:
     block: Block
     graph: StructuralGraph | AttributeGraph
@@ -213,9 +212,14 @@ class SQLiteSink(ExperimentObserver):
 
 class DiagnosticVisualizer(ExperimentObserver):
     def __init__(self):
+        self.enabled = True
+        self.visualizer = Visualizer()
         pass
         
     def update(self, event: ExperimentEvent) -> None:
+        if not self.enabled:
+            return
+
         match event:
             case FitEvent(): self._visualize_fit(event)
             case CodebookEvent(): self._visualize_codebook(event)
@@ -223,13 +227,36 @@ class DiagnosticVisualizer(ExperimentObserver):
             case RDOEvent(): self._visualize_rdo(event)
             case EncodeEvent(): self._visualize_encoding(event)
 
+    def enable(self):
+        self.enabled = True
+
+    def disable(self):
+        self.enabled = False
+
     def _visualize_fit(self, event: FitEvent):
+        Vblock, Ablock = event.block.get_data()
+        fit_coeffs = event.result.coeffs
+        rmse = event.result.rmse
+        Vblock_rotated = Approximator()._spatial_norm(Vblock)
+        Y_app = Vblock_rotated @ fit_coeffs.T
         #TODO: Plot original block
+        self.visualizer.visualize_block()
         #TODO: Plot Y channel colormap
         #TODO: Plot Y approximation by fit with its RMSE
         pass
 
     def _visualize_codebook(self, event: CodebookEvent):
+        Vblock, Ablock = event.block.get_data()
+        assignation = event.codebook.assignation
+        labels = event.codebook.labels
+        Vblock_rotated = Approximator()._spatial_norm(Vblock)
+
+        assigned_centroid = event.codebook.get_assigned_centroid(event.block.block_idx)
+        Y_by_assignation = Vblock_rotated @ assigned_centroid.T
+
+        labeled_centroid = event.codebook.get_labeled_centroid(event.block.block_idx)
+        Y_by_label = Vblock_rotated @ labeled_centroid.T
+        
         #TODO: Plot Y channel colormap
         #TODO: Plot Y approximation using cluster centroid
         #TODO: Plot Y approximation using assigned cluster centroid
@@ -237,18 +264,28 @@ class DiagnosticVisualizer(ExperimentObserver):
         pass
 
     def _visualize_coeffs(self, event: CoeffsEvent):
+        coeffs = event.coeffs
         #TODO: Plot energy compaction 10 first coefficients 3 channels
+        Vblock, _ = event.block.get_data()
+        weights = event.graph.weights
+        GFT_mat = event.GFT_mat
+        first_basis = GFT_mat[:, 0]
         #TODO: Plot graph with its connections
         #TODO: Plot first GFT matrix as colormap
         #TODO: Plot first basis projection
         pass
 
     def _visualize_rdo(self, event:RDOEvent):
+        rates = event.decision.rates
+        distorsions = event.decision.distorsions
+        graph_ids = [graph.graph_id for graph in event.coeffs_container.graphs]
+        coeffs = event.coeffs_container.coeffs
         #TODO: Plot distorsions and rates with graph ids
         #TODO: Plot coeffs energy compaction compared showing selected with its RDO Cost
         pass
 
     def _visualize_encoding(self, event: EncodeEvent):
+        #TODO: Plot experiment summary
         #TODO: Plot results table
         pass
 
