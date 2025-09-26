@@ -85,10 +85,9 @@ class VisualizationManager:
         
         # Start fresh
         viz = self.visualizer
-        
         # Execute pipeline steps
         for step in pipeline.steps:
-            viz = step(self, viz, data)
+            viz = step(viz, data)
         
         # Set overall title and build
         if hasattr(viz, 'fig') and viz.fig:
@@ -213,30 +212,32 @@ class VisualizationManager:
         # Original
         ax1 = viz.fig.add_subplot(1, 3, 1, projection='3d')
         viz.ax = ax1
-        viz.with_data(vertices, attributes).plot_point_cloud(color_channel=0)
+        viz.with_data(vertices, attributes).plot_basis_function(attributes[:,0], colormap="inferno")
         ax1.set_title("Original Y Channel")
         
         # Fit approximation
         ax2 = viz.fig.add_subplot(1, 3, 2, projection='3d')
         viz.ax = ax2
         
-        # TODO: Implement fit approximation calculation
-        # fit_approx = compute_fit_approximation(vertices, fit_result)
-        # viz.plot_point_cloud_with_values(fit_approx)
+        # Y approximation using basis plot
+        fit_approx = compute_fit_approximation(vertices, fit_result)
+        viz.plot_basis_function(fit_approx, colormap="inferno")
         ax2.set_title(f"Fit Approximation (RMSE: {fit_result.rmse:.4f})")
         
         return viz
     
     def _add_residual_analysis(self, viz: Visualizer, data: dict) -> Visualizer:
         """Add residual analysis"""
+        vertices = data['vertices']
         attributes = data['attributes']
         fit_result = data['fit_result']
         
         ax = viz.fig.add_subplot(1, 3, 3)
         
         # TODO: Implement residual calculation
-        # residual = attributes[:, 0] - fit_approximation
-        # ax.hist(residual, bins=30, alpha=0.7)
+        fit_approx = compute_fit_approximation(vertices, fit_result)
+        residual = attributes[:, 0] - fit_approx
+        ax.hist(residual, bins=30, alpha=0.7)
         ax.set_title("Residual Distribution")
         ax.set_xlabel("Residual Value")
         ax.set_ylabel("Frequency")
@@ -311,15 +312,15 @@ class VisualizationManager:
         return viz
 
 # TODO: Add these helper functions
-def compute_fit_approximation(vertices: np.ndarray, fit_result) -> np.ndarray:
+def compute_fit_approximation(vertices: np.ndarray, fit_result: FitResult) -> np.ndarray:
     """
     TODO: Implement fit approximation calculation
     - Apply spatial normalization to vertices
     - Compute Y approximation using fit coefficients
     """
     rotated_vertices = Approximator()._spatial_norm(vertices)
-    fit_result
-    pass
+    Y_app = rotated_vertices @ fit_result.coeffs[1:].T
+    return Y_app
 
 def compute_residual(original: np.ndarray, approximation: np.ndarray) -> np.ndarray:
     """

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Union
 from pathlib import Path
 from dataclasses import dataclass
+import matplotlib.pyplot as plt
+import time
 import sqlite3
 import numpy as np
 
@@ -14,6 +16,7 @@ from .encoder import EncodeResult
 from .clusterer import Codebook
 from .transforms import CoeffsContainer
 from .visualization import Visualizer
+from .managers import VisualizationManager, VisualizationType
 
 
 # ------------------------
@@ -39,7 +42,9 @@ class RDOEvent:
 @dataclass
 class EncodeEvent:
     experiment_code: str
-    result: EncodeResult @dataclass
+    result: EncodeResult 
+
+@dataclass
 class CoeffsEvent:
     block: Block
     graph: StructuralGraph | AttributeGraph
@@ -213,6 +218,7 @@ class SQLiteSink(ExperimentObserver):
 class DiagnosticVisualizer(ExperimentObserver):
     def __init__(self):
         self.enabled = True
+        self.visualization_manager = VisualizationManager()
         self.visualizer = Visualizer()
         pass
         
@@ -235,12 +241,15 @@ class DiagnosticVisualizer(ExperimentObserver):
 
     def _visualize_fit(self, event: FitEvent):
         Vblock, Ablock = event.block.get_data()
-        fit_coeffs = event.result.coeffs
-        rmse = event.result.rmse
-        Vblock_rotated = Approximator()._spatial_norm(Vblock)
-        Y_app = Vblock_rotated @ fit_coeffs.T
+        fig = self.visualization_manager.create_visualization(VisualizationType.FIT_ANALYSIS,
+                                                        name=f"Fit Visualization for Block {event.block.block_idx}",
+                                                        vertices=Vblock,
+                                                        attributes=Ablock,
+                                                        fit_result=event.result
+                                                        )
+        # NOTE: Maybe show on demand
+        plt.show()
         #TODO: Plot original block
-        self.visualizer.visualize_block()
         #TODO: Plot Y channel colormap
         #TODO: Plot Y approximation by fit with its RMSE
         pass

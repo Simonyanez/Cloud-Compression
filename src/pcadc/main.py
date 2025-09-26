@@ -116,8 +116,8 @@ class Researcher():
             block.init_data(self.V, self.A)
             fit_result = approximator(block)
             fit_collection.add(fit_result)
-            block.clear_data()
             self._notify(FitEvent(block, fit_result))
+            block.clear_data()
         clusterer = Clusterer(
             self.sequence_params.number_of_clusters, self.sequence_params.normalize_slopes)
         codebook = clusterer(fit_collection)
