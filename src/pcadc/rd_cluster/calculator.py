@@ -1,5 +1,8 @@
 from typing import Protocol
 from states import RDBlockCost
+from gft_cache import GFTCacheStrategy
+from pcadc.decider import Decider
+from pcadc.blocks import Block
 import numpy as np
 
 
@@ -20,7 +23,8 @@ class RDCostCalculator(Protocol):
 class RDCostAdapter:
     """Adapter to use your existing RD cost implementation"""
     
-    def __init__(self, gft_cache: GFTCacheStrategy, existing_rd_calculator):
+    #NOTE: Remember to change decider init parameters (lambda value: qstep)
+    def __init__(self, gft_cache: GFTCacheStrategy, decider: Decider):
         """
         TODO: Initialize with your existing RD calculation components
         
@@ -29,9 +33,9 @@ class RDCostAdapter:
             existing_rd_calculator: Your existing RD cost implementation
         """
         self.gft_cache = gft_cache
-        self.rd_calculator = existing_rd_calculator
+        self.rd_calculator = decider._RDcost
     
-    def compute_cost(self, block_id: int, cluster_slope: np.ndarray,
+    def compute_cost(self, block: Block, cluster_slope: np.ndarray,
                      lambda_value: float, block_vertices: np.ndarray,
                      block_attributes: np.ndarray) -> RDBlockCost:
         """
@@ -46,8 +50,6 @@ class RDCostAdapter:
            - any other needed parameters
         3. Package result as RDCost object
         """
-        # TODO: coeffs = self.gft_cache.get_coeffs(block_id)
-        # TODO: rate, distortion = self.rd_calculator.calculate(...)
-        # TODO: cost = rate + lambda_value * distortion
-        # TODO: return RDCost(cluster_id=-1, rate=rate, distortion=distortion, cost=cost)
-        pass
+        coeffs = self.gft_cache.get_coeffs(block.block_id)
+        cost, rate, distortion = self.rd_calculator(coeffs)
+        return RDBlockCost(cluster_id=-1, rate=rate, distortion=distortion, cost=cost)

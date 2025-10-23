@@ -1,4 +1,3 @@
-
 ### Signal Dependant 3D Point Cloud Compression
 
 Use Python 3.10 to avoid pybind11 conflicts with Python >=3.11
