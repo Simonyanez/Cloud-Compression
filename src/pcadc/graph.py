@@ -38,6 +38,10 @@ class GraphMetadata:
     def graph_descriptor(self):
         return f"{self.graph_type}_{self.centroid_label}"
 
+    @property
+    def graph_cluster_descriptor(self):
+        return f"{self.block_id}_{self.graph_type}_{self.centroid_label}"
+
 
 class GraphBase(ABC):
     def __init__(self, metadata: GraphMetadata):

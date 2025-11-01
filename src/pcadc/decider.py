@@ -34,12 +34,15 @@ class Decider:
 
     @profile
     def __call__(self, q_step: int, coeffs_container: CoeffsContainer) -> RDO_Decision:
-        self.lagrange_mult = self.lagrange_proportional * q_step**2
+        self.lagrange_mult = self.get_lagrange_mult(q_step)
         self.q_step = q_step
         logger.info(
             f"Starting RDO with q_step={q_step} and lambda={self.lagrange_mult:.4f}.")
         return self._RDO(coeffs_container)
 
+    def get_lagrange_mult(self,q_step):
+        return self.lagrange_proportional * q_step**2
+        
     def _quantize(self, Coeffs):
         Coeffs_quant = np.round(Coeffs / self.q_step)
         return Coeffs_quant

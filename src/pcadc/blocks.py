@@ -52,6 +52,7 @@ class AuxiliaryBlockMetadata(BaseMetadata):
 
 
 class BlockBase(ABC):
+    #FIXME: Fix typing problem with initialization as None
     def __init__(self, metadata) -> None:
         self.metadata = metadata
         self.Vblock: np.ndarray | None = None
