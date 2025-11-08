@@ -34,11 +34,14 @@ class Decider:
 
     @profile
     def __call__(self, q_step: int, coeffs_container: CoeffsContainer) -> RDO_Decision:
-        self.lagrange_mult = self.get_lagrange_mult(q_step)
-        self.q_step = q_step
+        self._set_vars(q_step)
         logger.info(
             f"Starting RDO with q_step={q_step} and lambda={self.lagrange_mult:.4f}.")
         return self._RDO(coeffs_container)
+    
+    def _set_vars(self, q_step: int):
+        self.q_step = q_step
+        self.lagrange_mult = self.get_lagrange_mult(q_step)
 
     def get_lagrange_mult(self,q_step):
         return self.lagrange_proportional * q_step**2
@@ -66,7 +69,7 @@ class Decider:
     def _RDcost(self, Coeffs: np.ndarray):
         """Rate-Distortion cost."""
         if self.mode == "0":
-            obj_coeffs = Coeffs[:, 0]
+            obj_coeffs = Coeffs[:, 0] # Luminansce channel only
         elif self.mode in ["1", "2"]:
             obj_coeffs = Coeffs
         else:

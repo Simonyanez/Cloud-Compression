@@ -14,13 +14,20 @@ pointcloud_metadata:
 
 sequential_params:
   point_cloud_path: "res/longdress_vox10_1051.ply"
-  number_of_clusters: 4
   normalize_slopes: True
+  decider_mode: 0
   self_loop_weight: 1.6
   self_loop_threshold: 0.7
   quantization_steps: [24,28,32,40,48,56,64]
   lagrange_proportional: 0.75
   block_size: 16
+
+clustering_params:
+  number_of_clusters: 4
+  max_iterations: 100
+  min_iterations: 5
+  rd_cost_threshold: 0.001
+  iteration_window: 3
 
 rewrite_results: False
 debugging: False

@@ -134,21 +134,22 @@ class Clusterer:
         return slope_matrix
 
     @staticmethod
-    def normalize_matrix(matrix: np.ndarray, method: Optional[str] = "l2") -> np.ndarray:
-        if method not in ("l2", "max"):
-            err_msg = "Method must be 'l2' or 'max'"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
+    def normalize_matrix(matrix: np.ndarray) -> np.ndarray:
+        """
+        Scales each row of the matrix to the range [-1, 1] using Min-Max scaling.
+        """
+        min_vals = np.min(matrix, axis=1, keepdims=True)
+        max_vals = np.max(matrix, axis=1, keepdims=True)
 
-        norms = np.linalg.norm(matrix, axis=1) if method == "l2" else np.max(
-            np.abs(matrix), axis=1)
-        zero_norms = norms == 0
-        if np.any(zero_norms):
-            logger.warning(
-                f"{np.sum(zero_norms)} rows have zero norm; leaving them unchanged.")
-            norms[zero_norms] = 1.0  # avoid division by zero
+        # Avoid division by zero when max == min
+        denom = max_vals - min_vals
+        zero_range = denom == 0
+        if np.any(zero_range):
+            logger.warning(f"{np.sum(zero_range)} rows have zero range; leaving them unchanged.")
+            denom[zero_range] = 1.0
 
-        return matrix / norms[:, np.newaxis]
+        scaled = 2 * ((matrix - min_vals) / denom) - 1
+        return scaled
 
     def fixed_centroid_kmeans(
         self,

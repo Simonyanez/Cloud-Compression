@@ -6,6 +6,7 @@ from src.pcadc.blocks import Block
 class SlopeOptimizer:
     
     def __init__(self, add_intercept: bool = True):
+        # Not used. This is for the bias value
         self.add_intercept = add_intercept
     
     def recalculate_slopes(self, blocks: List[Block], labels: np.ndarray,
@@ -15,10 +16,15 @@ class SlopeOptimizer:
         new_slopes = np.zeros((num_clusters, 3))
         
         for k in range(num_clusters):
+            # Static DC cluster
+            if k == 0:
+                continue
+
             cluster_mask = (labels == k)
             cluster_indices = np.where(cluster_mask)[0]
             
             if len(cluster_indices) == 0:
+                new_slopes[k] = np.random.uniform(-1, 1, size=(1, 3)) # Randomize empty vectores
                 continue
             
             V_list = []

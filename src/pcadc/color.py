@@ -143,8 +143,10 @@ class Approximator:
 
     def _spatial_norm(self, Vblock: np.ndarray) -> np.ndarray:
         Vblock_centered = self.center_block(Vblock)
-        Vblock_rotated = self.rotate_block(Vblock_centered)
-        return Vblock_rotated
+        if Vblock.shape[0] > 1:
+            Vblock_rotated = self.rotate_block(Vblock_centered)
+            return Vblock_rotated
+        return Vblock_centered
 
     @staticmethod
     def center_block(Vblock: np.ndarray) -> np.ndarray:
