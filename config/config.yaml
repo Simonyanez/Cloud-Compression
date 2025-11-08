@@ -28,6 +28,9 @@ clustering_params:
   min_iterations: 5
   rd_cost_threshold: 0.001
   iteration_window: 3
+  initial_temperature: 1.0
+  final_temperature: 0.1
+  cooling_rate: 0.95
 
 rewrite_results: False
 debugging: False

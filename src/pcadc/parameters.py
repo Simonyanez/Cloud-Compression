@@ -43,6 +43,9 @@ class ClusteringParameters:
     min_iterations: int
     rd_cost_threshold: float
     iteration_window: int
+    initial_temperature: float
+    final_temperature: float
+    cooling_rate: float
 
 
 @dataclass
@@ -159,6 +162,9 @@ def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
             min_iterations=config["clustering_params"]["min_iterations"],
             rd_cost_threshold=config["clustering_params"]["rd_cost_threshold"],
             iteration_window=config["clustering_params"]["iteration_window"],
+            initial_temperature=config["clustering_params"]["initial_temperature"],
+            final_temperature=config["clustering_params"]["final_temperature"],
+            cooling_rate=config["clustering_params"]["cooling_rate"],
         )
         
         exp_config = ExperimentConfig(

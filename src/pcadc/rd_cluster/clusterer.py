@@ -10,6 +10,7 @@ from src.pcadc.rd_cluster.optimizer import SlopeOptimizer
 from src.pcadc.rd_cluster.training_set import TrainingSetSelector
 from src.pcadc.rd_cluster.gft_cache import InMemoryCacheStrategy
 from src.pcadc.rd_cluster.states import *
+from src.pcadc.rd_cluster.annealing import SimulatedAnnealing
 from tqdm import tqdm
 import numpy as np
 
@@ -29,7 +30,7 @@ class RDClusterer:
                  use_two_stage: bool = True):
         
         self.num_clusters = clusterer_parameters.number_of_clusters
-        self.qstep_schedule = sequential_parameters.quantization_steps  # TODO: Check if this is the right way of going through [::-1]
+        self.qstep_schedule = sequential_parameters.quantization_steps
         self.lambda_step = 0
         self.gft_cache = gft_cache
         self.gft_computer = gft_computer
@@ -39,6 +40,13 @@ class RDClusterer:
         self.training_selector = training_selector
         self.decider = decider
         self.use_two_stage = use_two_stage
+
+        # Simulated Annealing
+        self.annealing_scheduler = SimulatedAnnealing(
+            initial_temperature=clusterer_parameters.initial_temperature,
+            final_temperature=clusterer_parameters.final_temperature,
+            cooling_rate=clusterer_parameters.cooling_rate
+        )
     
     def fit(self, blocks: List, vertices: np.ndarray, attributes: np.ndarray) -> Tuple[RDClusterState, ClusteringHistory]:
         if self.use_two_stage:
@@ -55,19 +63,12 @@ class RDClusterer:
         pass
     
     def _fit_full(self, blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray) -> Tuple[RDClusterState, ClusteringHistory]:
-        # TODO: Precompute structural GFTs
         self._precompute_structural_gfts(blocks, vertices,attributes)
 
-        # TODO: Initialize state
         state = self._initialize_state(blocks, vertices, attributes)
         print(f"Initial state {state}")
         history = ClusteringHistory([state])
 
-        # Main loop:
-        #   - Assignment step
-        #   - Update step
-        #   - Check convergence
-        #   - Lambda schedule
         for iteration in tqdm(range(self.convergence_checker.max_iterations), "Running RD Clustering"):
             new_labels, total_cost = self._assignment_step(blocks, state, vertices, attributes)
             new_slopes = self.slope_optimizer.recalculate_slopes(blocks, new_labels, vertices, attributes, self.num_clusters)
@@ -80,6 +81,10 @@ class RDClusterer:
 
             print(f"Current state: \n {state}")
             history.add_state(state)
+
+            # Cool down the temperature
+            self.annealing_scheduler.cool_down()
+            print(f"Temperature updated to {self.annealing_scheduler.temperature:.4f}")
 
             if self.convergence_checker.should_stop(history):
                 return state, history
@@ -128,26 +133,25 @@ class RDClusterer:
     def _assignment_step(self, blocks: List[Block], state: RDClusterState, vertices: np.ndarray, attributes: np.ndarray):
         new_labels = np.zeros(len(blocks), dtype=int)
         slopes = state.slopes
-        labels = state.labels
         total_cost = 0
         self.decider._set_vars(state.qstep_value)
 
         for i, block in tqdm(enumerate(blocks), "Assigning blocks"):
             block.init_data(vertices, attributes)
-            min_cost = np.inf
+            costs = []
             for k, slope in enumerate(slopes):
-                # Recycle for static structural cluster cacheed coeffs.
-                # TODO: Check how the experiment works with all clusters dynamic
                 coeffs = self.gft_cache.get_coeffs(block.block_id)
                 if k != 0:
                     coeffs = self._compute_adaptive_gft(block, slope, k)
-                # TODO: Decider needs to be previously initialized 
-                rd_cost, sparcity, qerror = self.decider._RDcost(coeffs)
-                if rd_cost < min_cost:
-                    min_cost = rd_cost
-                    new_labels[i] = k
-            total_cost+=min_cost
+                
+                rd_cost, _, _ = self.decider._RDcost(coeffs)
+                costs.append(rd_cost)
+            
+            chosen_cluster = self.annealing_scheduler.choose(np.array(costs), len(slopes))
+            new_labels[i] = chosen_cluster
+            total_cost += costs[chosen_cluster]
             block.clear_data()
+            
         return new_labels, total_cost
     
     def _compute_adaptive_gft(self, block: Block, slope: np.ndarray, label: int):
