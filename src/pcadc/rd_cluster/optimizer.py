@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List
 from src.pcadc.blocks import Block
+from src.pcadc.color import Approximator
 
 
 class SlopeOptimizer:
@@ -35,7 +36,7 @@ class SlopeOptimizer:
                 block = blocks[idx]
                 block.init_data(vertices, attributes)
                 
-                V_block = block.Vblock
+                V_block = Approximator()._spatial_norm(block.Vblock)
                 Y_block = block.Ablock[:, 0]
                 n_i = len(V_block)
                 

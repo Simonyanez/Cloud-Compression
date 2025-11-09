@@ -41,4 +41,7 @@ class SimulatedAnnealing:
         if np.isnan(probabilities).any():
             return np.argmin(costs)
         
+        # Re-normalize to ensure sum is exactly 1, correcting for floating-point inaccuracies
+        probabilities /= probabilities.sum()
+        
         return np.random.choice(num_choices, p=probabilities)
