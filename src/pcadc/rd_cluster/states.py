@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import numpy as np
 from pcadc.parameters import SequentialParameters
 from pcadc.decider import Decider
@@ -14,6 +14,27 @@ class RDClusterState:
     iteration: int              # Iteration counter
     total_cost: Optional[float] = None  # Total RD cost (if tracked)
     
+    # New metrics
+    cluster_entropy: Optional[float] = None
+    avg_rate: Optional[float] = None
+    avg_distortion: Optional[float] = None
+    cluster_gains: Optional[Dict[int, float]] = None # Average gain per dynamic cluster
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Converts the RDClusterState to a dictionary for JSON serialization."""
+        return {
+            "labels": self.labels.tolist(),
+            "slopes": self.slopes.tolist(),
+            "qstep_value": self.qstep_value,
+            "lambda_step": self.lambda_step,
+            "iteration": self.iteration,
+            "total_cost": self.total_cost,
+            "cluster_entropy": self.cluster_entropy,
+            "avg_rate": self.avg_rate,
+            "avg_distortion": self.avg_distortion,
+            "cluster_gains": self.cluster_gains,
+        }
+
     def __repr__(self) -> str:
         n_blocks = len(self.labels)
         n_clusters = len(self.slopes)
@@ -24,9 +45,9 @@ class RDClusterState:
         n_empty = n_clusters - n_active
         
         # Statistics on cluster sizes
-        min_size = counts.min()
-        max_size = counts.max()
-        avg_size = counts.mean()
+        min_size = counts.min() if len(counts) > 0 else 0
+        max_size = counts.max() if len(counts) > 0 else 0
+        avg_size = counts.mean() if len(counts) > 0 else 0
         
         cost_str = f"{self.total_cost:.6f}" if self.total_cost is not None else "None"
         
@@ -41,13 +62,26 @@ class RDClusterState:
         
         # Format slopes information
         slopes_info = self._format_slopes(unique_labels, counts)
+
+        # New metrics info
+        metrics_info = ""
+        if self.cluster_entropy is not None:
+            metrics_info += f"\n  Entropy: {self.cluster_entropy:.4f}"
+        if self.avg_rate is not None:
+            metrics_info += f", Avg Rate: {self.avg_rate:.4f}"
+        if self.avg_distortion is not None:
+            metrics_info += f", Avg Dist: {self.avg_distortion:.4f}"
+        if self.cluster_gains is not None and len(self.cluster_gains) > 0:
+            gains_str = ", ".join([f"{k}:{v:.4f}" for k, v in self.cluster_gains.items()])
+            metrics_info += f"\n  Gains (vs structural): {{{gains_str}}}"
         
         return (
             f"RDClusterState(\n"
             f"  iter={self.iteration}, qstep={self.qstep_value}, λ_step={self.lambda_step}\n"
             f"  blocks={n_blocks}, clusters={n_clusters} (active:{n_active}, empty:{n_empty})\n"
             f"  {dist_info}\n"
-            f"  cost={cost_str}\n"
+            f"  cost={cost_str}"
+            f"{metrics_info}\n" # Add new metrics here
             f"{slopes_info}"
             f")"
         )

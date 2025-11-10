@@ -13,7 +13,9 @@ from src.pcadc.rd_cluster.states import *
 from src.pcadc.rd_cluster.annealing import SimulatedAnnealing
 from tqdm import tqdm
 import numpy as np
-
+import json
+from pathlib import Path
+import math # For log2 in entropy calculation
 
 
 class RDClusterer:
@@ -26,6 +28,7 @@ class RDClusterer:
                  gft_computer: GFTStrategyWraper,
                  slope_optimizer: SlopeOptimizer,
                  convergence_checker: ConvergenceChecker,
+                 temp_folder: Path, # Add temp_folder
                  training_selector: Optional[TrainingSetSelector] = None,
                  use_two_stage: bool = True):
         
@@ -40,6 +43,7 @@ class RDClusterer:
         self.training_selector = training_selector
         self.decider = decider
         self.use_two_stage = use_two_stage
+        self.temp_folder = temp_folder # Store temp_folder
 
         # Simulated Annealing
         self.annealing_scheduler = SimulatedAnnealing(
@@ -63,24 +67,44 @@ class RDClusterer:
         pass
     
     def _fit_full(self, blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray) -> Tuple[RDClusterState, ClusteringHistory]:
+        # Create temp directory
+        self.temp_folder.mkdir(parents=True, exist_ok=True)
+        
         self._precompute_structural_gfts(blocks, vertices,attributes)
 
         state = self._initialize_state(blocks, vertices, attributes)
         print(f"Initial state {state}")
         history = ClusteringHistory([state])
+        self._save_intermediate_state(state) # Save initial state
 
         for iteration in tqdm(range(self.convergence_checker.max_iterations), "Running RD Clustering"):
-            new_labels, total_cost = self._assignment_step(blocks, state, vertices, attributes)
-            new_slopes = self.slope_optimizer.recalculate_slopes(blocks, new_labels, vertices, attributes, self.num_clusters)
+            # _assignment_step will now return more data
+            new_labels, total_cost, all_rates, all_distortions, all_gains = self._assignment_step(blocks, state, vertices, attributes)
+            
+            new_slopes = self.slope_optimizer.recalculate_slopes(
+                blocks, new_labels, vertices, attributes, self.num_clusters, state.slopes
+            )
+            
+            # Calculate new metrics
+            cluster_entropy = self._calculate_cluster_entropy(new_labels)
+            avg_rate = np.mean(all_rates)
+            avg_distortion = np.mean(all_distortions)
+            cluster_gains = self._calculate_cluster_gains(new_labels, all_gains)
+
             state = RDClusterState(labels=new_labels,
                                    slopes=new_slopes,
                                    qstep_value=self.qstep_schedule[self.lambda_step],
                                    lambda_step=self.lambda_step,
                                    iteration=iteration,
-                                   total_cost = total_cost)
+                                   total_cost = total_cost,
+                                   cluster_entropy=cluster_entropy,
+                                   avg_rate=avg_rate,
+                                   avg_distortion=avg_distortion,
+                                   cluster_gains=cluster_gains)
 
             print(f"Current state: \n {state}")
             history.add_state(state)
+            self._save_intermediate_state(state) # Save state
 
             # Cool down the temperature
             self.annealing_scheduler.cool_down()
@@ -136,24 +160,70 @@ class RDClusterer:
         total_cost = 0
         self.decider._set_vars(state.qstep_value)
 
+        all_rates = np.zeros(len(blocks))
+        all_distortions = np.zeros(len(blocks))
+        all_gains = np.zeros(len(blocks)) # Store gain for each block
+
         for i, block in tqdm(enumerate(blocks), "Assigning blocks"):
             block.init_data(vertices, attributes)
             costs = []
+            rates = []
+            distortions = []
+            cost_structural = 0 # Store structural cost for gain calculation
+
             for k, slope in enumerate(slopes):
                 coeffs = self.gft_cache.get_coeffs(block.block_id)
                 if k != 0:
                     coeffs = self._compute_adaptive_gft(block, slope, k)
                 
-                rd_cost, _, _ = self.decider._RDcost(coeffs)
+                rd_cost, sparsity, qerror = self.decider._RDcost(coeffs)
                 costs.append(rd_cost)
+                rates.append(sparsity)
+                distortions.append(qerror)
+
+                if k == 0: # Store structural cost
+                    cost_structural = rd_cost
             
             chosen_cluster = self.annealing_scheduler.choose(np.array(costs), len(slopes))
             new_labels[i] = chosen_cluster
             total_cost += costs[chosen_cluster]
+            all_rates[i] = rates[chosen_cluster]
+            all_distortions[i] = distortions[chosen_cluster]
+            
+            # Calculate gain for this block if a dynamic cluster was chosen
+            if chosen_cluster != 0:
+                all_gains[i] = cost_structural - costs[chosen_cluster]
+            else:
+                all_gains[i] = 0 # No gain if structural is chosen
+
             block.clear_data()
             
-        return new_labels, total_cost
+        return new_labels, total_cost, all_rates, all_distortions, all_gains
     
+    def _calculate_cluster_entropy(self, labels: np.ndarray) -> float:
+        """Calculates the entropy of the cluster distribution."""
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        probabilities = counts / len(labels)
+        # Add a small epsilon to avoid log(0) if a probability is exactly zero
+        entropy = -np.sum(probabilities * np.log2(probabilities + np.finfo(float).eps))
+        return entropy
+
+    def _calculate_cluster_gains(self, labels: np.ndarray, all_gains: np.ndarray) -> Dict[int, float]:
+        """Calculates the average gain for each dynamic cluster."""
+        cluster_gains = {}
+        for k in range(1, self.num_clusters): # Iterate through dynamic clusters
+            cluster_mask = (labels == k)
+            if np.any(cluster_mask):
+                avg_gain = np.mean(all_gains[cluster_mask])
+                cluster_gains[k] = avg_gain
+        return cluster_gains
+
+    def _save_intermediate_state(self, state: RDClusterState):
+        """Saves the current RDClusterState to a JSON file."""
+        filepath = self.temp_folder / f"iteration_{state.iteration:03d}.json"
+        with open(filepath, 'w') as f:
+            json.dump(state.to_dict(), f, indent=4)
+
     def _compute_adaptive_gft(self, block: Block, slope: np.ndarray, label: int):
         # TODO: Get structural graph
         structural_graph = StructuralGraph(block.metadata)

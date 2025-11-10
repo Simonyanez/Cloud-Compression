@@ -46,6 +46,7 @@ class ClusteringParameters:
     initial_temperature: float
     final_temperature: float
     cooling_rate: float
+    learning_rate: float
 
 
 @dataclass
@@ -58,6 +59,7 @@ class ExperimentMetadata:
     experiment_date: str
     experiment_info: str
     export_folder: Path
+    temp_folder: Path
 
 
 @dataclass
@@ -136,6 +138,7 @@ def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
             experiment_date=config["experiment_metadata"]["experiment_date"],
             experiment_info=config["experiment_metadata"]["experiment_info"],
             export_folder=Path(config["experiment_metadata"]["export_folder"]),
+            temp_folder=Path(config["experiment_metadata"]["temp_folder"]),
         )
 
         pointcloud = PointCloudMetadata(
@@ -165,6 +168,7 @@ def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
             initial_temperature=config["clustering_params"]["initial_temperature"],
             final_temperature=config["clustering_params"]["final_temperature"],
             cooling_rate=config["clustering_params"]["cooling_rate"],
+            learning_rate=config["clustering_params"]["learning_rate"],
         )
         
         exp_config = ExperimentConfig(

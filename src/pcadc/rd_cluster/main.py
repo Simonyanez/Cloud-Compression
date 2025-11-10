@@ -16,30 +16,29 @@ def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.
     
     decider = Decider(experiment_params.sequential_params.decider_mode, experiment_params.sequential_params.lagrange_proportional)
     gft_computer = GFTStrategyWraper()
-    # Create components
-    cache = InMemoryCacheStrategy()
-    slope_optimizer = SlopeOptimizer(add_intercept=True)
+    
+    # Instantiate SlopeOptimizer with learning rate
+    slope_optimizer = SlopeOptimizer(learning_rate=params.clustering_params.learning_rate)
+    
+    # Instantiate ConvergenceChecker with clustering_parameters
     convergence_checker = ConvergenceChecker(
-        experiment_params.sequential_params,
-        experiment_params.clustering_params,
-        decider)
-    # TODO: Make a training set for the transforms
-    # training_selector = TrainingSetSelector(
-    #     selection_ratio=config['training_ratio']
-    # )
+        sequential_parameters=params.sequential_params,
+        clustering_parameters=params.clustering_params,
+        decider=Decider(mode=params.sequential_params.decider_mode,
+                        lagrange_proportional=params.sequential_params.lagrange_proportional)
+    )
     
     clusterer = RDClusterer(
-        sequential_parameters=experiment_params.sequential_params,
-        clusterer_parameters=experiment_params.clustering_params,
-        decider=decider,
-        gft_cache=cache,
+        sequential_parameters=params.sequential_params,
+        clusterer_parameters=params.clustering_params,
+        decider=Decider(mode=params.sequential_params.decider_mode,
+                        lagrange_proportional=params.sequential_params.lagrange_proportional),
+        gft_cache=InMemoryCacheStrategy(),
         gft_computer=gft_computer,
         slope_optimizer=slope_optimizer,
         convergence_checker=convergence_checker,
-        training_selector=None,
-        use_two_stage=False
-        # training_selector=training_selector,
-        # use_two_stage=config['use_two_stage']
+        temp_folder=params.metadata.temp_folder,
+        use_two_stage=False # Set use_two_stage to False
     )
     
     final_state, clustering_history = clusterer.fit(blocks, vertices, attributes)

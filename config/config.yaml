@@ -5,6 +5,7 @@ experiment_metadata:
   experiment_date: "2025-08-31"
   experiment_info: "Bestie"
   export_folder: "/home/simao/Desktop/PCADC_TEST"
+  temp_folder: "results/temp"
 
 pointcloud_metadata:
   point_cloud_dataset: "8iVFB v2"
@@ -31,6 +32,7 @@ clustering_params:
   initial_temperature: 1.0
   final_temperature: 0.1
   cooling_rate: 0.95
+  learning_rate: 0.5
 
 rewrite_results: False
 debugging: False

@@ -6,15 +6,16 @@ from src.pcadc.color import Approximator
 
 class SlopeOptimizer:
     
-    def __init__(self, add_intercept: bool = True):
+    def __init__(self, learning_rate: float, add_intercept: bool = True):
         # Not used. This is for the bias value
         self.add_intercept = add_intercept
+        self.learning_rate = learning_rate
     
     def recalculate_slopes(self, blocks: List[Block], labels: np.ndarray,
                           vertices: np.ndarray, attributes: np.ndarray,
-                          num_clusters: int) -> np.ndarray:
+                          num_clusters: int, old_slopes: np.ndarray) -> np.ndarray:
         """Returns: (K, 3) array of slopes"""
-        new_slopes = np.zeros((num_clusters, 3))
+        new_slopes = old_slopes.copy()
         
         for k in range(num_clusters):
             # Static DC cluster
@@ -25,7 +26,7 @@ class SlopeOptimizer:
             cluster_indices = np.where(cluster_mask)[0]
             
             if len(cluster_indices) == 0:
-                new_slopes[k] = np.random.uniform(-1, 1, size=(1, 3)) # Randomize empty vectores
+                # If cluster is empty, keep the old slope, do not randomize
                 continue
             
             V_list = []
@@ -58,7 +59,10 @@ class SlopeOptimizer:
             VtV = V_weighted.T @ V_weighted
             VtY = V_weighted.T @ Y_weighted
             
+            # Calculated average slope
             beta = np.linalg.solve(VtV, VtY)
-            new_slopes[k] = beta
+            
+            # Apply learning rate
+            new_slopes[k] = (1 - self.learning_rate) * old_slopes[k] + self.learning_rate * beta
         
         return new_slopes
