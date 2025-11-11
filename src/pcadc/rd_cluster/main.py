@@ -80,6 +80,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+    logging.info("Logging configured successfully.")
 
     params = load_experiment_config(Path("config/config.yaml"))
     researcher = Researcher()

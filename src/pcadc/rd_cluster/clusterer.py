@@ -258,7 +258,7 @@ class RDClusterer:
         structural_graph.set_data(block.Vblock)
 
         # TODO: Add self-loops based on slope
-        attribute_graph = AttributeGraph(structural_graph, slope, self.sequential_parameters.self_loop_threshold, label,self.sequential_parameters.self_loop_weight)
+        attribute_graph = AttributeGraph(structural_graph, slope, label, self.sequential_parameters.self_loop_threshold, self.sequential_parameters.self_loop_weight)
         #NOTE: Almost sure using the spatially normed vertices is the right way
         Vblock_rotated = Approximator()._spatial_norm(block.Vblock)
         Ablock_app = block.Ablock.copy()
