@@ -208,15 +208,43 @@ class RDClusterer:
         entropy = -np.sum(probabilities * np.log2(probabilities + np.finfo(float).eps))
         return entropy
 
-    def _calculate_cluster_gains(self, labels: np.ndarray, all_gains: np.ndarray) -> Dict[int, float]:
-        """Calculates the average gain for each dynamic cluster."""
-        cluster_gains = {}
-        for k in range(1, self.num_clusters): # Iterate through dynamic clusters
+    def _calculate_cluster_gains(self, labels: np.ndarray, all_gains: np.ndarray) -> Dict[int, Dict[str, float]]:
+        """Calculates detailed gain statistics for each dynamic cluster."""
+        cluster_gains_stats = {}
+        for k in range(1, self.num_clusters):  # Iterate through dynamic clusters
             cluster_mask = (labels == k)
             if np.any(cluster_mask):
-                avg_gain = np.mean(all_gains[cluster_mask])
-                cluster_gains[k] = avg_gain
-        return cluster_gains
+                cluster_specific_gains = all_gains[cluster_mask]
+                
+                # Basic stats
+                avg_gain = np.mean(cluster_specific_gains)
+                min_gain = np.min(cluster_specific_gains)
+                max_gain = np.max(cluster_specific_gains)
+                
+                # Count blocks by gain type
+                positive_gain_blocks = np.sum(cluster_specific_gains > 0)
+                zero_gain_blocks = np.sum(cluster_specific_gains == 0)
+                negative_gain_blocks = np.sum(cluster_specific_gains < 0)
+                
+                cluster_gains_stats[k] = {
+                    "avg_gain": avg_gain,
+                    "min_gain": min_gain,
+                    "max_gain": max_gain,
+                    "positive_gain_blocks": positive_gain_blocks,
+                    "zero_gain_blocks": zero_gain_blocks,
+                    "negative_gain_blocks": negative_gain_blocks,
+                }
+            else:
+                # Cluster is empty
+                cluster_gains_stats[k] = {
+                    "avg_gain": 0.0,
+                    "min_gain": 0.0,
+                    "max_gain": 0.0,
+                    "positive_gain_blocks": 0,
+                    "zero_gain_blocks": 0,
+                    "negative_gain_blocks": 0,
+                }
+        return cluster_gains_stats
 
     def _save_intermediate_state(self, state: RDClusterState):
         """Saves the current RDClusterState to a JSON file."""

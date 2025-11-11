@@ -2,6 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Optional, List
 from sklearn.metrics import pairwise_distances_argmin_min, root_mean_squared_error
+from sklearn.cluster import kmeans_plusplus
 import logging
 
 # Assume you already have these implemented
@@ -164,9 +165,13 @@ class Clusterer:
                 f"Automatic fixed center for constant luminansce centroid {fixed_center}")
             fixed_center = np.zeros((1, X.shape[1]))
 
-        rng = np.random.default_rng(seed=42)
-        other_centers = rng.choice(X, size=self.n_clusters - 1, replace=False)
+        # Use k-means++ for better initialization of the other centers
+        other_centers, _ = kmeans_plusplus(
+            X, n_clusters=self.n_clusters - 1, random_state=42
+        )
         centers = np.vstack([fixed_center, other_centers])
+
+        rng = np.random.default_rng(seed=42)
 
         for it in range(max_iter):
             labels = pairwise_distances_argmin_min(X, centers)[0]
@@ -177,7 +182,9 @@ class Clusterer:
                 if len(members) > 0:
                     new_centers.append(members.mean(axis=0))
                 else:
-                    new_centers.append(rng.choice(X))  # avoid dead cluster
+                    # If a cluster becomes empty, re-initialize it with a random point
+                    # This is a simple way to handle dead clusters
+                    new_centers.append(rng.choice(X))
 
             new_centers = np.vstack(new_centers)
             shift = np.linalg.norm(centers - new_centers)

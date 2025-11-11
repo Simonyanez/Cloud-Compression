@@ -6,7 +6,14 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from scipy.spatial.distance import cdist
 import logging
-logging.basicConfig(filename="logs/graphs.log",
+import os
+
+# Setup logging to an absolute path to ensure it works when run as a module
+log_dir = os.path.join(os.getcwd(), "logs")
+os.makedirs(log_dir, exist_ok=True)
+log_file_path = os.path.join(log_dir, "graphs.log")
+
+logging.basicConfig(filename=log_file_path,
                     filemode="w",
                     level=logging.DEBUG,
                     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -186,6 +193,16 @@ class AttributeGraph(GraphBase):
 
         self.selected_nodes = np.argwhere(
             self.S >= self.self_loop_threshold).flatten()
+        
+        # Detailed logging for self-loop diagnostics
+        max_s_value = np.max(self.S) if self.S.size > 0 else 0
+        logger.info(
+            f"Graph {self.metadata.graph_cluster_descriptor}: "
+            f"Found {len(self.selected_nodes)} nodes for self-loops "
+            f"with threshold {self.self_loop_threshold}. "
+            f"Max S value was {max_s_value:.4f}."
+        )
+
         pairs = np.column_stack((self.selected_nodes, self.selected_nodes))
         self.weights[pairs[:, 0], pairs[:, 1]] = self.self_loop_weight
         self.edges = np.vstack([self.edges, pairs])

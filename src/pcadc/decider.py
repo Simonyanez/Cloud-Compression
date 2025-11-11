@@ -6,9 +6,18 @@ from dataclasses import dataclass
 from line_profiler import profile
 import numpy as np
 import logging
+import os
 
-logging.basicConfig(filename="logs/decider.log",
-                    filemode="w", level=logging.DEBUG)
+# Setup logging to an absolute path to ensure it works when run as a module
+log_dir = os.path.join(os.getcwd(), "logs")
+os.makedirs(log_dir, exist_ok=True)
+log_file_path = os.path.join(log_dir, "decider.log")
+
+logging.basicConfig(filename=log_file_path,
+                    filemode="w",
+                    level=logging.DEBUG,
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    )
 logger = logging.getLogger(__name__)
 
 

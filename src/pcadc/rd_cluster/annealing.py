@@ -23,8 +23,8 @@ class SimulatedAnnealing:
             return np.argmin(costs)
 
         # Normalize costs to prevent overflow in exp.
-        # Subtracting max cost makes the largest exponent 0, preventing overflow.
-        costs_norm = costs - np.max(costs)
+        # Subtracting min cost makes the smallest exponent 0, preventing overflow.
+        costs_norm = costs - np.min(costs)
         
         # Calculate exponentials.
         exponentials = np.exp(-costs_norm / self.temperature)

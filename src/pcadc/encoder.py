@@ -17,9 +17,19 @@ import os
 if os.path.exists("logs/decider.log"):
     os.remove("logs/decider.log")
 
-logging.basicConfig(filename="logs/decider.log",
-                    filemode="w", level=logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+import logging
+import os
+
+# Setup logging to an absolute path to ensure it works when run as a module
+log_dir = os.path.join(os.getcwd(), "logs")
+os.makedirs(log_dir, exist_ok=True)
+log_file_path = os.path.join(log_dir, "decider.log")
+
+logging.basicConfig(filename=log_file_path,
+                    filemode="w",
+                    level=logging.DEBUG,
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    )
 logger = logging.getLogger(__name__)
 
 

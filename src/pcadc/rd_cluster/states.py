@@ -18,10 +18,16 @@ class RDClusterState:
     cluster_entropy: Optional[float] = None
     avg_rate: Optional[float] = None
     avg_distortion: Optional[float] = None
-    cluster_gains: Optional[Dict[int, float]] = None # Average gain per dynamic cluster
+    cluster_gains: Optional[Dict[int, Dict[str, float]]] = None # Richer gain stats per dynamic cluster
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts the RDClusterState to a dictionary for JSON serialization."""
+        # Convert numpy int types in cluster_gains to standard python int
+        serializable_gains = {}
+        if self.cluster_gains:
+            for k, stats in self.cluster_gains.items():
+                serializable_gains[k] = {key: int(val) if 'blocks' in key else val for key, val in stats.items()}
+
         return {
             "labels": self.labels.tolist(),
             "slopes": self.slopes.tolist(),
@@ -32,7 +38,7 @@ class RDClusterState:
             "cluster_entropy": self.cluster_entropy,
             "avg_rate": self.avg_rate,
             "avg_distortion": self.avg_distortion,
-            "cluster_gains": self.cluster_gains,
+            "cluster_gains": serializable_gains,
         }
 
     def __repr__(self) -> str:
@@ -71,17 +77,27 @@ class RDClusterState:
             metrics_info += f", Avg Rate: {self.avg_rate:.4f}"
         if self.avg_distortion is not None:
             metrics_info += f", Avg Dist: {self.avg_distortion:.4f}"
-        if self.cluster_gains is not None and len(self.cluster_gains) > 0:
-            gains_str = ", ".join([f"{k}:{v:.4f}" for k, v in self.cluster_gains.items()])
-            metrics_info += f"\n  Gains (vs structural): {{{gains_str}}}"
         
+        gains_info = ""
+        if self.cluster_gains is not None and len(self.cluster_gains) > 0:
+            gains_info += "\n  Gains (vs structural):"
+            for k, stats in self.cluster_gains.items():
+                gains_info += (
+                    f"\n    Cluster {k}: avg={stats['avg_gain']:.2f} "
+                    f"| #pos={stats['positive_gain_blocks']} "
+                    f"#neg={stats['negative_gain_blocks']} "
+                    f"| min={stats['min_gain']:.2f} "
+                    f"max={stats['max_gain']:.2f}"
+                )
+
         return (
             f"RDClusterState(\n"
             f"  iter={self.iteration}, qstep={self.qstep_value}, λ_step={self.lambda_step}\n"
             f"  blocks={n_blocks}, clusters={n_clusters} (active:{n_active}, empty:{n_empty})\n"
             f"  {dist_info}\n"
             f"  cost={cost_str}"
-            f"{metrics_info}\n" # Add new metrics here
+            f"{metrics_info}"
+            f"{gains_info}\n"
             f"{slopes_info}"
             f")"
         )

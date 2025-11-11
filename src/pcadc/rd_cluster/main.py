@@ -1,4 +1,3 @@
-from pathlib import Path
 from src.pcadc.rd_cluster.gft_cache import InMemoryCacheStrategy
 from src.pcadc.rd_cluster.optimizer import SlopeOptimizer
 from src.pcadc.rd_cluster.convergence import ConvergenceChecker
@@ -8,9 +7,23 @@ from src.pcadc.parameters import ExperimentConfig
 from src.pcadc.decider import Decider
 from src.pcadc.transforms import GFTStrategyWraper
 from typing import List
+from pathlib import Path
 
 import numpy as np
+import logging
+import os
 
+log_dir = os.path.join(os.getcwd(), "logs")
+os.makedirs(log_dir, exist_ok=True)
+log_file_path = os.path.join(log_dir, "rd_cluster_main.log")
+
+logging.basicConfig(
+    filename=log_file_path,
+    filemode="w",
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray, experiment_params: ExperimentConfig):
     
@@ -43,14 +56,30 @@ def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.
     
     final_state, clustering_history = clusterer.fit(blocks, vertices, attributes)
     print(f"Final history {clustering_history}")
+    logger.info(f"Final State: \n {final_state}")
     cache.cleanup()
     
     return final_state, clustering_history
 
 
 if __name__ == "__main__":
+    import logging
+    import os
     from pcadc.main import Researcher
     from pcadc.parameters import load_experiment_config
+
+    # Centralized logging configuration
+    # This will catch logs from all modules and write them to a single file.
+    log_dir = os.path.join(os.getcwd(), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file_path = os.path.join(log_dir, "debug.log")
+
+    logging.basicConfig(
+        filename=log_file_path,
+        filemode="w",
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
     params = load_experiment_config(Path("config/config.yaml"))
     researcher = Researcher()

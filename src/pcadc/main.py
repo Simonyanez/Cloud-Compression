@@ -18,8 +18,18 @@ from .graph import *
 from .blocks import *
 from .parameters import *
 import logging
-logging.basicConfig(filename="logs/main.log",
-                    filemode="w", level=logging.DEBUG)
+import os
+
+# Setup logging to an absolute path to ensure it works when run as a module
+log_dir = os.path.join(os.getcwd(), "logs")
+os.makedirs(log_dir, exist_ok=True)
+log_file_path = os.path.join(log_dir, "main.log")
+
+logging.basicConfig(filename=log_file_path,
+                    filemode="w",
+                    level=logging.INFO,
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    )
 logger = logging.getLogger(__name__)
 # from .visualization import *
 # from memory_profiler import profile
