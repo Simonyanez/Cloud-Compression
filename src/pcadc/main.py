@@ -7,6 +7,7 @@ import tempfile
 import numpy as np
 import json
 import dataclasses
+from .rd_cluster.main import run_rd_clustering
 from .factories import *
 from .observer import *
 from .transforms import *
@@ -102,6 +103,7 @@ class Researcher():
             self._save_experiment(result, params)
             
     def _init_experiment(self, params: ExperimentConfig):
+        self.experiment_params = params
         self.sequence_params = params.sequential_params
         self.pc_metadata = params.pointcloud
         self.debugging = params.debugging
@@ -119,20 +121,24 @@ class Researcher():
         mortonpartition = MortonBlockPartition()
         return mortonpartition.partition(point_cloud, bsize=self.sequence_params.block_size)
 
-    def _cluster_codebook(self, blocks: List[Block]):
-        fit_collection = FitCollection()
-        approximator = Approximator()
-        for block in tqdm(blocks, "Fitting luminansce by linear approximation"):
-            block.init_data(self.V, self.A)
-            fit_result = approximator(block)
-            fit_collection.add(fit_result)
-            self._notify(FitEvent(block, fit_result))
-            block.clear_data()
-        clusterer = Clusterer(
-            self.sequence_params.number_of_clusters, self.sequence_params.normalize_slopes)
-        codebook = clusterer(fit_collection)
-        codebook.assign(blocks, self.V, self.A)
-        return codebook
+    # def _cluster_codebook(self, blocks: List[Block]):
+    #     fit_collection = FitCollection()
+    #     approximator = Approximator()
+    #     for block in tqdm(blocks, "Fitting luminansce by linear approximation"):
+    #         block.init_data(self.V, self.A)
+    #         fit_result = approximator(block)
+    #         fit_collection.add(fit_result)
+    #         self._notify(FitEvent(block, fit_result))
+    #         block.clear_data()
+    #     clusterer = Clusterer(
+    #         self.sequence_params.number_of_clusters, self.sequence_params.normalize_slopes)
+    #     codebook = clusterer(fit_collection)
+    #     codebook.assign(blocks, self.V, self.A)
+    #     return codebook
+
+    def _cluster_codebook(self,blocks: List[Block]):
+        final_state, clustering_history = run_rd_clustering(blocks, self.V, self.A, self.experiment_params)
+        return Codebook(final_state.slopes, final_state.labels, final_state.labels)
 
     def _compute_coeffs(self, blocks: List[Block], codebook: Codebook):
         gft_strategy_wraper = GFTStrategyWraper()
@@ -172,7 +178,7 @@ class Researcher():
             luminance_centroid,
             self.sequence_params
         )
-        self._notify(CodebookEvent(block, codebook))
+        # self._notify(CodebookEvent(block, codebook))
         return graphblock_factory.get_all_products()
 
     def _exec_encoding(self, coeffs_paths, indexes: List, codebook: Codebook):

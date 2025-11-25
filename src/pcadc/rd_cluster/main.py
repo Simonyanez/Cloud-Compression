@@ -25,9 +25,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray, experiment_params: ExperimentConfig):
+def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray, params: ExperimentConfig):
     
-    decider = Decider(experiment_params.sequential_params.decider_mode, experiment_params.sequential_params.lagrange_proportional)
+    decider = Decider(params.sequential_params.decider_mode, params.sequential_params.lagrange_proportional)
     gft_computer = GFTStrategyWraper()
     
     # Instantiate SlopeOptimizer with learning rate
@@ -57,7 +57,7 @@ def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.
     final_state, clustering_history = clusterer.fit(blocks, vertices, attributes)
     print(f"Final history {clustering_history}")
     logger.info(f"Final State: \n {final_state}")
-    cache.cleanup()
+    # cache.cleanup()
     
     return final_state, clustering_history
 
@@ -80,7 +80,6 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    logging.info("Logging configured successfully.")
 
     params = load_experiment_config(Path("config/config.yaml"))
     researcher = Researcher()
