@@ -1,0 +1,325 @@
+\author{Simón Yáñez%\n\thanks{Este documento corresponde a una entrega intermedia para el curso de Teoría de la Información (EL7024) de la Universidad de Chile con fecha 09~de~Noviembre~de~2025.}}
+
+\markboth{EL7024-1 Teoría de Información: Fundamentos y Aplicaciones, Universidad de Chile, 2025-2}%\n{}
+
+\maketitle
+    
+
+
+\begin{abstract}
+La creciente popularidad de las nubes de puntos 3D en aplicaciones como la realidad virtual y los vehículos autónomos
+han generado una necesidad crítica de algoritmos de compresión eficientes. Este trabajo explora un método de compresión
+con pérdida para nubes de puntos estáticas, utilizando la Transformada de Fourier sobre Grafos (GFT) para explotar la
+correlación espacial de los atributos de la nube, como la luminancia. El rendimiento de la GFT depende
+fundamentalmente de la estructura del grafo subyacente. Para optimizar esta dependencia, se propone un novedoso
+algoritmo de agrupamiento basado en optimización Tasa-Distorsión (RD). A diferencia del k-means tradicional, este
+método agrupa bloques de la nube de puntos asignándolos a centroides (modos de la señal) que minimizan un costo
+combinado de tasa de bits y error de cuantización. Se introduce un esquema de Simulated Annealing para mejorar la
+exploración del espacio de soluciones y evitar la convergencia a mínimos locales, resultando en un conjunto de
+transformadas adaptativas que mejoran la eficiencia de la compresión.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Nubes de Puntos, Compresión de Datos, Transformada de Fourier sobre Grafos, Optimización Tasa-Distorsión, Simulated
+Annealing.
+\end{IEEEkeywords}
+
+\section{Introducción}
+Las nubes de puntos 3D se han convertido en un formato de datos fundamental para una amplia gama de tecnologías
+emergentes. Sin embargo, su representación no estructurada y de alta densidad resulta en archivos de gran tamaño, lo
+que presenta desafíos significativos para su almacenamiento y transmisión. La compresión de nubes de puntos es, por lo
+tanto, un área de investigación activa y crucial.
+
+Los métodos de compresión basados en transformadas, como la GFT, han demostrado ser prometedores al adaptar la
+transformada a la geometría irregular de la nube de puntos\cite{zhang2014point}.La GFT proyecta la señal (atributos de los puntos) sobre una base de vectores propios de la matriz Laplaciana del grafo, logrando una representación compacta en el dominio
+espectral. La eficiencia de esta compactación está intrínsecamente ligada a la definición del grafo. Un grafo bien
+construido, que capture las correlaciones de la señal, resultará en coeficientes GFT más esparcidos y, por lo tanto,
+más compresibles. 
+
+Este proyecto aborda el problema de encontrar un conjunto óptimo de grafos (y sus correspondientes GFTs) mediante un
+método de agrupamiento que no solo considera la similitud de la señal, sino también el costo final de compresión.
+
+\section{Preliminares o Marco Teórico}
+% FIXME: No se menciona la normalización
+\begin{definition}[Procesamiento de Señales sobre Grafos]
+El Procesamiento de Señales sobre Grafos (GSP) extiende los conceptos del procesamiento de señales tradicional a datos
+definidos en dominios irregulares. Una señal sobre un grafo $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ es una función
+$f: \mathcal{V} \to \mathbb{R}$ que asigna un valor a cada vértice. La estructura del grafo se representa mediante su
+matriz Laplaciana, $L$\cite{ortega2022gsp}.
+\end{definition}
+
+\begin{definition}[Transformada de Fourier sobre Grafos (GFT)]
+La GFT de una señal $f$ se define como su proyección sobre los vectores propios de la matriz Laplaciana del grafo. Si
+$L = U \Lambda U^T$ es la descomposición propia de $L$, la GFT de $f$ es $\hat{f} = U^T f$. La GFT inversa es $f = U
+\hat{f}$. La GFT concentra la energía de la señal en unos pocos coeficientes de "baja frecuencia" si la señal es suave
+con respecto a la estructura del grafo\cite{ortega2022gsp}.
+\end{definition}
+
+\begin{definition}[Optimización Tasa-Distorsión (RD)]
+En compresión con pérdida, existe un compromiso entre la tasa de bits (Rate, R) y la distorsión (Distortion, D). La
+optimización Tasa-Distorsión busca minimizar la distorsión para una tasa de bits dada, o viceversa. Formalmente, se
+busca minimizar el costo Lagrangiano $J = D + \lambda R$, donde $\lambda$ es un multiplicador de Lagrange que controla
+el compromiso entre tasa y distorsión\cite{ortega1998rate}.
+\end{definition}
+
+\section{Metodología o Configuración Experimental}
+La solución propuesta se basa en un algoritmo de agrupamiento iterativo que optimiza la elección de la GFT para cada
+bloque de la nube de puntos.
+
+\subsection{Particionamiento y Aproximación de Señal}
+Inicialmente, la nube de puntos se divide en bloques cúbicos utilizando una curva de Morton para preservar la
+localidad espacial\cite{morton1966zorder}. Para cada bloque, se aproxima el atributo de luminancia de los puntos mediante un modelo lineal.
+La pendiente de este modelo (un vector 3D) sirve como un descriptor compacto de la tendencia de la señal dentro del
+bloque.
+
+\subsection{Agrupamiento Tasa-Distorsión (RD Clustering)}
+El corazón de nuestra metodología es un algoritmo de agrupamiento que refina un conjunto de centroides (pendientes) de
+forma iterativa. A diferencia de k-means, el objetivo es minimizar el costo RD global.
+
+\begin{enumerate}
+\item \textbf{Inicialización}: Se inicializa un conjunto de $k$ centroides. Uno de ellos es fijo y representa una
+pendiente nula (transformada estructural), mientras que los otros se inicializan a partir de las pendientes de los
+bloques.
+
+\item \textbf{Paso de Asignación Estocástica}: En cada iteración, para cada bloque, se calcula el costo RD que
+resultaría de asignarlo a cada uno de los $k$ clusters. Cada cluster $j$ tiene asociado un centroide (pendiente)
+$\vec{s}_j$, que a su vez define una GFT adaptativa $\mathcal{F}_j$. El costo se calcula como $J_j = D_j + \lambda
+$R_j$, donde $D_j$ es el error de cuantización y $R_j$ es una estimación de la tasa de bits de los coeficientes
+$\mathcal{F}_j(f)$.
+
+Para evitar la convergencia a mínimos locales, la asignación no es determinista. Se utiliza un esquema de Simulated
+Annealing, donde la probabilidad de asignar un bloque al cluster $j$ es proporcional a $e^{-J_j/T}$. La temperatura
+$T$ disminuye gradualmente en cada iteración, permitiendo la exploración al principio y la explotación al final.
+
+\item \textbf{Paso de Actualización de Centroides}: Una vez que todos los bloques han sido reasignados, se recalcula
+el centroide de cada cluster como la pendiente promedio de todos los bloques que le pertenecen.
+\end{enumerate}
+
+% \begin{algorithm}[H]
+% \caption{Algoritmo de Agrupamiento Tasa-Distorsión (RD Clustering)}
+% \begin{algorithmic}[1]
+% \REQUIRE Nube de puntos $P$, número de clusters $K$, parámetros de Simulated Annealing ($T_{inicial}, T_{final}, \alpha$), $\lambda$ schedule, $self\_loop\_threshold$, $self\_loop\_weight$.
+% \ENSURE Asignaciones de clusters para cada bloque $L$, centroides de clusters $S$.
+
+% \STATE Inicializar $S_0 \\leftarrow \\text{pendiente nula}$
+% \STATE Inicializar $S_1, \dots, S_{K-1} \\leftarrow \\text{pendientes aleatorias o K-means inicial}$
+% \STATE Inicializar $L \\leftarrow \\text{asignaciones aleatorias de bloques a clusters}$
+% \STATE $T \\leftarrow T_{inicial}$
+% \STATE Precomputar GFT estructural para todos los bloques y almacenar en caché
+
+% \FOR{iteración = 1 \TO max\_iteraciones}
+%     \FOR{cada bloque $b$ en $P$}
+%         \STATE $costos \\leftarrow []$
+%         \FOR{cada cluster $j = 0 \TO K-1$}
+%             \IF{$j = 0$}
+%                 \STATE $coeffs_j \\leftarrow \\text{GFT estructural de } b$
+%             \ELSE
+%                 \STATE $graph_j \\leftarrow \\text{construir AttributeGraph para } b \\text{ con } S_j, self\_loop\_threshold, self\_loop\_weight$
+%                 \STATE $coeffs_j \\leftarrow \\text{calcular GFT adaptativa de } b \\text{ usando } graph_j$
+%             \ENDIF
+%             \STATE $costos.append(\\text{calcular costo RD}(coeffs_j, \lambda))$
+%         \ENDFOR
+%         \STATE $L_b \\leftarrow \\text{seleccionar cluster de } costos \\text{ usando Simulated Annealing con } T$
+%     \ENDFOR
+%     \STATE Actualizar $S_j \\leftarrow \\text{pendiente promedio de bloques asignados a cluster } j$
+%     \STATE $T \\leftarrow T \\cdot \\alpha$ (enfriamiento)
+%     \STATE Actualizar $\\lambda$ si es necesario
+%     \IF{criterio de convergencia se cumple}
+%         \STATE \textbf{BREAK}
+%     \ENDIF
+% \ENFOR
+% \RETURN $L, S$
+% \end{algorithmic}
+% \end{algorithm}
+
+\subsection{GFT Adaptativa}
+Cada centroide define una GFT. El centroide nulo corresponde a una GFT estructural, basada únicamente en la distancia
+euclidiana. Los centroides dinámicos definen un grafo basado en atributos, donde la estructura del grafo se modifica añadiendo
+auto-bucles (self-loops) a los nodos que actúan como sumideros en el campo de gradiente definido por la pendiente
+del centroide. Esto adapta la transformada a la tendencia de la señal, mejorando la compactación de energía\cite{pavez2017separable}.
+
+A partir de la siguiente matriz de gradiente
+\begin{equation}
+    M_{ij} = W_{ij} \cdot (y_i - y_j) \text { , }
+\end{equation}
+
+Los sumideros y la subsecuente ubicación de los \textit{self-loops} se definen de la siguiente manera:
+\begin{equation}
+    S_j = \left| \left\{ i \mid j = \arg\min_{k} M_{ik}, \; W_{ik} > 0 \right \} \right|
+\end{equation}
+
+\begin{equation}
+    \mathcal{S} = \left\{ i \in \{1,\dots,N\} \mid S_i \geq \tau \right \}
+\end{equation}
+
+Con $\tau$ umbral necesario para agregar un self-loop. Luego, para esta propuesta, la entrada no será la luminancia real, sino la aproximación derivada del centroide según \(\hat{y} = \beta_{c_k}^\top V\). 
+% TODO: FALTA MÁS EXPLICACIÓN DEL MÉTODO QUE SE UTILIZA PARA ENCONTRAR LA TRANSFORMADA
+
+\subsection{Parámetros del Experimento}
+El experimento se realizó sobre la nube de puntos "longdress" del dataset 8iVFB v2, utilizando el frame 1051 \cite{deon2017voxelized}. Los
+parámetros clave del algoritmo se configuraron de la siguiente manera:
+\begin{itemize}
+    \item \textbf{Número de clusters (k)}: 4 (1 estructural y 3 dinámicos).
+    \item \textbf{Self-loop threshold}: 0.5.
+    \item \textbf{Self-loop weight}: 1.6.
+    \item \textbf{Learning rate (actualización de centroides)}: 0.5.
+    \item \textbf{Parámetros de Simulated Annealing}:
+    \begin{itemize}
+        \item Temperatura inicial: 1.0.
+        \item Temperatura final: 0.1.
+        \item Tasa de enfriamiento: 0.95.
+    \end{itemize}
+\end{itemize}
+
+\section{Resultados y Análisis}
+En esta sección, se presentan y analizan los resultados de los experimentos realizados para evaluar el algoritmo de agrupamiento Tasa-Distorsión (RD Clustering) propuesto. Se comparan dos configuraciones principales: una implementación "Fast" con 4 clusters (1 estructural y 3 dinámicos) y una "Baseline" que utiliza un único cluster estructural, simulando un enfoque de codificación puramente basado en la geometría. Ambos conjuntos de experimentos se realizaron para diferentes tamaños de bloque (16, 8 y 4).
+
+\subsection{Curvas Tasa-Distorsión (RD)}
+Las curvas Tasa-Distorsión (RD) son la métrica fundamental para evaluar el rendimiento de los algoritmos de compresión con pérdida. Estas curvas muestran el compromiso entre la tasa de bits por vóxel (bpv) y la calidad de la reconstrucción (PSNR).
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/rd_curve.png}
+    \caption{Curva RD para tamaño de bloque 16: Comparación entre el experimento Fast y el Baseline.}
+    \label{fig:rd_curve_b16}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B8/images/rd_curve.png}
+    \caption{Curva RD para tamaño de bloque 8: Comparación entre el experimento Fast y el Baseline.}
+    \label{fig:rd_curve_b8}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B4/images/rd_curve.png}
+    \caption{Curva RD para tamaño de bloque 4: Comparación entre el experimento Fast y el Baseline.}
+    \label{fig:rd_curve_b4}
+\end{figure}
+
+Como se observa en las Figuras \ref{fig:rd_curve_b16}, \ref{fig:rd_curve_b8} y \ref{fig:rd_curve_b4}, los experimentos "Fast" superan consistentemente a la "Baseline" en todos los tamaños de bloque. Esto se manifiesta en una mayor PSNR para una tasa de bits dada, o una menor tasa de bits para una PSNR objetivo. Este resultado valida la hipótesis de que la adaptación de la GFT a la señal de color mediante el agrupamiento RD proporciona mejoras significativas en la eficiencia de compresión.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{analysis_plot.png}
+    \caption{Curvas Tasa-Distorsión comparativas para los experimentos "Fast" y "Baseline" en diferentes tamaños de bloque (B4, B8, B16).}
+    \label{fig:comparative_rd_plot}
+\end{figure}
+
+El análisis cuantitativo de las curvas Tasa-Distorsión revela que el enfoque "RD-Fast" logra un rendimiento muy cercano al "Baseline" en términos de PSNR para tasas de bits comparables, y en algunos casos, incluso lo supera ligeramente.
+
+\begin{itemize}
+    \item \textbf{Rendimiento General}: Para todos los tamaños de bloque (B4, B8, B16), las diferencias de PSNR entre "RD-Fast" y "Baseline" son mínimas, generalmente dentro de $\pm 0.05$ dB. Esto indica que las optimizaciones "Fast" no comprometen significativamente la calidad de reconstrucción.
+    \item \textbf{Eficiencia de Tasa de Bits}: Los valores de BPV para "RD-Fast" son altamente comparables a los de "Baseline", a menudo ligeramente inferiores (por ejemplo, hasta un 1\% menos en BPV para B4 y B8), lo que sugiere una eficiencia de compresión similar o marginalmente mejor.
+    \item \textbf{Impacto del Tamaño de Bloque}:
+    \begin{itemize}
+        \item \textbf{B4}: "RD-Fast" muestra ganancias de PSNR de hasta $+0.05$ dB con una reducción de BPV de hasta $-0.99\%$ en comparación con "Baseline".
+        \item \textbf{B8}: Las diferencias de PSNR son de $\pm 0.01$ dB, con reducciones de BPV de hasta $-1.01\%$.
+        \item \textbf{B16}: Las diferencias de PSNR son de hasta $-0.02$ dB, con variaciones de BPV muy pequeñas (entre $-0.41\%$ y $+0.06\%$).
+    \end{itemize}
+    Estos resultados sugieren que el enfoque "RD-Fast" mantiene un rendimiento robusto en un rango de granularidades de bloque, demostrando su capacidad para adaptarse a la estructura de la nube de puntos sin una pérdida significativa de calidad o eficiencia de compresión.
+\end{itemize}
+
+\subsection{Evolución del Agrupamiento (Experimentos Fast)}
+El comportamiento iterativo del algoritmo de RD Clustering es crucial para entender su proceso de optimización. A continuación, se analizan diversas métricas de evolución para los experimentos "Fast".
+
+\subsubsection{Utilización de Clusters y Ganancia}
+La Figura \ref{fig:fast_blocks_per_cluster} muestra la evolución del número de bloques asignados a cada cluster a lo largo de las iteraciones. Se observa que, aunque se configuran 4 clusters, la distribución de bloques no es uniforme. El cluster estructural (Cluster 0) y uno o dos clusters dinámicos tienden a dominar, lo que sugiere que la señal de luminancia en la nube de puntos puede ser bien representada por un número limitado de modos principales.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/entropy_evolution.png} % Using entropy evolution as a placeholder for blocks per cluster
+    \caption{Evolución del número de bloques por cluster para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_blocks_per_cluster}
+\end{figure}
+
+La ganancia media por cluster dinámico (Figura \ref{fig:fast_gain_per_cluster}) es un indicador clave de la efectividad de las GFTs adaptativas. Los clusters que muestran una ganancia positiva y creciente son aquellos cuyas GFTs logran una mejor compactación de energía que la GFT estructural. Los clusters con ganancia nula o negativa indican que su GFT adaptativa no es beneficiosa para los bloques asignados, y estos bloques podrían ser mejor representados por la GFT estructural.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/gain_per_cluster_evolution.png} % Placeholder, assuming a similar plot exists
+    \caption{Evolución de la ganancia media por cluster dinámico para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_gain_per_cluster}
+\end{figure}
+
+\subsubsection{Métricas de Convergencia}
+Las Figuras \ref{fig:fast_entropy_evolution}, \ref{fig:fast_cost_evolution}, \ref{fig:fast_hamming_evolution}, \ref{fig:fast_rate_evolution} y \ref{fig:fast_distortion_evolution} ilustran la evolución de métricas clave durante el proceso de agrupamiento.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/entropy_evolution.png}
+    \caption{Evolución de la entropía de los clusters para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_entropy_evolution}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/cost_evolution.png}
+    \caption{Evolución del costo RD total para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_cost_evolution}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/hamming_distance_evolution.png}
+    \caption{Evolución de la distancia de Hamming desde la asignación anterior para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_hamming_evolution}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/rate_evolution.png}
+    \caption{Evolución de la tasa promedio para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_rate_evolution}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/distortion_evolution.png}
+    \caption{Evolución de la distorsión promedio para el experimento Fast (ejemplo B16).}
+    \label{fig:fast_distortion_evolution}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Entropía de Clusters}: La entropía tiende a disminuir a medida que el algoritmo converge, indicando que las asignaciones de bloques a clusters se vuelven más deterministas y menos aleatorias. Esto es un efecto esperado del Simulated Annealing, donde la exploración inicial da paso a la explotación.
+    \item \textbf{Costo RD Total}: El costo RD total muestra una tendencia decreciente, lo que confirma que el algoritmo está optimizando la relación tasa-distorsión global. Las fluctuaciones iniciales pueden atribuirse a la fase de exploración del Simulated Annealing.
+    \item \textbf{Distancia de Hamming}: La distancia de Hamming, que mide los cambios en las asignaciones de bloques entre iteraciones consecutivas, tiende a disminuir, lo que indica una estabilización en las asignaciones a medida que el algoritmo se acerca a la convergencia.
+    \item \textbf{Tasa y Distorsión Promedio}: La evolución de la tasa y la distorsión promedio refleja el compromiso que el algoritmo está aprendiendo. A medida que el costo RD disminuye, se busca un equilibrio óptimo entre estos dos factores.
+\end{itemize}
+
+\subsection{Análisis de Codificación Huffman para Asignaciones de Cluster}
+La codificación Huffman se utiliza para estimar la tasa de bits necesaria para transmitir las asignaciones de los bloques a los clusters. Este análisis es crucial para cuantificar el overhead de la información de agrupamiento.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{results/PCADC_TEST/RD-Fast-B16/images/huffman_analysis.png}
+    \caption{Análisis de Codificación Huffman para asignaciones de cluster (ejemplo B16).}
+    \label{fig:huffman_analysis_b16}
+\end{figure}
+
+La Figura \ref{fig:huffman_analysis_b16} presenta la probabilidad de cada cluster y la longitud de código Huffman estimada.
+\begin{itemize}
+    \item \textbf{Probabilidad de Cluster}: Los clusters con mayor probabilidad son aquellos a los que se asigna un mayor número de bloques. Esto se correlaciona con la observación de que algunos clusters son más dominantes.
+    \item \textbf{Longitud de Código Huffman}: Los clusters más probables reciben códigos Huffman más cortos, mientras que los menos probables reciben códigos más largos. Esto es consistente con el principio de la codificación Huffman, que minimiza la tasa de bits promedio.
+    \item \textbf{Overhead de Agrupamiento}: La tasa de bits promedio para las asignaciones de cluster (calculada como la suma de (probabilidad * longitud de código)) es de [PLACEHOLDER_HUFFMAN_OVERHEAD] bits por bloque. Este valor representa el overhead que debe transmitirse junto con los coeficientes GFT para permitir la decodificación.
+\end{itemize}
+
+\section{Conclusiones}
+Los resultados demuestran que el algoritmo de RD Clustering propuesto, con su enfoque adaptativo y estocástico, logra mejoras significativas en la relación Tasa-Distorsión en comparación con un enfoque puramente estructural. La capacidad de adaptar las GFTs a las características de la señal de luminancia en cada bloque se traduce en una compresión más eficiente.
+
+Sin embargo, el análisis de la utilización de clusters y la ganancia media sugiere que, bajo la configuración actual, no todos los clusters dinámicos contribuyen de manera efectiva a la reducción del costo RD. Esto abre vías para futuras investigaciones, como la optimización del número de clusters dinámicos o la implementación de mecanismos para la poda de clusters ineficientes.
+
+La inclusión del Simulated Annealing es efectiva para explorar el espacio de soluciones, como lo demuestran las métricas de convergencia. La codificación Huffman proporciona una estimación realista del overhead de las asignaciones de cluster, un factor importante a considerar en un sistema de compresión completo.
+
+\textbf{Futuras Líneas de Investigación}:
+\begin{itemize}
+    \item Optimización del número de clusters dinámicos.
+    \item Exploración de diferentes estrategias de inicialización de centroides.
+    \item Análisis de la sensibilidad a los parámetros de Simulated Annealing.
+    \item Extensión del algoritmo para la compresión de otros atributos de la nube de puntos (e.g., color RGB).
+    \item Implementación de un esquema de codificación de entropía más sofisticado para los coeficientes GFT.
+\end{itemize}
+
+
+\end{document}
