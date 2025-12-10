@@ -138,6 +138,14 @@ class Researcher():
 
     def _cluster_codebook(self,blocks: List[Block]):
         final_state, clustering_history = run_rd_clustering(blocks, self.V, self.A, self.experiment_params)
+        
+        # Notify observers with the clustering history
+        self._notify(ClusteringHistoryEvent(
+            experiment_code=self.metadata.experiment_code,
+            block_size=self.sequence_params.block_size,
+            history=clustering_history
+        ))
+        
         return Codebook(final_state.slopes, final_state.labels, final_state.labels)
 
     def _compute_coeffs(self, blocks: List[Block], codebook: Codebook):
@@ -178,7 +186,9 @@ class Researcher():
             luminance_centroid,
             self.sequence_params
         )
-        # self._notify(CodebookEvent(block, codebook))
+        block.init_data(self.V, self.A)
+        self._notify(CodebookEvent(block, codebook))
+        block.clear_data()
         return graphblock_factory.get_all_products()
 
     def _exec_encoding(self, coeffs_paths, indexes: List, codebook: Codebook):
@@ -343,8 +353,8 @@ class Researcher():
 #         print(result_str)
 
 
-def run_experiments():
-    params = load_experiment_config(Path("config/config.yaml"))
+def run_experiments(config_path: Path):
+    params = load_experiment_config(config_path)
     researcher = Researcher()
     
     # Create the directory structure first
@@ -388,5 +398,7 @@ def run_experiments():
 
 
 if __name__ == "__main__":
-    run_experiments()
+    run_experiments(Path("config/config_medium_b16_c8.yaml"))
+    run_experiments(Path("config/config_medium_b8_c8.yaml"))
+    run_experiments(Path("config/config_medium_b4_c8.yaml"))
     pass

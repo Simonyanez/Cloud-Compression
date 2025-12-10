@@ -19,6 +19,9 @@ class RDClusterState:
     avg_rate: Optional[float] = None
     avg_distortion: Optional[float] = None
     cluster_gains: Optional[Dict[int, Dict[str, float]]] = None # Richer gain stats per dynamic cluster
+    all_rates: Optional[np.ndarray] = None
+    all_distortions: Optional[np.ndarray] = None
+    all_gains: Optional[np.ndarray] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Converts the RDClusterState to a dictionary for JSON serialization."""
@@ -39,6 +42,9 @@ class RDClusterState:
             "avg_rate": self.avg_rate,
             "avg_distortion": self.avg_distortion,
             "cluster_gains": serializable_gains,
+            "all_rates": self.all_rates.tolist() if self.all_rates is not None else None,
+            "all_distortions": self.all_distortions.tolist() if self.all_distortions is not None else None,
+            "all_gains": self.all_gains.tolist() if self.all_gains is not None else None,
         }
 
     def __repr__(self) -> str:

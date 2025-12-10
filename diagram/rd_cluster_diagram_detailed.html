@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RD Cluster Diagram - Detailed</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { display: flex; flex-direction: column; align-items: center; }
+        .section { border: 2px solid #333; border-radius: 5px; padding: 15px; margin: 10px; width: 80%; }
+        .section h2 { text-align: center; }
+        .step { background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; padding: 10px; margin: 10px; }
+        .equation { font-family: "Courier New", Courier, monospace; background-color: #eee; padding: 5px; border-radius: 3px; }
+        .arrow { text-align: center; font-size: 24px; margin: 0; }
+        .sub-diagram { display: flex; justify-content: space-around; align-items: center; margin-top: 15px; }
+        .graph { border: 1px solid #999; border-radius: 5px; padding: 10px; width: 45%; }
+        .graph h3 { text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RD Cluster Methodology - Detailed Flowchart</h1>
+
+        <div class="section">
+            <h2>1. Initialization</h2>
+            <div class="step"><strong>Partition Point Cloud:</strong> Divide the point cloud into non-overlapping blocks using a Morton curve.</div>
+            <div class="step"><strong>Initialize Slopes (Centroids):</strong>
+                <p>Approximate luminance in each block with a linear model: <span class="equation">Y ≈ s_i * V_i + c_i</span></p>
+                <p>Run K-Means on the slopes {s_i} to get initial centroids {S_k}. One centroid is fixed as <span class="equation">S_0 = 0</span> (Structural).</p>
+            </div>
+            <div class="step"><strong>Precompute Structural GFTs:</strong> For each block, compute the GFT based on its structural graph and cache the coefficients.</div>
+        </div>
+
+        <div class="arrow">⬇</div>
+
+        <div class="section">
+            <h2>2. Iteration Loop (until convergence)</h2>
+            
+            <div class="step">
+                <h3>2.1. Assignment Step (for each block)</h3>
+                <p>For each cluster k = 0 to K-1:</p>
+                <ul>
+                    <li><strong>If k=0 (Structural):</strong> Use precomputed structural GFT coefficients.</li>
+                    <li><strong>If k>0 (Dynamic):</strong> Compute Adaptive GFT:
+                        <div class="sub-diagram">
+                            <div class="graph">
+                                <h3>Structural Graph</h3>
+                                <p>Edges weighted by inverse Euclidean distance.</p>
+                                <p class="equation">W_ij = 1 / ||v_i - v_j||</p>
+                            </div>
+                            <div style="font-size: 24px;">+</div>
+                            <div class="graph">
+                                <h3>Attribute-based Self-Loops</h3>
+                                <p>Add self-loops to "sink" nodes based on slope S_k.</p>
+                                <p class="equation">W_ii = self_loop_weight</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li>Calculate RD Cost: <span class="equation">J_k = D_k + λ * R_k</span>
+                        <ul>
+                            <li>Distortion <span class="equation">D_k = ||C - Q(C)||^2</span></li>
+                            <li>Rate <span class="equation">R_k = ||Q(C)||_0</span></li>
+                        </ul>
+                    </li>
+                </ul>
+                <p>Assign block to cluster k* that minimizes cost. (Note: currently greedy, was intended to be stochastic via Simulated Annealing)</p>
+                <p class="equation">k* = argmin_k(J_k)</p>
+            </div>
+
+            <div class="arrow">⬇</div>
+
+            <div class="step">
+                <h3>2.2. Update Step</h3>
+                <p><strong>Update Slopes:</strong> Recalculate centroid S_k for each cluster using weighted least squares on the blocks assigned to it.</p>
+                <p class="equation">S_k_new = (1-α) * S_k_old + α * β</p>
+                <p><strong>Update Temperature (for Simulated Annealing):</strong> <span class="equation">T = T * cooling_rate</span></p>
+            </div>
+
+            <div class="arrow">⬇</div>
+
+            <div class="step">
+                <h3>2.3. Convergence Check</h3>
+                <p>Stop if cluster assignments do not change significantly or max iterations are reached.</p>
+            </div>
+        </div>
+
+        <div class="arrow">⬇</div>
+
+        <div class="section">
+            <h2>3. End</h2>
+            <div class="step">Output final cluster assignments and optimized centroids.</div>
+        </div>
+    </div>
+</body>
+</html>

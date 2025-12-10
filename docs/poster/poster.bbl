@@ -1,0 +1,73 @@
+\begin{thebibliography}{10}
+
+\bibitem{deon2017voxelized}
+Eugene d'Eon, Bob Harrison, Taos Myers, and Philip~A. Chou.
+\newblock {8i Voxelized Full Bodies - A Voxelized Point Cloud Dataset}.
+\newblock ISO/IEC JTC1/SC29 Joint WG11/WG1 (MPEG/JPEG) input document
+  WG11M40059/WG1M74006, January 2017.
+
+\bibitem{goyal2001theoretical}
+V.~K. Goyal.
+\newblock Theoretical foundations of transform coding.
+\newblock {\em IEEE Signal Processing Magazine}, 18(5):9--21, September 2001.
+
+\bibitem{loop2016microsoft}
+Charles Loop, Qin Cai, S.~Orts Escolano, and Philip~A. Chou.
+\newblock Microsoft voxelized upper bodies: A voxelized point cloud dataset.
+\newblock ISO/IEC JTC1/SC29 Joint WG11/WG1 (MPEG/JPEG) Input Document M38673,
+  2016.
+
+\bibitem{malvar2006adaptive}
+H.~S. Malvar.
+\newblock Adaptive run-length/golomb-rice encoding of quantized generalized
+  gaussian sources with unknown statistics.
+\newblock In {\em Data Compression Conference (DCC'06)}, pages 23--32, March
+  2006.
+
+\bibitem{morton1966zorder}
+G.~M. Morton.
+\newblock A computer oriented geodetic data base and a new technique in file
+  sequencing, 1966.
+\newblock IBM Ltd., Ottawa, Ontario.
+
+\bibitem{ortega2022gsp}
+Antonio Ortega.
+\newblock {\em Introduction to Graph Signal Processing}.
+\newblock Cambridge University Press, 2022.
+
+\bibitem{ortega1998rate}
+Antonio Ortega and Kannan Ramchandran.
+\newblock Rate-distortion methods for image and video compression.
+\newblock {\em IEEE Signal Processing Magazine}, 15(6):23--50, November 1998.
+\newblock Publisher: IEEE.
+
+\bibitem{pavez2020region}
+Eduardo Pavez, Benjamin Girault, Antonio Ortega, and Philip~A. Chou.
+\newblock Region adaptive graph fourier transform for 3d point clouds.
+\newblock {\em arXiv preprint arXiv:2003.01866}, May 2020.
+\newblock Accepted at ICIP 2020.
+
+\bibitem{pavez2017separable}
+Eduardo Pavez, Antonio Ortega, and Debargha Mukherjee.
+\newblock Learning separable transforms by inverse covariance estimation.
+\newblock In {\em Proceedings of the IEEE International Conference on Image
+  Processing (ICIP)}, pages 285--289, Beijing, China, September 2017.
+
+\bibitem{sayood2006introduction}
+Khalid Sayood.
+\newblock {\em Introduction to Data Compression}.
+\newblock Morgan Kaufmann series in multimedia information and systems.
+  Elsevier, Amsterdam; Boston, 3rd edition, 2006.
+
+\bibitem{shannon1948mathematical}
+Claude~Elwood Shannon.
+\newblock A mathematical theory of communication.
+\newblock {\em The Bell system technical journal}, 27(3):379--423, 1948.
+
+\bibitem{zhang2014point}
+Cha Zhang, Dinei Florêncio, and Charles Loop.
+\newblock Point cloud attribute compression with graph transform.
+\newblock In {\em 2014 IEEE International Conference on Image Processing
+  (ICIP)}, pages 2066--2070, October 2014.
+
+\end{thebibliography}

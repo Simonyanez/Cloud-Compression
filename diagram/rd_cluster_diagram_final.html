@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RD Cluster Methodology - Detailed Explanation</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f9; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2, h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h1 { text-align: center; }
+        .section { margin-bottom: 30px; }
+        .step { background-color: #ecf0f1; border-left: 5px solid #3498db; padding: 15px; margin: 15px 0; }
+        .equation { display: block; padding: 10px; margin: 10px 0; background-color: #e8f6fd; border-radius: 5px; overflow-x: auto; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-item { padding: 15px; border: 1px solid #bdc3c7; border-radius: 5px; }
+        .highlight { color: #c0392b; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rate-Distortion (RD) Clustering Methodology</h1>
+        <p>This document provides a detailed breakdown of the RD Clustering algorithm, a method designed to find optimal adaptive transforms for point cloud attribute compression by minimizing a rate-distortion cost function.</p>
+
+        <div class="section">
+            <h2>1. Initialization Phase</h2>
+            <div class="step">
+                <h3>1.1. Block Partitioning</h3>
+                <p>The input point cloud is partitioned into smaller, spatially coherent cubic blocks. This is achieved by ordering the points along a Morton space-filling curve, which helps in preserving spatial locality.</p>
+            </div>
+            <div class="step">
+                <h3>1.2. Initial Centroid (Slope) Estimation</h3>
+                <p>For each block, the luminance attribute (Y) is approximated as a linear function of the vertex positions (V). This establishes a "slope" or gradient that describes the dominant trend of the attribute within the block.</p>
+                <div class="equation">
+                    \[ Y_i \approx \mathbf{s}_i^T \mathbf{v}_i + c_i \]
+                </div>
+                <p>Where \(\mathbf{s}_i\) is the 3D slope vector for block \(i\). A K-Means algorithm is then run on the set of all slopes \(\{\mathbf{s}_i\}\) to find \(K\) initial cluster centroids \(\{\mathbf{S}_k\}\). One centroid is permanently fixed to zero, representing a non-adaptive, purely structural mode:</p>
+                <div class="equation">
+                    \[ \mathbf{S}_0 = [0, 0, 0]^T \]
+                </div>
+            </div>
+            <div class="step">
+                <h3>1.3. Structural GFT Precomputation</h3>
+                <p>For every block, a <strong>Structural Graph</strong> is built based solely on the Euclidean distances between its points. The Graph Fourier Transform (GFT) coefficients for the luminance attribute are computed using this graph and stored in a cache for quick access during the iterative process.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>2. Iterative Refinement Loop</h2>
+            <p>The algorithm iteratively refines the cluster assignments and centroids to minimize a global RD cost. The loop continues until convergence criteria are met (e.g., stable cluster assignments or max iterations).</p>
+            
+            <div class="grid-container">
+                <div class="grid-item">
+                    <h3>2.1. Assignment Step (per block)</h3>
+                    <p>For each block, the algorithm decides which cluster \(k\) it should belong to. This involves calculating the RD cost of assigning the block to each cluster.</p>
+                    
+                    <h4>For Cluster \(k=0\) (Structural):</h4>
+                    <p>The precomputed structural GFT coefficients are retrieved from the cache.</p>
+
+                    <h4>For Cluster \(k>0\) (Dynamic):</h4>
+                    <p>An <strong>Adaptive GFT</strong> is computed. This involves creating an <span class="highlight">AttributeGraph</span> by modifying the block's structural graph based on the cluster's centroid slope \(\mathbf{S}_k\). This adapts the transform to the specific signal trend represented by the cluster.</p>
+
+                    <h4>RD Cost Calculation:</h4>
+                    <p>The core of the assignment is the RD cost function \(J\), which balances distortion (D) and rate (R) via a Lagrange multiplier \(\lambda\):</p>
+                    <div class="equation">
+                        \[ J_k = D_k + \lambda R_k \]
+                    </div>
+                    <ul>
+                        <li><strong>Distortion (D):</strong> The mean squared error between the original GFT coefficients \(C\) and their quantized-dequantized version.
+                            \[ D_k = ||C_k - \text{dequantize}(\text{quantize}(C_k))||_2^2 \]
+                        </li>
+                        <li><strong>Rate (R):</strong> The number of non-zero quantized coefficients (L0 norm), which estimates the bitrate.
+                            \[ R_k = ||\text{quantize}(C_k)||_0 \]
+                        </li>
+                    </ul>
+                    
+                    <h4>Stochastic Assignment:</h4>
+                    <p>Instead of greedily picking the cluster with the minimum cost, a stochastic choice is made using a Simulated Annealing schedule. The probability of choosing cluster \(k\) is given by:</p>
+                    <div class="equation">
+                        \[ P(\text{choose } k) = \frac{e^{-J_k / T}}{\sum_{j=0}^{K-1} e^{-J_j / T}} \]
+                    </div>
+                    <p>Where \(T\) is the current "temperature," which decreases over iterations. This allows the algorithm to escape local minima. <span class="highlight">(Note: The implementation currently uses a greedy approach, i.e., \(T \to 0\)).</span></p>
+                </div>
+
+                <div class="grid-item">
+                    <h3>2.2. Update Step</h3>
+                    <p>After all blocks are reassigned, the cluster centroids are updated.</p>
+
+                    <h4>Slope (Centroid) Update:</h4>
+                    <p>The new centroid \(\mathbf{S}_k^{\text{new}}\) for each dynamic cluster is calculated as the weighted average of the slopes of all blocks assigned to it. A learning rate \(\alpha\) is used to smoothly update the centroids:</p>
+                    <div class="equation">
+                        \[ \mathbf{S}_k^{\text{new}} = (1-\alpha)\mathbf{S}_k^{\text{old}} + \alpha \cdot \beta_k \]
+                    </div>
+                    <p>Where \(\beta_k\) is the new optimal slope for cluster \(k\) found via weighted least squares.</p>
+
+                    <h4>Temperature Update:</h4>
+                    <p>The temperature for the simulated annealing is cooled down:</p>
+                    <div class="equation">
+                        \[ T_{\text{new}} = T_{\text{old}} \times \text{cooling\_rate} \]
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>3. Convergence &amp; Rate Control</h2>
+            <div class="grid-container">
+                <div class="grid-item">
+                    <h3>3.1. Convergence Criteria</h3>
+                    <p>The iterative process for a given rate-distortion trade-off (controlled by \(\lambda\)) stops when the total RD cost stabilizes. Specifically, the algorithm checks if the relative change in cost over a window of recent iterations is below a certain threshold.</p>
+                </div>
+                <div class="grid-item">
+                    <h3>3.2. Lagrange Multiplier Dynamics (q_step trigger)</h3>
+                    <p>The algorithm explores different rate-distortion trade-offs by progressively increasing the Lagrange multiplier \(\lambda\). This is not done at every iteration. Instead, the algorithm waits for the clustering to converge for a given \(\lambda\) value.</p>
+                    <p>Once the cost has stabilized, the <strong>lambda_step</strong> is incremented. This selects a larger <strong>q_step</strong> from a predefined schedule, which in turn increases \(\lambda\):</p>
+                    <div class="equation">
+                        \[ \lambda \propto (\text{q\_step})^2 \]
+                    </div>
+                    <p>This process forces the algorithm to find a new clustering solution that prioritizes a lower rate (more sparsity) at the expense of higher distortion, effectively tracing out the rate-distortion curve.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>4. Analysis of Cluster Evolution and Solution Space</h2>
+            <p>Based on the analysis of the `results/temp/iteration_*.json` files, we can observe the dynamic nature of the solution space exploration.</p>
+            <div class="step">
+                <h3>Initial State (Exploration)</h3>
+                <p>In the early iterations (e.g., `iteration_000.json`), the block assignments (`labels`) are quite varied. The `cluster_entropy` is relatively high, indicating a diverse distribution of blocks among the clusters. This is the exploration phase, where the algorithm, guided by the initial (and possibly sub-optimal) centroids, tests different configurations.</p>
+            </div>
+            <div class="step">
+                <h3>Mid-process (Exploitation & Refinement)</h3>
+                <p>As the iterations progress, the `slopes` of the dynamic clusters are updated to better represent the blocks assigned to them. The `total_cost` generally decreases as the assignments become more optimal for the current \(\lambda\). We observe blocks moving between clusters as the centroids are refined. The `cluster_gains` for the dynamic clusters tend to increase, showing that the adaptive transforms are becoming more effective than the purely structural one.</p>
+            </div>
+            <div class="step">
+                <h3>Rate-Distortion Shift</h3>
+                <p>A significant shift occurs when the `lambda_step` is incremented. The increase in `q_step` and \(\lambda\) places a higher penalty on the rate term. This causes a widespread reassignment of blocks. Many blocks that were previously in dynamic clusters might move to the structural cluster (cluster 0) if the cost of coding their coefficients with an adaptive transform becomes too high. The `avg_rate` will drop, while the `avg_distortion` will increase, reflecting the new trade-off.</p>
+            </div>
+            <div class="step">
+                <h3>Final State (Convergence)</h3>
+                <p>In the final iterations (e.g., `iteration_067.json`), the cluster assignments are much more stable for the final \(\lambda\) value. The `cluster_entropy` is lower, and the `total_cost` has converged. The final `labels` and `slopes` represent the optimized solution for the highest rate-distortion trade-off explored.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

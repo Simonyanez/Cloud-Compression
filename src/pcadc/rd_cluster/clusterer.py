@@ -100,7 +100,10 @@ class RDClusterer:
                                    cluster_entropy=cluster_entropy,
                                    avg_rate=avg_rate,
                                    avg_distortion=avg_distortion,
-                                   cluster_gains=cluster_gains)
+                                   cluster_gains=cluster_gains,
+                                   all_rates=all_rates,
+                                   all_distortions=all_distortions,
+                                   all_gains=all_gains)
 
             print(f"Current state: \n {state}")
             history.add_state(state)
@@ -140,7 +143,6 @@ class RDClusterer:
             fit_result = approximator(block)
             fit_collection.add(fit_result)
             block.clear_data()
-        slopes = fit_collection.get_slopes()
         clusterer = Clusterer(
             self.num_clusters, self.sequential_parameters.normalize_slopes)
         codebook = clusterer(fit_collection)
@@ -192,7 +194,7 @@ class RDClusterer:
             
             # Calculate gain for this block if a dynamic cluster was chosen
             if chosen_cluster != 0:
-                all_gains[i] = cost_structural - costs[chosen_cluster]
+                all_gains[i] = costs[chosen_cluster] - cost_structural
             else:
                 all_gains[i] = 0 # No gain if structural is chosen
 

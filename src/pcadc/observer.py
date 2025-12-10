@@ -17,6 +17,9 @@ from .clusterer import Codebook
 from .transforms import CoeffsContainer
 from .visualization import Visualizer
 from .managers import VisualizationManager, VisualizationType
+from .rd_cluster.states import ClusteringHistory
+import collections
+import heapq
 
 
 # ------------------------
@@ -51,9 +54,15 @@ class CoeffsEvent:
     coeffs: np.ndarray
     GFT_mat: np.ndarray
 
+@dataclass
+class ClusteringHistoryEvent:
+    experiment_code: str
+    block_size: int
+    history: ClusteringHistory
+
 
 # Union of all events
-ExperimentEvent = Union[FitEvent, CodebookEvent, RDOEvent, EncodeEvent, CoeffsEvent]
+ExperimentEvent = Union[FitEvent, CodebookEvent, RDOEvent, EncodeEvent, CoeffsEvent, ClusteringHistoryEvent]
 
 
 # ------------------------
@@ -84,6 +93,19 @@ def energy_compaction(coeffs: np.ndarray, k: int | None = None) -> float:
         k = coeffs_sorted.shape[0] // 4  # e.g., top 25%
         return float(np.sum(coeffs_sorted[:k]) / energy_total)
     return float(np.sum(coeffs[:k]**2) / energy_total)
+
+def build_huffman_tree(freq_map):
+    heap = [[weight, [symbol, ""]] for symbol, weight in freq_map.items()]
+    heapq.heapify(heap)
+    while len(heap) > 1:
+        lo = heapq.heappop(heap)
+        hi = heapq.heappop(heap)
+        for pair in lo[1:]:
+            pair[1] = '0' + pair[1]
+        for pair in hi[1:]:
+            pair[1] = '1' + pair[1]
+        heapq.heappush(heap, [lo[0] + hi[0]] + lo[1:] + hi[1:])
+    return sorted(heapq.heappop(heap)[1:], key=lambda p: (len(p[-1]), p))
 
 # ------------------------
 # SQLite Sink
@@ -138,6 +160,35 @@ class SQLiteSink(ExperimentObserver):
             block_id TEXT,
             label INT,
             centroid TEXT
+        )""")
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS clustering_history(
+            experiment_code TEXT,
+            block_size INT,
+            iteration INT,
+            q_step INT,
+            total_cost REAL,
+            cluster_entropy REAL,
+            avg_rate REAL,
+            avg_distortion REAL,
+            hamming_distance_from_previous INT
+        )""")
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS cluster_codes(
+            experiment_code TEXT,
+            block_size INT,
+            cluster_id INT,
+            probability REAL,
+            huffman_code TEXT,
+            code_length INT
+        )""")
+
+        cur.execute("""CREATE TABLE IF NOT EXISTS code_estimation(
+            experiment_code TEXT,
+            block_size INT,
+            total_blocks INT,
+            cluster_entropy REAL,
+            estimated_total_bits REAL
         )""")
 
         self.conn.commit()
@@ -211,6 +262,70 @@ class SQLiteSink(ExperimentObserver):
                  int(r.bitstream_size),
                  float(r.overhead_bpv),
                  int(r.overhead_bitstream_size))
+            )
+        
+        elif isinstance(event, ClusteringHistoryEvent):
+            previous_labels = None
+            for state in event.history.states:
+                hamming_dist = 0
+                if previous_labels is not None:
+                    hamming_dist = np.sum(previous_labels != state.labels)
+                
+                cur.execute(
+                    "INSERT INTO clustering_history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        event.experiment_code,
+                        event.block_size,
+                        state.iteration,
+                        state.qstep_value,
+                        state.total_cost,
+                        state.cluster_entropy,
+                        state.avg_rate,
+                        state.avg_distortion,
+                        int(hamming_dist)
+                    )
+                )
+                previous_labels = state.labels
+
+            # --- New code for Hamming Code Estimation ---
+            final_state = event.history.states[-1]
+            labels = final_state.labels
+            num_blocks = len(labels)
+            
+            # Calculate frequencies and probabilities
+            label_counts = collections.Counter(labels)
+            probabilities = {label: count / num_blocks for label, count in label_counts.items()}
+            
+            # Build Huffman tree and get codes
+            huffman_codes_list = build_huffman_tree(probabilities)
+            
+            for symbol, code in huffman_codes_list:
+                prob = probabilities[symbol]
+                cur.execute(
+                    "INSERT INTO cluster_codes VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        event.experiment_code,
+                        event.block_size,
+                        symbol,
+                        prob,
+                        code,
+                        len(code)
+                    )
+                )
+
+            # Estimate total bits
+            huffman_codes = dict(huffman_codes_list)
+            estimated_total_bits = sum(label_counts[label] * len(huffman_codes[label]) for label in label_counts)
+            
+            cur.execute(
+                "INSERT INTO code_estimation VALUES (?, ?, ?, ?, ?)",
+                (
+                    event.experiment_code,
+                    event.block_size,
+                    num_blocks,
+                    final_state.cluster_entropy,
+                    estimated_total_bits
+                )
             )
 
         self.conn.commit()

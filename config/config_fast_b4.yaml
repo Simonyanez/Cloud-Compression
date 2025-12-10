@@ -1,0 +1,38 @@
+# CONFIG YAML - FAST - Block Size 4
+experiment_metadata:
+  experiment_name: "RD Clustering - Fast - B4"
+  experiment_code: "RD-Fast-B4"
+  experiment_date: "2025-12-05"
+  experiment_info: "Fast execution for RD Clustering comparison with block size 4"
+  export_folder: "results/PCADC_TEST"
+  temp_folder: "results/temp"
+
+pointcloud_metadata:
+  point_cloud_dataset: "8iVFB v2"
+  point_cloud_sequence: "longdress"
+  point_cloud_depth: 10
+  point_cloud_frame: 1051
+
+sequential_params:
+  point_cloud_path: "res/longdress_vox10_1051.ply"
+  normalize_slopes: True
+  decider_mode: 0
+  self_loop_weight: 1.6
+  self_loop_threshold: 0.7
+  quantization_steps: [32, 48, 64]
+  lagrange_proportional: 0.8
+  block_size: 4
+
+clustering_params:
+  number_of_clusters: 2
+  max_iterations: 10
+  min_iterations: 2
+  rd_cost_threshold: 0.05
+  iteration_window: 2
+  initial_temperature: 1.0
+  final_temperature: 0.1
+  cooling_rate: 0.8
+  learning_rate: 0.5
+
+rewrite_results: False
+debugging: False

@@ -25,23 +25,23 @@ class SimulatedAnnealing:
         # Normalize costs to prevent overflow in exp.
         # Subtracting min cost makes the smallest exponent 0, preventing overflow.
         costs_norm = costs - np.min(costs)
-        
+
         # Calculate exponentials.
         exponentials = np.exp(-costs_norm / self.temperature)
-        
+
         sum_exp = np.sum(exponentials)
 
         # If all exponentials are zero (due to underflow) or sum is zero, fall back to greedy.
         if sum_exp == 0:
             return np.argmin(costs)
-        
+
         probabilities = exponentials / sum_exp
-        
+
         # Handle potential NaN if sum is 0 or other numerical issues.
         if np.isnan(probabilities).any():
             return np.argmin(costs)
-        
+
         # Re-normalize to ensure sum is exactly 1, correcting for floating-point inaccuracies
         probabilities /= probabilities.sum()
-        
+
         return np.random.choice(num_choices, p=probabilities)

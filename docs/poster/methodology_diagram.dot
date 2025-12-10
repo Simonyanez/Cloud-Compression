@@ -1,0 +1,60 @@
+digraph G {
+    rankdir=TB;
+    node [shape=box, style=rounded];
+
+    subgraph cluster_input {
+        label="Input";
+        style=filled;
+        color=lightgrey;
+        node [style=filled,color=white];
+        point_cloud_input [label="Point Cloud Input\n(longdress_vox10_1051.ply)"];
+    }
+
+    subgraph cluster_preprocessing {
+        label="Preprocessing";
+        style=filled;
+        color=lightgrey;
+        node [style=filled,color=white];
+        block_partitioning [label="Block Partitioning\n(Morton Ordering)\nSizes: 4x4x4, 8x8x8, 16x16x16"];
+        signal_approximation [label="Signal Approximation\n(Linear Model -> Slope Vector)"];
+    }
+
+    subgraph cluster_rd_clustering {
+        label="RD Clustering (Simulated Annealing)";
+        style=filled;
+        color=lightgrey;
+        node [style=filled,color=white];
+        initialization [label="Initialization\n(K clusters, T0, Tf, alpha)"];
+        stochastic_assignment [label="Stochastic Assignment\n(Prob ~ exp(-J/T))"];
+        update_centroids [label="Update Centroids\n(Average of block slopes)"];
+    }
+
+    subgraph cluster_coding {
+        label="Coding";
+        style=filled;
+        color=lightgrey;
+        node [style=filled,color=white];
+        adaptive_gft [label="Adaptive GFT\n(per-block transform based on cluster)"];
+        quantization [label="Quantization\n(Steps: 32, 48, 64)"];
+        entropy_coding [label="Entropy Coding\n(Huffman coding of cluster indices)"];
+    }
+
+    subgraph cluster_output {
+        label="Output";
+        style=filled;
+        color=lightgrey;
+        node [style=filled,color=white];
+        compressed_output [label="Compressed Bitstream"];
+    }
+
+    point_cloud_input -> block_partitioning;
+    block_partitioning -> signal_approximation;
+    signal_approximation -> initialization;
+    initialization -> stochastic_assignment;
+    stochastic_assignment -> update_centroids;
+    update_centroids -> stochastic_assignment [label="iterate (T > Tf)"];
+    update_centroids -> adaptive_gft;
+    adaptive_gft -> quantization;
+    quantization -> entropy_coding;
+    entropy_coding -> compressed_output;
+}

@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: pcadc
+Version: 0.1.0
+Summary: Point Cloud Attribute Dependent Compression
+Author-email: Simón Yáñez <simon.yanez@ug.uchile.cl>
+Requires-Python: >=3.8

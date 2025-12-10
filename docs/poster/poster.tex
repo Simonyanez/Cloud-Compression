@@ -1,0 +1,244 @@
+\documentclass[final]{beamer}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[orientation=portrait,size=a1,scale=1.1]{beamerposter}
+\usetheme{gemini}
+\usecolortheme{mit}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{dsfont}
+\usepackage{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{anyfontsize}
+\usepackage[absolute,overlay]{textpos}
+
+\newlength{\sepwidth}
+\newlength{\colwidth}
+\setlength{\sepwidth}{0.03333\paperwidth}
+\setlength{\colwidth}{0.45\paperwidth}
+
+\newcommand{\separatorcolumn}{\begin{column}{\sepwidth}\end{column}}
+
+\title{Point Cloud Attribute Dependent Compression using Rate-Distortion Optimized Clustering}
+
+\author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
+
+\institute[shortinst]{{
+  \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \\
+  \inst{2} University of Southern California \\
+  \textbf{EL7024 - Teoría de Información: Fundamentos y Aplicaciones}
+}}
+
+\footercontent{
+  Sesión de Pósters - Teoría de Información: Fundamentos y Aplicaciones \hfill \href{mailto:simon.yanez@ug.uchile.cl}{simon.yanez@ug.uchile.cl}
+}
+
+\begin{document}
+
+\begin{textblock*}{0.08\paperwidth}(0.03\paperwidth,0.04\paperheight)
+  \includegraphics[width=2\linewidth]{logos/FCFM.pdf}
+\end{textblock*}
+
+\begin{textblock*}{0.1\paperwidth}(0.855\paperwidth,0.055\paperheight)
+  \includegraphics[width=\linewidth]{logos/die.pdf}
+\end{textblock*}
+
+\begin{frame}[t]
+\begin{columns}[t]
+\separatorcolumn
+
+\begin{column}{\colwidth}
+
+\begin{block}{Introduction}
+Point clouds are a fundamental data structure for representing 3D objects and scenes. Due to their large size, efficient compression is crucial for storage and transmission. This work proposes a novel lossy compression scheme for point cloud attributes, which leverages graph-based transforms and rate-distortion optimization.
+
+\vspace{0.3em}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.3\linewidth]{longdress_thumb.png}
+    \caption{"Longdress" point cloud from 8iVFBv2 dataset \cite{deon2017voxelized}.}
+\end{figure}
+\end{block}
+
+\begin{block}{Proposed Method}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{methodology_diagram.png}
+    \caption{Compression pipeline: Block partitioning → Graph construction → GFT → RD-optimized clustering → Quantization → Entropy coding.}
+\end{figure}
+
+\vspace{1em}
+
+\textbf{Key Steps:}
+\begin{enumerate}
+  \item \textbf{Block Partitioning:} Morton ordering preserves spatial locality \cite{morton1966zorder}.
+  \item \textbf{Graph Transform:} GFT concentrates energy in few coefficients \cite{ortega2022gsp,pavez2020region}.
+  \item \textbf{RD-Optimized Clustering:} Minimize Lagrangian cost: $J = D + \lambda R$ where $\lambda = \alpha \cdot Q^2$ \cite{ortega1998rate}.
+  \item \textbf{Entropy Coding:} RLGR for coefficients \cite{malvar2006adaptive}, Huffman for cluster indices.
+\end{enumerate}
+
+\vspace{1em}
+
+\begin{figure}
+    \centering
+    % Center the whole pair by making a narrower box
+    \begin{minipage}{0.75\linewidth}  % adjust to taste
+        \centering
+        \begin{minipage}[t]{0.4\linewidth}
+            \centering
+            \includegraphics[width=0.8\linewidth]{rabbit.jpg}
+            \caption{Block partitioning (Morton).}
+        \end{minipage}
+        \hfill
+        \begin{minipage}[t]{0.5\linewidth}
+            \centering
+            \includegraphics[width=\linewidth]{Grafo_Ejemplo.png}
+            \caption{Graph from spatial proximity.}
+        \end{minipage}
+    \end{minipage}
+\end{figure}
+
+\end{block}
+
+\begin{block}{Information Theory Context}
+\textbf{Source Model:} Non-stationary graph signal with spatial and chromatic correlation \cite{ortega2022gsp}.
+
+\textbf{Rate:} $R_{\text{total}} = R_{\text{coefficients}} + R_{\text{overhead}}$ where sparsity approximates entropy: $R \approx H(Q(\theta))$ \cite{shannon1948mathematical}.
+
+\textbf{Distortion:} PSNR on luminance (Y) channel from MSE in transform domain.
+
+\textbf{RD Optimization:} Lagrangian finds Pareto-optimal points on achievable (R,D) curve \cite{ortega1998rate}.
+
+\textbf{Adaptive Codebook:} Vector quantization creates codebook of $K$ transforms \cite{pavez2017separable}. Trade-off: local adaptation vs. overhead ($\log_2 K$ bits/block).
+
+\textbf{Key Insight:} Smaller blocks (B4) preserve local stationarity, enabling superior adaptation \cite{pavez2020region}.
+\end{block}
+
+\begin{block}{Experimental Configuration}
+\textbf{Dataset:} "longdress" frame 1051, 10-bit voxelization \cite{deon2017voxelized,loop2016microsoft}.
+
+\vspace{0.3em}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Strategy} & \textbf{Clusters ($K$)} & \textbf{Iterations} & \textbf{Q-Steps} & \textbf{$\alpha$} \\
+\midrule
+Baseline & 1 & 1 & [32, 48, 64] & 0.8 \\
+RD-Fast & 2 & 10 & [32, 48, 64] & 0.8 \\
+RD-Medium & 4 & 30 & [24, 32, 48, 64] & 0.8 \\
+\bottomrule
+\end{tabular}
+\caption{Configuration: $\tau = 0.7$, $B \in \{4, 8, 16\}$.}
+\end{table}
+\end{block}
+
+\begin{block}{Huffman Code Analysis}
+Cluster indices entropy coded using Huffman \cite{sayood2006introduction}:
+\begin{equation}
+L = \sum_{i=1}^{K} p_i \cdot \ell_i \quad \Rightarrow \quad \text{BPV}_{\text{overhead}} = \frac{L \cdot N_{\text{blocks}}}{N_{\text{voxels}}}
+\end{equation}
+
+$L$ (bits/block): B16 (fast: 1.00, med: 1.95), B8 (fast: 1.00, med: 1.63), B4 (fast: 1.00, med: 1.50).
+\end{block}
+
+\end{column}
+\separatorcolumn
+
+\begin{column}{\colwidth}
+
+\begin{block}{Rate-Distortion Results}
+
+\begin{figure}
+\centering
+
+\begin{minipage}[t]{0.45\linewidth}
+    \textbf{Analysis:}\\
+    The impact of clustering depends strongly on block size.
+    \begin{itemize}
+        \item \textbf{B4:} RD-Fast and RD-Medium both outperform the baseline. At 1.44 BPV, RD-Fast gains 0.05 dB with a 1\% bitrate drop; RD-Medium reaches 0.07 dB. Across all bitrates, RD-Medium remains slightly superior.
+        \item \textbf{B8:} Gains are modest. At low bitrate (~0.81 BPV) both strategies add ~0.01 dB and reduce bitrate by ~1\%. At higher bitrates, PSNR decreases slightly (–0.01 to –0.02 dB) while still yielding small bitrate savings.
+        \item \textbf{B16:} Clustering overhead dominates. Both methods show small but consistent PSNR losses (0.01–0.02 dB) with negligible bitrate reduction.
+    \end{itemize}
+    In summary, clustering is clearly effective for \textbf{B4}, with consistent gains. Benefits diminish with larger blocks, and RD-Medium offers the best overall tradeoff at the cost of higher complexity.
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.45\linewidth}
+    \vspace{0pt} % <<< FIX: ensures both start at exactly the same height
+    \centering
+    \includegraphics[width=0.9\linewidth]{B4_rd_comparison.png}\\[0.5em]
+    \includegraphics[width=0.9\linewidth]{B8_rd_comparison.png}\\[0.5em]
+    \includegraphics[width=0.9\linewidth]{B16_rd_comparison.png}
+\end{minipage}
+
+\end{figure}
+
+\end{block}
+
+\begin{block}{Performance Analysis: BPV and PSNR Gains}
+
+\textbf{Interpretation:} Positive values indicate improvement (bitrate reduction or quality gain).
+
+\vspace{0.5em}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Method Comparison} & \textbf{Avg. BPV Gain} & \textbf{Avg. PSNR Gain (dB)} \\
+\midrule
+\multicolumn{3}{l}{\textit{Block Size B4}} \\
+\quad RD-Fast-B4 vs Baseline-B4 & \textcolor{blue}{+0.0114} & \textcolor{blue}{+0.0232} \\
+\quad RD-Medium-B4-C4 vs Baseline-B4 & \textcolor{blue}{+0.0137} & \textcolor{blue}{+0.0466} \\
+\midrule
+\multicolumn{3}{l}{\textit{Block Size B8}} \\
+\quad RD-Fast-B8 vs Baseline-B8 & \textcolor{blue}{+0.0062} & \textcolor{red}{-0.0040} \\
+\quad RD-Medium-B8-C4 vs Baseline-B8 & \textcolor{blue}{+0.0085} & \textcolor{red}{-0.0090} \\
+\midrule
+\multicolumn{3}{l}{\textit{Block Size B16}} \\
+\quad RD-Fast-B16 vs Baseline-B16 & +0.0009 & \textcolor{red}{-0.0172} \\
+\quad RD-Medium-B16-C4 vs Baseline-B16 & +0.0006 & \textcolor{red}{-0.0184} \\
+\bottomrule
+\end{tabular}
+\caption{Comparative performance metrics across configurations.}
+\end{table}
+
+\vspace{0.1em}
+
+\textbf{Key Observations:}
+\begin{itemize}
+    \item \textbf{B4:} Both methods achieve bitrate reduction and quality gains; Medium outperforms Fast.
+    \item \textbf{B8:} Maintains bitrate reduction with minimal quality loss ($<$0.01 dB).
+    \item \textbf{B16:} Diminishing returns with minimal bitrate gains and noticeable quality degradation.
+    \item \textbf{Optimal:} B4 provides best rate-distortion performance for practical use.
+\end{itemize}
+
+\end{block}
+
+\begin{block}{Conclusions}
+Clustering helps only when blocks are small. For B4, both RD-Fast and RD-Medium reduce bitrate and slightly improve PSNR. For B8, gains are minimal but generally neutral. For B16, overhead dominates and performance drops.
+
+Overall, \textbf{B4 gives the best tradeoff}, with RD-Medium performing the best.
+\end{block}
+
+\begin{block}{References}
+\footnotesize{\bibliographystyle{plain}\bibliography{poster}}
+\end{block}
+
+\end{column}
+\separatorcolumn
+\end{columns}
+\end{frame}
+\end{document}

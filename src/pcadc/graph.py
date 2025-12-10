@@ -210,7 +210,8 @@ class AttributeGraph(GraphBase):
     def _attribute_motion_matrix(self, A: np.ndarray) -> np.ndarray:
         # FIXME: Does it make sense to normalize by max possible value if the Y is an approximated version based in luminance fits?
         Y = A[:, 0]
-        return self.weights * np.subtract.outer(Y, Y) / 255
+        # TODO: Check if it's pertinent to use 255 for the cluster slopes
+        return self.weights * np.subtract.outer(Y, Y) #/ 255
 
     def _sink_nodes_vector(self, M: np.ndarray, normalization: str = "standard") -> np.ndarray:
         sink_vector = np.zeros(M.shape[0])

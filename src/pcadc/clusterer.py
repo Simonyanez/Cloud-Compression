@@ -165,6 +165,11 @@ class Clusterer:
                 f"Automatic fixed center for constant luminansce centroid {fixed_center}")
             fixed_center = np.zeros((1, X.shape[1]))
 
+        if self.n_clusters == 1:
+            centers = fixed_center
+            labels = np.zeros(X.shape[0], dtype=int)
+            return centers, labels
+
         # Use k-means++ for better initialization of the other centers
         other_centers, _ = kmeans_plusplus(
             X, n_clusters=self.n_clusters - 1, random_state=42

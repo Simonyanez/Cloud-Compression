@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RD Cluster Diagram</title>
+    <link rel="stylesheet" href="rd_cluster_style.css">
+</head>
+<body>
+    <h1>RD Cluster Methodology Flowchart</h1>
+    <div class="flowchart">
+        <div class="node start">Start</div>
+        <div class="arrow down"></div>
+        <div class="node process">Partition Point Cloud into Blocks</div>
+        <div class="arrow down"></div>
+        <div class="node process">Initialize Centroids (Slopes)</div>
+        <div class="arrow down"></div>
+        <div class="node process">Precompute Structural GFTs</div>
+        <div class="arrow down"></div>
+        <div class="node decision">For each iteration</div>
+        <div class="arrow down"></div>
+        <div class="node process">For each block</div>
+        <div class="arrow down"></div>
+        <div class="node process">Calculate RD Cost for each Cluster</div>
+        <div class="arrow down"></div>
+        <div class="node process">Assign Block to Cluster (Simulated Annealing)</div>
+        <div class="arrow down"></div>
+        <div class="node process">Update Centroids</div>
+        <div class="arrow down"></div>
+        <div class="node decision">Convergence?</div>
+        <div class="arrow right"></div>
+        <div class="node end">End</div>
+    </div>
+</body>
+</html>

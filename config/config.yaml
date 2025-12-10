@@ -1,10 +1,10 @@
 # CONFIG YAML
 experiment_metadata:
   experiment_name: "Self-looped"
-  experiment_code: "SL12"
+  experiment_code: "RT01"
   experiment_date: "2025-08-31"
   experiment_info: "Bestie"
-  export_folder: "/home/simao/Desktop/PCADC_TEST"
+  export_folder: "results/PCADC_TEST"
   temp_folder: "results/temp"
 
 pointcloud_metadata:
@@ -18,20 +18,20 @@ sequential_params:
   normalize_slopes: True
   decider_mode: 0
   self_loop_weight: 1.6
-  self_loop_threshold: 0.7
+  self_loop_threshold: 0.9
   quantization_steps: [24,28,32,40,48,56,64]
-  lagrange_proportional: 0.75
+  lagrange_proportional: 0.8
   block_size: 16
 
 clustering_params:
   number_of_clusters: 4
-  max_iterations: 100
+  max_iterations: 20
   min_iterations: 5
-  rd_cost_threshold: 0.001
+  rd_cost_threshold: 0.01
   iteration_window: 3
   initial_temperature: 1.0
   final_temperature: 0.1
-  cooling_rate: 0.95
+  cooling_rate: 0
   learning_rate: 0.5
 
 rewrite_results: False
