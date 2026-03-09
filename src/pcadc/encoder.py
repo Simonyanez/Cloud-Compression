@@ -3,19 +3,13 @@ from line_profiler import profile
 from utils.encode_rlgr import *
 import logging
 from dataclasses import dataclass
-# import visualization as visual
-# import matplotlib
 import numpy as np
-# import sys
+import constriction
 import os
 
-# sys.path.append('/home/simao/Repositories/Cloud-Compression')
-# matplotlib.use('Qt5Agg') # or 'Qt5Agg'
-
-# I'll modify this to ensure a clean log for this example.
 # A more robust setup would use a handler.
-if os.path.exists("logs/decider.log"):
-    os.remove("logs/decider.log")
+if os.path.exists("logs/encoder.log"):
+    os.remove("logs/encoder.log")
 
 import logging
 import os
@@ -23,7 +17,7 @@ import os
 # Setup logging to an absolute path to ensure it works when run as a module
 log_dir = os.path.join(os.getcwd(), "logs")
 os.makedirs(log_dir, exist_ok=True)
-log_file_path = os.path.join(log_dir, "decider.log")
+log_file_path = os.path.join(log_dir, "encoder.log")
 
 logging.basicConfig(filename=log_file_path,
                     filemode="w",
@@ -142,25 +136,53 @@ class Encoder:
         logger.info(f"Calculated BPV: {bpv:.4f} bits/value.")
         return bs_size, bpv
 
+
     def get_overhead_bpv(self, assignation: np.ndarray) -> Tuple[int, float]:
-        if assignation.size > 0:
-            # Assuming assignation contains indices that can be represented by a bit count.
-            # This is a bit of a simplification, but I won't change the logic.
-            # The bit size for assignation should be log2(max_label) * num_blocks
-            num_blocks = len(assignation)
-            unique_labels = np.unique(assignation)
-            if len(unique_labels) > 1:
-                 bits_per_label = np.ceil(np.log2(len(unique_labels)))
-            else:
-                bits_per_label = 1
-            bs_size = bits_per_label * num_blocks
-            logger.info(f"Calculated overhead bitstream size for assignation: {bs_size} bits.")
-        else:
-            bs_size = 0
+        if assignation.size == 0:
             logger.warning("Assignation array is empty, overhead size is 0.")
-            
+            return 0, 0.0
+
+        logger.info("Starting arithmetic coding overhead computation.")
+
+        # 1) Build empirical probability model
+        unique_labels, counts = np.unique(assignation, return_counts=True)
+        probabilities = counts.astype(np.float64) / counts.sum()
+
+        logger.debug(f"Unique labels: {unique_labels}")
+        logger.debug(f"Counts: {counts}")
+        logger.debug(f"Probabilities: {probabilities}")
+
+        # Map labels to contiguous indices [0, ..., K-1]
+        label_to_index = {label: idx for idx, label in enumerate(unique_labels)}
+        indexed_assignation = np.array(
+            [label_to_index[x] for x in assignation],
+            dtype=np.int32
+        )
+
+        logger.debug(f"Label → index mapping: {label_to_index}")
+
+        # Create categorical entropy model
+        model = constriction.stream.model.Categorical(
+            probabilities.astype(np.float32),
+            perfect=False
+        )
+
+        # Encode using RangeEncoder
+        encoder = constriction.stream.queue.RangeEncoder()
+        encoder.encode(indexed_assignation, model)
+        compressed = encoder.get_compressed()
+
+        # Each word is uint32 → 32 bits
+        bs_size = len(compressed) * 32
+
+        logger.info(f"Arithmetic-coded bitstream size: {bs_size} bits.")
+        logger.debug(f"Compressed words: {compressed}")
+
+        # Compute bits per value over all voxels
         bpv = self._as_bpv(bs_size)
-        logger.info(f"Calculated overhead BPV: {bpv:.4f} bits/value.")
+
+        logger.info(f"Arithmetic overhead BPV: {bpv:.6f} bits/value.")
+
         return bs_size, bpv
 
     def _as_bpv(self, bitstream_size: int):
