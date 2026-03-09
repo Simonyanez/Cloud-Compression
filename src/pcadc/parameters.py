@@ -100,6 +100,22 @@ class ExperimentConfig:
             f"Debugging: {self.debugging}\n"
         )
 
+    @property
+    def descriptive_name(self) -> str:
+        """
+        Generates a string summarizing key parameters for unique filenames.
+        Format: RD-B{Block_Size}-C{Num_Clusters}-SLT{Self_loop_threshold}-SLW{Self_loop_weight}
+        Example: RD-B8-C4-SLT_0_4-SLW_2_0
+        """
+        slt = str(self.sequential_params.self_loop_threshold).replace('.', '_')
+        slw = str(self.sequential_params.self_loop_weight).replace('.', '_')
+        return (
+            f"RD-B{self.sequential_params.block_size}-"
+            f"C{self.clustering_params.number_of_clusters}-"
+            f"SLT{slt}-"
+            f"SLW{slw}"
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Returns a JSON-serializable dictionary representation of the ExperimentConfig.
@@ -109,6 +125,15 @@ class ExperimentConfig:
 
         # Recursively convert Path objects to strings
         return self._convert_paths(config_dict)
+
+    def save_to_yaml(self, path: Path):
+        """
+        Saves the current configuration to a YAML file.
+        """
+        import yaml
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            yaml.dump(self.to_dict(), f, default_flow_style=False)
 
     def _convert_paths(self, data: Any) -> Any:
         """Private helper to recursively convert Path objects to strings."""
