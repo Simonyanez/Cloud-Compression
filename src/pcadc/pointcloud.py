@@ -129,7 +129,93 @@ class MortonBlockPartition(BlockPartitionStrategy):
             ))
             for i, idx in enumerate(indexes)
         ]
+    
 
+class Sampler:
+    # NOTE: For now this is just doing stratified sampling
+    def __init__(self, ratio: float, n_strata: int):
+        self.ratio = ratio
+        self.n_strata = n_strata
+
+    def __call__(self,V: np.ndarray, A:np.ndarray, blocks: List[Block]) -> List[Block]:
+        Yvariance = np.array([self._get_luminansce_variance(V, A, block) for block in blocks])
+        bins = self._build_bins(Yvariance)
+
+        pass
+        
+    def _get_luminansce_variance(self,V: np.ndarray, A:np.ndarray, block: Block):
+        block.init_data(V, A)
+        Yblock = block.Ablock[:,0]
+        Yvar = np.var(Yblock) if Yblock.shape[0] > 1 else 0.0
+        return Yvar
+
+    def _build_bins(self, variances: np.ndarray):
+        bins = np.percentile(variances, np.linspace(0, 100, self.n_strata + 1))
+        bins = np.unique(bins)
+        return bins
+
+        
+   #  1 def _stratified_subsample_by_luminance(self, blocks: List[Block], ratio: float, n_strata: int =
+   #    5):
+   #  2     import numpy as np
+   #  3     import random
+   #  4
+   #  5     # 1. Calculate Luminance Variance for every block
+   #  6     # self.A has shape (N, 3) -> [Y, U, V]
+   #  7     variances = []
+   #  8     for block in blocks:
+   #  9         start, end = block.metadata.start, block.metadata.end
+   # 10         # Extract the Y channel (index 0) for this block's points
+   # 11         # end+1 because the end index is inclusive in your return_index()
+   # 12         y_channel = self.A[start : end + 1, 0]
+   # 13
+   # 14         # Calculate variance (0 if block has only 1 point)
+   # 15         var = np.var(y_channel) if len(y_channel) > 1 else 0.0
+   # 16         variances.append(var)
+   # 17
+   # 18     variances = np.array(variances)
+   # 19
+   # 20     # 2. Create Strata based on Variance Percentiles
+   # 21     # Using percentiles ensures that bins are representative even if 
+   # 22     # most blocks are 'flat' (low variance).
+   # 23     bins = np.percentile(variances, np.linspace(0, 100, n_strata + 1))
+   # 24     bins = np.unique(bins) # Remove duplicates if many blocks have same variance
+   # 25
+   # 26     if len(bins) < 2:
+   # 27         # Fallback if there's no variation across the whole cloud
+   # 28         return random.sample(blocks, int(len(blocks) * ratio))
+   # 29
+   # 30     # 3. Assign blocks to bins
+   # 31     # digitize returns 1-based index into bins
+   # 32     bin_indices = np.digitize(variances, bins) - 1
+   # 33
+   # 34     strata = [[] for _ in range(len(bins) - 1)]
+   # 35     for i, b_bin in enumerate(bin_indices):
+   # 36         # Clip index to valid range of strata list
+   # 37         idx = min(max(b_bin, 0), len(strata) - 1)
+   # 38         strata[idx].append(blocks[i])
+   # 39
+   # 40     # 4. Sample proportionately from each stratum
+   # 41     subsampled_blocks = []
+   # 42     for group in strata:
+   # 43         if not group: continue
+   # 44
+   # 45         n_to_pick = max(1, int(len(group) * ratio))
+   # 46         n_to_pick = min(n_to_pick, len(group)) # safety check
+   # 47
+   # 48         subsampled_blocks.extend(random.sample(group, n_to_pick))
+   # 49
+   # 50     # 5. Maintain Morton Order
+   # 51     # Keeping them sorted by original index prevents potential issues with 
+   # 52     # spatial processing later.
+   # 53     subsampled_blocks.sort(key=lambda b: b.block_idx)
+   # 54
+   # 55     logger.info(f"Subsampled {len(blocks)} blocks down to {len(subsampled_blocks)} using
+   #    {n_strata} luminance strata.")
+   # 56     return subsampled_blocks
+   #
+   #
+   #
 
 # --- Cache wrapper ---
 # TODO: This is unused.
