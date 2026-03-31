@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
-from src.pcadc.blocks import Block
-from src.pcadc.color import Approximator
+from pcadc.blocks import Block
+from pcadc.color import Approximator
 
 
 class SlopeOptimizer:

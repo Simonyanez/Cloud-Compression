@@ -1,7 +1,7 @@
 from typing import Optional
-from src.pcadc.rd_cluster.states import RDClusterState, ClusteringHistory
-from src.pcadc.parameters import SequentialParameters, ClusteringParameters
-from src.pcadc.decider import Decider
+from pcadc.rd_cluster.states import RDClusterState, ClusteringHistory
+from pcadc.parameters import SequentialParameters, ClusteringParameters
+from pcadc.decider import Decider
 
 # max_iterations: int = 100,
 #                  rd_cost_threshold: float = 1e-4,

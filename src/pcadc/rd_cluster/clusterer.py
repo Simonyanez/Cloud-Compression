@@ -1,16 +1,16 @@
 from typing import List, Optional, Tuple
-from src.pcadc.blocks import Block
-from src.pcadc.transforms import GFTStrategyWraper
-from src.pcadc.graph import StructuralGraph, AttributeGraph
-from src.pcadc.color import Approximator, FitCollection
-from src.pcadc.clusterer import Clusterer
-from src.pcadc.parameters import SequentialParameters, ClusteringParameters
-from src.pcadc.rd_cluster.convergence import ConvergenceChecker
-from src.pcadc.rd_cluster.optimizer import SlopeOptimizer
-from src.pcadc.rd_cluster.training_set import TrainingSetSelector
-from src.pcadc.rd_cluster.gft_cache import InMemoryCacheStrategy
-from src.pcadc.rd_cluster.states import *
-from src.pcadc.rd_cluster.annealing import SimulatedAnnealing
+from pcadc.blocks import Block
+from pcadc.transforms import GFTStrategyWraper
+from pcadc.graph import StructuralGraph, AttributeGraph
+from pcadc.color import Approximator, FitCollection
+from pcadc.clusterer import Clusterer
+from pcadc.parameters import SequentialParameters, ClusteringParameters
+from pcadc.rd_cluster.convergence import ConvergenceChecker
+from pcadc.rd_cluster.optimizer import SlopeOptimizer
+from pcadc.rd_cluster.training_set import TrainingSetSelector
+from pcadc.rd_cluster.gft_cache import InMemoryCacheStrategy
+from pcadc.rd_cluster.states import *
+from pcadc.rd_cluster.annealing import SimulatedAnnealing
 from tqdm import tqdm
 import numpy as np
 import json

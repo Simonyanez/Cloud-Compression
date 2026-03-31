@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-from src.pcadc.graph import GraphMetadata
+from pcadc.graph import GraphMetadata
 import numpy as np
 import h5py
 import os
