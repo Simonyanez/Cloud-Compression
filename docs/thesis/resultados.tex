@@ -55,9 +55,19 @@
 \multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -19.05 \\
 \section{Análisis de Límites Teóricos (Oracle Upper Bounds)}
 
-En esta sección se analiza el desempeño de la estrategia de adaptación de grafos híbrida frente a dos "oráculos" teóricos: el \textit{Absolute Oracle} (basado en la luminancia real) y el \textit{Linear Oracle} (basado en una aproximación lineal de la luminancia). Estos experimentos permiten cuantificar la ganancia máxima posible del sistema y entender cómo el modelado de la señal afecta la eficiencia de la transformada GFT.
+Para evaluar el potencial máximo de la estrategia de adaptación híbrida y establecer un techo teórico de desempeño, se diseñaron dos experimentos de búsqueda exhaustiva denominados "oráculos", cuyos códigos de implementación se encuentran en \texttt{scripts/absolute\_upper\_bound\_full.py} y \texttt{scripts/linear\_oracle\_upper\_bound\_full.py}.
+
+La metodología consiste en procesar la nube de puntos completa, bloque por bloque, evaluando todas las combinaciones posibles de los parámetros de adaptación en un espacio de búsqueda granular:
+\begin{itemize}
+    \item \textbf{Espacio de búsqueda:} Se evaluaron porcentajes de selección de nodos $p \in [0.01, 1.00]$ con incrementos de $0.02$, y pesos de auto-lazo $w \in [0.2, 10.2]$ con incrementos de $0.2$.
+    \item \textbf{Absolute Oracle:} Utiliza la señal de luminancia original (ground truth) para calcular el vector de importancia de los nodos y guiar la inserción de auto-lazos. Representa el límite superior si el sistema tuviera conocimiento perfecto de la señal antes de la transformada.
+    \item \textbf{Linear Oracle:} Utiliza una aproximación lineal (ajuste de plano por mínimos cuadrados) de la luminancia. Este experimento busca determinar si una representación simplificada y robusta de la señal es más efectiva para la construcción del grafo que la señal cruda.
+\end{itemize}
+
+Para cada bloque y cada paso de cuantización ($Q=\{24, 32, 48, 64\}$), el decisor RDO selecciona la combinación $(p, w)$ que minimiza el costo $J = R + \lambda D$. Los resultados agregados permiten cuantificar la eficiencia máxima alcanzable mediante métricas Bjontegaard.
 
 \subsection{Métricas Bjontegaard y Eficiencia RD}
+
 
 La Tabla \ref{tab:oracle_comparison} presenta las métricas BD-Rate y BD-PSNR de ambos oráculos comparadas con la línea base estructural (Structural Baseline). 
 
