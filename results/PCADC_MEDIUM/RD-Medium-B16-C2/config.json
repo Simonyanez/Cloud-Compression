@@ -1,0 +1,44 @@
+{
+    "metadata": {
+        "experiment_name": "RD Clustering - Medium - B16 C2",
+        "experiment_code": "RD-Medium-B16-C2",
+        "experiment_date": "2025-12-07",
+        "experiment_info": "Medium complexity execution for RD Clustering with block size 16 and 2 clusters",
+        "export_folder": "results/PCADC_MEDIUM",
+        "temp_folder": "results/temp"
+    },
+    "sequential_params": {
+        "point_cloud_path": "res/longdress_vox10_1051.ply",
+        "normalize_slopes": true,
+        "self_loop_weight": 1.6,
+        "self_loop_threshold": 0.7,
+        "quantization_steps": [
+            24,
+            32,
+            48,
+            64
+        ],
+        "lagrange_proportional": 0.8,
+        "decider_mode": "0",
+        "block_size": 16
+    },
+    "clustering_params": {
+        "number_of_clusters": 2,
+        "max_iterations": 30,
+        "min_iterations": 2,
+        "rd_cost_threshold": 0.01,
+        "iteration_window": 2,
+        "initial_temperature": 1.0,
+        "final_temperature": 0.1,
+        "cooling_rate": 0.8,
+        "learning_rate": 0.5
+    },
+    "pointcloud": {
+        "dataset": "8iVFB v2",
+        "sequence": "longdress",
+        "depth": 10,
+        "frame": 1051
+    },
+    "rewrite_results": false,
+    "debugging": false
+}

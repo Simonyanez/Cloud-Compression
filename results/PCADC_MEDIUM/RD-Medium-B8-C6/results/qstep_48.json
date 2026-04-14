@@ -1,0 +1,8 @@
+{
+    "q_step": 48,
+    "PSNR": 30.618356653754972,
+    "bpv": 1.052998024342503,
+    "bitstream_size": 806408,
+    "overhead_bitstream_size": 41973.0,
+    "overhead_bpv": 0.05480784674225439
+}

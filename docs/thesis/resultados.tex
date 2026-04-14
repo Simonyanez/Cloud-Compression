@@ -53,7 +53,54 @@
 \hline
 \multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.065 \\
 \multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -19.05 \\
+\section{Análisis de Límites Teóricos (Oracle Upper Bounds)}
+
+En esta sección se analiza el desempeño de la estrategia de adaptación de grafos híbrida frente a dos "oráculos" teóricos: el \textit{Absolute Oracle} (basado en la luminancia real) y el \textit{Linear Oracle} (basado en una aproximación lineal de la luminancia). Estos experimentos permiten cuantificar la ganancia máxima posible del sistema y entender cómo el modelado de la señal afecta la eficiencia de la transformada GFT.
+
+\subsection{Métricas Bjontegaard y Eficiencia RD}
+
+La Tabla \ref{tab:oracle_comparison} presenta las métricas BD-Rate y BD-PSNR de ambos oráculos comparadas con la línea base estructural (Structural Baseline). 
+
+\begin{table}[ht]
+\centering
+\caption{Comparativa de Métricas Bjontegaard: Absolute Oracle vs. Linear Oracle}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Tamaño de Bloque} & \textbf{Métrica} & \textbf{Absolute Oracle} & \textbf{Linear Oracle} \\
+\hline
+\multirow{2}{*}{4} & BD-Rate (\%) & -16.00\% & -19.20\% \\
+                   & BD-PSNR (dB) & 1.44 & 1.80 \\
+\hline
+\multirow{2}{*}{8} & BD-Rate (\%) & -17.69\% & -23.57\% \\
+                   & BD-PSNR (dB) & 0.95 & 1.31 \\
+\hline
+\multirow{2}{*}{16} & BD-Rate (\%) & -9.22\% & -14.71\% \\
+                    & BD-PSNR (dB) & 0.42 & 0.68 \\
 \hline
 \end{tabular}
-\label{tab:block_analysis}
+\label{tab:oracle_comparison}
 \end{table}
+
+\subsection{Interpretación de Resultados}
+
+Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle supera consistentemente al Absolute Oracle}, logrando entre un 120\% y un 160\% de la reducción de tasa de bits esperada. Este fenómeno puede explicarse mediante la teoría de distorsión de tasa:
+
+\begin{itemize}
+    \item \textbf{Efecto de Filtro Paso Bajo:} El Linear Oracle utiliza una superficie plana ajustada, lo que actúa como un filtro paso bajo espacial. Al ignorar el ruido de alta frecuencia y las variaciones locales, la adaptación del grafo se guía por la tendencia global del bloque, lo que resulta en una base GFT más eficiente para compactar la energía de la señal.
+    \item \textbf{Compacidad de Energía:} Las funciones de base derivadas de la aproximación lineal se alinean mejor con los componentes de baja frecuencia, que contienen la mayor parte de la información visual.
+    \item \textbf{Sensibilidad al Tamaño del Bloque:} Las mayores ganancias se observan en bloques de $8 \times 8$. Para bloques de $16 \times 16$, aunque el Linear Oracle sigue siendo superior, la precisión de la aproximación lineal disminuye para superficies complejas.
+\end{itemize}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\linewidth]{img/resultados/rd_curves_comparison.png}
+    \caption{Curvas Rate-Distortion para diferentes tamaños de bloque comparando la línea base con ambos oráculos.}
+    \label{fig:rd_curves_oracle}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/resultados/gain_parameters_analysis.png}
+    \caption{Análisis de distribución de ganancias y parámetros óptimos de selección de nodos ($p$).}
+    \label{fig:gain_analysis}
+\end{figure}

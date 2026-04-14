@@ -1,0 +1,47 @@
+{
+    "metadata": {
+        "experiment_name": "Argparse and Arithmetic coding experiment run",
+        "experiment_code": "RD-B16-C4-SW_1_6-ST_0_7",
+        "experiment_date": "2025-08-31",
+        "experiment_info": "Bestie",
+        "export_folder": "results/PCADC_TEST",
+        "temp_folder": "results/temp"
+    },
+    "sequential_params": {
+        "point_cloud_path": "res/longdress_vox10_1051.ply",
+        "normalize_slopes": true,
+        "self_loop_weight": 1.6,
+        "self_loop_threshold": 0.7,
+        "quantization_steps": [
+            24,
+            28,
+            32,
+            40,
+            48,
+            56,
+            64
+        ],
+        "lagrange_proportional": 0.8,
+        "decider_mode": "0",
+        "block_size": 16
+    },
+    "clustering_params": {
+        "number_of_clusters": 4,
+        "max_iterations": 20,
+        "min_iterations": 5,
+        "rd_cost_threshold": 0.01,
+        "iteration_window": 3,
+        "initial_temperature": 1.0,
+        "final_temperature": 0.1,
+        "cooling_rate": 0,
+        "learning_rate": 0.5
+    },
+    "pointcloud": {
+        "dataset": "8iVFB v2",
+        "sequence": "longdress",
+        "depth": 10,
+        "frame": 1051
+    },
+    "rewrite_results": false,
+    "debugging": false
+}

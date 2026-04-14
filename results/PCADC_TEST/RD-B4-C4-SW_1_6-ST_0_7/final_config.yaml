@@ -1,0 +1,40 @@
+clustering_params:
+  cooling_rate: 0
+  final_temperature: 0.1
+  initial_temperature: 1.0
+  iteration_window: 3
+  learning_rate: 0.5
+  max_iterations: 20
+  min_iterations: 5
+  number_of_clusters: 4
+  rd_cost_threshold: 0.01
+debugging: false
+metadata:
+  experiment_code: RD-B4-C4-SW_1_6-ST_0_7
+  experiment_date: '2025-08-31'
+  experiment_info: Bestie
+  experiment_name: Argparse and Arithmetic coding experiment run
+  export_folder: results/PCADC_TEST
+  temp_folder: results/temp
+pointcloud:
+  dataset: 8iVFB v2
+  depth: 10
+  frame: 1051
+  sequence: longdress
+rewrite_results: false
+sequential_params:
+  block_size: 4
+  decider_mode: '0'
+  lagrange_proportional: 0.8
+  normalize_slopes: true
+  point_cloud_path: res/longdress_vox10_1051.ply
+  quantization_steps:
+  - 24
+  - 28
+  - 32
+  - 40
+  - 48
+  - 56
+  - 64
+  self_loop_threshold: 0.7
+  self_loop_weight: 1.6
