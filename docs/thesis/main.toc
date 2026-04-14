@@ -1,4 +1,4 @@
-\babel@toc {nil}{}\relax 
+\babel@toc {spanish}{}\relax 
 \contentsline {chapter}{\numberline {1}Introducción}{1}{chapter.1}%
 \contentsline {section}{\numberline {1.1}Justificación}{2}{section.1.1}%
 \contentsline {section}{\numberline {1.2}Objetivos}{2}{section.1.2}%
@@ -30,50 +30,67 @@
 \contentsline {subsection}{\numberline {2.5.2}Optimización en sistema concreto}{14}{subsection.2.5.2}%
 \contentsline {subsubsection}{\numberline {2.5.2.1}Restricciones de almacenamiento posible}{15}{subsubsection.2.5.2.1}%
 \contentsline {chapter}{\numberline {3}Estado del Arte}{17}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Codificación por Octree}{17}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Run Length Golomb-Rice Entropy Coder}{18}{section.3.2}%
-\contentsline {section}{\numberline {3.3}\textit {Learning separable transforms by inverse covariance estimation}}{19}{section.3.3}%
-\contentsline {section}{\numberline {3.4}\textit {Point Cloud Attribute Compression With Graph Transform}}{20}{section.3.4}%
-\contentsline {chapter}{\numberline {4}Metodología}{22}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Esquema de compresión}{22}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Datos Utilizados}{23}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}\textit {8i Voxelized Full Bodies}}{23}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}\textit {Microsoft Voxelized Upper Bodies}}{24}{subsection.4.2.2}%
-\contentsline {section}{\numberline {4.3}Partición de la Nube de Puntos}{25}{section.4.3}%
+\contentsline {section}{\numberline {3.1}Estándares de Compresión para Nubes de Puntos}{17}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}MPEG G-PCC}{17}{subsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.1.1}Codificación por Octree}{17}{subsubsection.3.1.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}MPEG V-PCC}{19}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}JPEG Pleno}{19}{subsection.3.1.3}%
+\contentsline {subsection}{\numberline {3.1.4}Draco}{19}{subsection.3.1.4}%
+\contentsline {section}{\numberline {3.2}Métodos de Copmresión de Atributos}{19}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Transformadas en el contexto de G-PCC}{19}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Graph Transform}{19}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Transformadas paramétricas}{20}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}Enfoques de Deep Learning}{20}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Run Length Golomb-Rice Entropy Coder}{21}{section.3.4}%
+\contentsline {section}{\numberline {3.5}\textit {Learning separable transforms by inverse covariance estimation}}{21}{section.3.5}%
+\contentsline {chapter}{\numberline {4}Metodología}{23}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Esquema de compresión}{23}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Datos Utilizados}{24}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}\textit {8i Voxelized Full Bodies}}{24}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}\textit {Microsoft Voxelized Upper Bodies}}{25}{subsection.4.2.2}%
+\contentsline {section}{\numberline {4.3}Partición de la Nube de Puntos}{26}{section.4.3}%
 \contentsline {section}{\numberline {4.4}Construcción del Grafo Estructural}{27}{section.4.4}%
 \contentsline {section}{\numberline {4.5}Análisis de Patrones de Atributos}{28}{section.4.5}%
 \contentsline {subsection}{\numberline {4.5.1}Normalización Espacial}{29}{subsection.4.5.1}%
 \contentsline {subsection}{\numberline {4.5.2}Aproximación lineal}{30}{subsection.4.5.2}%
 \contentsline {subsection}{\numberline {4.5.3}Clusterización}{31}{subsection.4.5.3}%
-\contentsline {section}{\numberline {4.6}Construcción del Grafo de Atributos}{32}{section.4.6}%
-\contentsline {subsection}{\numberline {4.6.1}Matriz de dinámica de atributos}{32}{subsection.4.6.1}%
-\contentsline {subsection}{\numberline {4.6.2}Vector de nodos sumideros}{32}{subsection.4.6.2}%
-\contentsline {subsection}{\numberline {4.6.3}Selección de \textit {self-loops}}{32}{subsection.4.6.3}%
-\contentsline {section}{\numberline {4.7}Transformada Gráfica de Fourier}{33}{section.4.7}%
-\contentsline {subsection}{\numberline {4.7.1}Caso Base: Grafo sin Self-loops}{33}{subsection.4.7.1}%
-\contentsline {subsection}{\numberline {4.7.2}Caso Modificado: Grafo con Self-loops}{34}{subsection.4.7.2}%
-\contentsline {subsection}{\numberline {4.7.3}Comportamiento Dinámico}{34}{subsection.4.7.3}%
-\contentsline {section}{\numberline {4.8}Cuantización}{34}{section.4.8}%
-\contentsline {subsection}{\numberline {4.8.1}Cuantización Escalar Uniforme}{35}{subsection.4.8.1}%
-\contentsline {subsection}{\numberline {4.8.2}Efecto Espectral de la Cuantización}{35}{subsection.4.8.2}%
-\contentsline {subsection}{\numberline {4.8.3}Distribución Post-Cuantización}{35}{subsection.4.8.3}%
-\contentsline {section}{\numberline {4.9}Optimización Tasa-Distorsión}{36}{section.4.9}%
-\contentsline {subsection}{\numberline {4.9.1}Métricas de distorsión}{36}{subsection.4.9.1}%
-\contentsline {subsubsection}{\numberline {4.9.1.1}Distorsión Base}{36}{subsubsection.4.9.1.1}%
-\contentsline {subsubsection}{\numberline {4.9.1.2}Ponderación por Componentes de Color}{36}{subsubsection.4.9.1.2}%
-\contentsline {subsubsection}{\numberline {4.9.1.3}Agregación de Distorsión}{37}{subsubsection.4.9.1.3}%
-\contentsline {subsection}{\numberline {4.9.2}Operador de Lagrange}{37}{subsection.4.9.2}%
-\contentsline {subsection}{\numberline {4.9.3}Estimación de tasa}{37}{subsection.4.9.3}%
-\contentsline {subsubsection}{\numberline {4.9.3.1}Función de costo}{38}{subsubsection.4.9.3.1}%
-\contentsline {section}{\numberline {4.10}Codificación Entrópica}{39}{section.4.10}%
-\contentsline {subsection}{\numberline {4.10.1}Ordenamiento de coeficientes}{39}{subsection.4.10.1}%
-\contentsline {subsection}{\numberline {4.10.2}Codificación por canales}{40}{subsection.4.10.2}%
-\contentsline {subsection}{\numberline {4.10.3}Métricas de rendimiento}{40}{subsection.4.10.3}%
-\contentsline {section}{\numberline {4.11}{Overhead} de Decisión}{40}{section.4.11}%
-\contentsline {section}{\numberline {4.12}Etapa de Decodificación}{41}{section.4.12}%
-\contentsline {subsection}{\numberline {4.12.1}Decodificación Entrópica}{41}{subsection.4.12.1}%
-\contentsline {subsection}{\numberline {4.12.2}Reconstrucción de Coeficientes}{41}{subsection.4.12.2}%
-\contentsline {subsection}{\numberline {4.12.3}Transformada Inversa}{41}{subsection.4.12.3}%
-\contentsline {subsection}{\numberline {4.12.4}Conversión al Espacio de Color Final}{41}{subsection.4.12.4}%
-\contentsline {subsection}{\numberline {4.12.5}Error de Reconstrucción}{42}{subsection.4.12.5}%
-\contentsline {chapter}{Bibliografía}{43}{chapter*.24}%
+\contentsline {subsubsection}{\numberline {4.5.3.1}Agrupamiento Tasa-Distorsión}{31}{subsubsection.4.5.3.1}%
+\contentsline {subsubsection}{\numberline {4.5.3.2}Algoritmo de Optimización}{31}{subsubsection.4.5.3.2}%
+\contentsline {paragraph}{Inicialización:}{31}{section*.23}%
+\contentsline {paragraph}{Asignación Estocástica:}{32}{section*.24}%
+\contentsline {paragraph}{Actualización de Centroides:}{32}{section*.25}%
+\contentsline {paragraph}{Criterios de Convergencia:}{32}{section*.26}%
+\contentsline {subsubsection}{\numberline {4.5.3.3}GFT Adaptativa y Construcción de Grafos}{32}{subsubsection.4.5.3.3}%
+\contentsline {section}{\numberline {4.6}Construcción del Grafo de Atributos}{33}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Matriz de dinámica de atributos}{33}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Vector de nodos sumideros}{33}{subsection.4.6.2}%
+\contentsline {subsection}{\numberline {4.6.3}Selección de \textit {self-loops}}{34}{subsection.4.6.3}%
+\contentsline {section}{\numberline {4.7}Transformada Gráfica de Fourier}{34}{section.4.7}%
+\contentsline {subsection}{\numberline {4.7.1}Caso Base: Grafo sin Self-loops}{34}{subsection.4.7.1}%
+\contentsline {subsection}{\numberline {4.7.2}Caso Modificado: Grafo con Self-loops}{35}{subsection.4.7.2}%
+\contentsline {subsection}{\numberline {4.7.3}Comportamiento Dinámico}{35}{subsection.4.7.3}%
+\contentsline {section}{\numberline {4.8}Cuantización}{36}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}Cuantización Escalar Uniforme}{36}{subsection.4.8.1}%
+\contentsline {subsection}{\numberline {4.8.2}Efecto Espectral de la Cuantización}{36}{subsection.4.8.2}%
+\contentsline {subsection}{\numberline {4.8.3}Distribución Post-Cuantización}{37}{subsection.4.8.3}%
+\contentsline {section}{\numberline {4.9}Optimización Tasa-Distorsión}{37}{section.4.9}%
+\contentsline {subsection}{\numberline {4.9.1}Métricas de distorsión}{37}{subsection.4.9.1}%
+\contentsline {subsubsection}{\numberline {4.9.1.1}Distorsión Base}{37}{subsubsection.4.9.1.1}%
+\contentsline {subsubsection}{\numberline {4.9.1.2}Ponderación por Componentes de Color}{38}{subsubsection.4.9.1.2}%
+\contentsline {subsubsection}{\numberline {4.9.1.3}Agregación de Distorsión}{38}{subsubsection.4.9.1.3}%
+\contentsline {subsection}{\numberline {4.9.2}Operador de Lagrange}{38}{subsection.4.9.2}%
+\contentsline {subsection}{\numberline {4.9.3}Estimación de tasa}{38}{subsection.4.9.3}%
+\contentsline {subsubsection}{\numberline {4.9.3.1}Función de costo}{39}{subsubsection.4.9.3.1}%
+\contentsline {section}{\numberline {4.10}Codificación Entrópica}{40}{section.4.10}%
+\contentsline {subsection}{\numberline {4.10.1}Ordenamiento de coeficientes}{40}{subsection.4.10.1}%
+\contentsline {subsection}{\numberline {4.10.2}Codificación por canales}{41}{subsection.4.10.2}%
+\contentsline {subsection}{\numberline {4.10.3}Métricas de rendimiento}{41}{subsection.4.10.3}%
+\contentsline {section}{\numberline {4.11}\textit {Overhead} de Decisión}{41}{section.4.11}%
+\contentsline {section}{\numberline {4.12}Etapa de Decodificación}{42}{section.4.12}%
+\contentsline {subsection}{\numberline {4.12.1}Decodificación Entrópica}{42}{subsection.4.12.1}%
+\contentsline {subsection}{\numberline {4.12.2}Reconstrucción de Coeficientes}{42}{subsection.4.12.2}%
+\contentsline {subsection}{\numberline {4.12.3}Transformada Inversa}{42}{subsection.4.12.3}%
+\contentsline {subsection}{\numberline {4.12.4}Conversión al Espacio de Color Final (YUV a RGB)}{42}{subsection.4.12.4}%
+\contentsline {subsection}{\numberline {4.12.5}Error de Reconstrucción}{43}{subsection.4.12.5}%
+\contentsline {chapter}{\numberline {5}Resultados}{44}{chapter.5}%
+\contentsline {chapter}{Bibliografía}{46}{chapter*.29}%

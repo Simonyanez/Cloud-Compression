@@ -1,4 +1,4 @@
-This is BibTeX, Version 0.99d (TeX Live 2026/dev/Arch Linux)
+This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: natnumurl.bst
@@ -13,11 +13,12 @@ Warning--string name "oct" is undefined
 --line 129 of file library.bib
 Warning--string name "jun" is undefined
 --line 143 of file library.bib
+Warning--I didn't find a database entry for "emerging_mpeg"
 Warning--vacio journal en mackay_nodate
 Warning--vacio year en mackay_nodate
 You've used 15 entries,
             1986 wiz_defined-function locations,
-            544 strings with 6143 characters,
+            545 strings with 6156 characters,
 and the built_in function-call counts, 3611 in all, are:
 = -- 357
 > -- 112
@@ -56,4 +57,4 @@ warning$ -- 2
 while$ -- 33
 width$ -- 17
 write$ -- 178
-(There were 7 warnings)
+(There were 8 warnings)

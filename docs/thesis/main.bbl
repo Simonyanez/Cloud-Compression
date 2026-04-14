@@ -71,13 +71,13 @@ Meagher, D., ``Geometric modeling using octree encoding'', {Computer Graphics an
 \backrefprint\backrefparscantrue
 
 \backrefparscanfalse
-\bibitem{malvar2006adaptive}
-Malvar, H.~S., ``Adaptive run-length/golomb-rice encoding of quantized generalized gaussian sources with unknown statistics'', en {Data Compression Conference (DCC'06)}, pp.~23--32, 2006, \href{https://dx.doi.org/10.1109/DCC.2006.5} {\nolinkurl{doi:\detokenize{10.1109/DCC.2006.5}}}.
+\bibitem{zhang2014point}
+Zhang, C., Florêncio, D., y Loop, C., ``Point cloud attribute compression with graph transform'', en {2014 IEEE International Conference on Image Processing (ICIP)}, pp.~2066--2070, 2014, \href{https://dx.doi.org/10.1109/ICIP.2014.7025414} {\nolinkurl{doi:\detokenize{10.1109/ICIP.2014.7025414}}}.
 \backrefprint\backrefparscantrue
 
 \backrefparscanfalse
-\bibitem{zhang2014point}
-Zhang, C., Florêncio, D., y Loop, C., ``Point cloud attribute compression with graph transform'', en {2014 IEEE International Conference on Image Processing (ICIP)}, pp.~2066--2070, 2014, \href{https://dx.doi.org/10.1109/ICIP.2014.7025414} {\nolinkurl{doi:\detokenize{10.1109/ICIP.2014.7025414}}}.
+\bibitem{malvar2006adaptive}
+Malvar, H.~S., ``Adaptive run-length/golomb-rice encoding of quantized generalized gaussian sources with unknown statistics'', en {Data Compression Conference (DCC'06)}, pp.~23--32, 2006, \href{https://dx.doi.org/10.1109/DCC.2006.5} {\nolinkurl{doi:\detokenize{10.1109/DCC.2006.5}}}.
 \backrefprint\backrefparscantrue
 
 \backrefparscanfalse

@@ -180,7 +180,7 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
         De este resultado, se genera una codificación que recorre toda la imagen de forma serpenteada desde la esquina superior derecha a la inferior izquierda agrupandola en un arreglo. Y con la longitud de ejecución se declara la cantidad de veces que se repite un valor de forma consecutiva en vez de agregarlo esa cantidad de veces.
         
 
-\section{Orden de Morton}
+\section{Orden de Morton}\label{sec:morton_order}
     El orden de Morton, también conocido como \textit{Z-order curve}, es una técnica de indexación espacial que permite mapear puntos en un espacio multidimensional (por ejemplo, 2D o 3D) a un valor escalar unidimensional preservando, en la medida de lo posible, la localidad espacial. Fue introducida con el objetivo de mejorar la eficiencia en el acceso secuencial a bases de datos geoespaciales. \cite{morton1966zorder}\\
 
     La representación tradicional de datos tridimensionales como las nubes de puntos no impone ningún orden explícito sobre los puntos. Sin embargo, muchos algoritmos de compresión, estructuración jerárquica (como octrees) o renderizado acelerado requieren organizar los datos de forma que puntos cercanos en el espacio también estén cercanos en memoria o en disco. El orden de Morton proporciona esta capacidad mediante una codificación binaria de las coordenadas espaciales.
@@ -302,7 +302,7 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
         \hat{x}_i \cdot \phi_i = f_i \quad \quad x = \sum_{i=1}^N f_i = \sum_{i=1}^N \hat{x}_i \cdot \phi_i 
     \end{equation*}
 
-    Entendiendo esto, podemos hacer reconstrucciones parciales de la señal, perdiendo parte de su información, pero mostrando su comportamiento general y relevante relevante para analizarla e interpretarla. Para toda señal podremos construir un conjunto $M \subset \{1,2,...,N\}$ tal que:
+    Entendiendo esto, podemos hacer reconstrucciones parciales de la señal, perdiendo parte de su información, pero mostrando su comportamiento general y relevante para analizarla e interpretarla. Para toda señal podremos construir un conjunto $M \subset \{1,2,...,N\}$ tal que:
 
     \begin{equation*}
         x_M = \sum_{i \in M} f_i
