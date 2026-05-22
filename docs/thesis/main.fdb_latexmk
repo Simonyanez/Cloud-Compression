@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex main"] 1775339566.52982 "main.aux" "main.bbl" "main" 1775339568.77281 0
+["bibtex main"] 1776173887.62961 "main.aux" "main.bbl" "main" 1776174414.14135 0
   "./library.bib" 1775344002 4947 bcc0257860647b63b4bd50a9ae615059 ""
   "./natnumurl.bst" 1775344002 20221 c3a97a2434b58cd70f7f9c9df607b80a ""
-  "main.aux" 1775339568.44617 61763 3527d3ddc9b89b2d0272c19a80d6dd25 "pdflatex"
+  "main.aux" 1776174413.80029 64359 6154fc35c6e930662bbfba6ef172eea2 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1775339566.61272 "main.tex" "main.pdf" "main" 1775339568.773 0
+["pdflatex"] 1776174411.19902 "main.tex" "main.pdf" "main" 1776174414.14153 0
   "/etc/texmf/web2c/texmf.cnf" 1775335991.72719 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ectt1000.tfm" 1136768653 1536 06717a2b50de47d4087ac0e6cd759455 ""
@@ -242,6 +242,7 @@
   "/usr/share/texmf/fonts/tfm/public/lm/lmsy5.tfm" 1148093231 1296 54ed1a711e2303d5282575278e3620b0 ""
   "/usr/share/texmf/fonts/tfm/public/lm/lmsy6.tfm" 1148093231 1300 b0605d44c16c22d99dc001808e4f24ea ""
   "/usr/share/texmf/fonts/tfm/public/lm/lmsy8.tfm" 1148093231 1304 cdc9a17df9ef0d2dc320eff37bbab1c4 ""
+  "/usr/share/texmf/fonts/tfm/public/lm/rm-lmbx10.tfm" 1254269338 11880 35fcf136a2198418dfc53c83e9e2a07f ""
   "/usr/share/texmf/fonts/tfm/public/lm/rm-lmbx12.tfm" 1254269338 11880 ea60d06924270684e6f852f3141c992b ""
   "/usr/share/texmf/fonts/tfm/public/lm/rm-lmbx5.tfm" 1254269338 11828 9b1880528bdbe7e6035fd1b46bff1bbb ""
   "/usr/share/texmf/fonts/tfm/public/lm/rm-lmbx6.tfm" 1254269338 11852 eda7061aa4cc8552ba736dae866e4460 ""
@@ -303,17 +304,18 @@
   "img/metodología/ricardo_thumb.png" 1775344004 40670 92003965ad5214647d64824b5a42422a ""
   "img/metodología/sarah_thumb.png" 1775344004 30920 20aa6648e68dee338bc68c0dee92104a ""
   "img/metodología/soldier_thumb.png" 1775344006 11184 1a7517021aeea9fe8df427ca511bca72 ""
-  "img/resultados/RD_Curves/BE01_vs_TE12.png" 1775344002 88949 203eb945e7102b69ae247eb734e6fd4a ""
+  "img/resultados/gain_parameters_analysis.png" 1776171511.3265 237781 7445090140d1a366a19daee9df75343c ""
+  "img/resultados/rd_curves_comparison.png" 1776171511.3305 447396 613bb16b506ee4505dcf8664a7d91044 ""
   "introduccion.tex" 1775344002 7115 cf87bf20266172acb76030ab416071b1 ""
-  "main.aux" 1775339568.44617 61763 3527d3ddc9b89b2d0272c19a80d6dd25 "pdflatex"
-  "main.bbl" 1775339566.60217 4844 07440a06ff6a0c63f6e4cfa1952aea41 "bibtex main"
-  "main.lof" 1775339568.45417 1699 406bf37405cfbe99f7dfc1a9602adaa6 "pdflatex"
-  "main.lot" 1775339568.45417 442 73871b7e327c01c3b4b4352782c5461a "pdflatex"
+  "main.aux" 1776174413.80029 64359 6154fc35c6e930662bbfba6ef172eea2 "pdflatex"
+  "main.bbl" 1776173887.70008 4844 07440a06ff6a0c63f6e4cfa1952aea41 "bibtex main"
+  "main.lof" 1776174413.80829 1914 77b47142adb905d0fac830a71753265a "pdflatex"
+  "main.lot" 1776174413.80829 445 18a2454f022c7ee5dbf913e4aa6c7624 "pdflatex"
   "main.tex" 1775344002 4156 b318e4178edb4937980d4ac794ad34d9 ""
-  "main.toc" 1775339568.45417 8972 1487f3c0cf6308fa8889e30039d7d177 "pdflatex"
+  "main.toc" 1776174413.80829 9294 9104b8f0c090e15c27af63684ef04fbe "pdflatex"
   "marco_teorico.tex" 1775339563.881 36821 b25a425465c2fbb0c8be438fe8d5af92 ""
   "metodologia.tex" 1775338310.10202 57439 ce19078710776d7b1e197cf9d2a3d5c9 ""
-  "resultados.tex" 1775344002 1327 cf213f2dba9477b1f027c1f4dfe56632 ""
+  "resultados.tex" 1776174409.70353 4764 331f82f39d154580a58a390a5377c3c7 ""
   "template.tex" 1775344002 282524 b14fe810fc26a3379a94a3397aa30319 ""
   "template_config.tex" 1775344002 21647 2a99f3119ef44872b6f304c32fbac1fa ""
   (generated)

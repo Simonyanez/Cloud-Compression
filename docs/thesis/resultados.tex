@@ -1,67 +1,16 @@
 
 \chapter{Resultados}
 
-\begin{figure}
-    \centering
-    \includegraphics[width=0.9\linewidth]{img/resultados/RD_Curves/BE01_vs_TE12.png}
-    \caption{Comparativa versión base contra versión dinámica 16 opciones}
-    \label{fig:BE01_vs_TE12}
-\end{figure}
-
-
-\begin{table}[ht]
-\centering
-\caption{Bitcount Differences and Bjontegaard Metrics for Various Block Sizes}
-\begin{tabular}{|c|c|c|}
-\hline
-\textbf{Block Size} & \textbf{Quantization Step} & \textbf{Bitcount Difference} \\
-\hline
-\multirow{7}{*}{4} 
-& 24 & 160008 \\
-& 28 & 147088 \\
-& 32 & 134920 \\
-& 40 & 113208 \\
-& 48 & 95416 \\
-& 56 & 79536 \\
-& 64 & 67320 \\
-\hline
-\multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.399 \\
-\multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -14.38 \\
-\hline
-
-\multirow{7}{*}{8} 
-& 24 & 181208 \\
-& 28 & 172928 \\
-& 32 & 166048 \\
-& 40 & 149064 \\
-& 48 & 135344 \\
-& 56 & 122512 \\
-& 64 & 110296 \\
-\hline
-\multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.544 \\
-\multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -24.22 \\
-\hline
-
-\multirow{7}{*}{16} 
-& 24 & 88800 \\
-& 28 & 89720 \\
-& 32 & 87024 \\
-& 40 & 86984 \\
-& 48 & 81168 \\
-& 56 & 76872 \\
-& 64 & 73464 \\
-\hline
-\multicolumn{2}{|c|}{\textbf{BD-PSNR (dB)}} & 1.065 \\
-\multicolumn{2}{|c|}{\textbf{BD-Rate (\%)}} & -19.05 \\
 \section{Análisis de Límites Teóricos (Oracle Upper Bounds)}
 
-Para evaluar el potencial máximo de la estrategia de adaptación híbrida y establecer un techo teórico de desempeño, se diseñaron dos experimentos de búsqueda exhaustiva denominados "oráculos", cuyos códigos de implementación se encuentran en \texttt{scripts/absolute\_upper\_bound\_full.py} y \texttt{scripts/linear\_oracle\_upper\_bound\_full.py}.
+Para evaluar el potencial máximo de la estrategia de adaptación híbrida y establecer un techo teórico de desempeño, se diseñaron dos experimentos de búsqueda exhaustiva.
 
 La metodología consiste en procesar la nube de puntos completa, bloque por bloque, evaluando todas las combinaciones posibles de los parámetros de adaptación en un espacio de búsqueda granular:
+
 \begin{itemize}
     \item \textbf{Espacio de búsqueda:} Se evaluaron porcentajes de selección de nodos $p \in [0.01, 1.00]$ con incrementos de $0.02$, y pesos de auto-lazo $w \in [0.2, 10.2]$ con incrementos de $0.2$.
     \item \textbf{Absolute Oracle:} Utiliza la señal de luminancia original (ground truth) para calcular el vector de importancia de los nodos y guiar la inserción de auto-lazos. Representa el límite superior si el sistema tuviera conocimiento perfecto de la señal antes de la transformada.
-    \item \textbf{Linear Oracle:} Utiliza una aproximación lineal (ajuste de plano por mínimos cuadrados) de la luminancia. Este experimento busca determinar si una representación simplificada y robusta de la señal es más efectiva para la construcción del grafo que la señal cruda.
+    \item \textbf{Linear Oracle:} Utiliza una aproximación lineal (ajuste de plano por mínimos cuadrados) de la luminancia. Este experimento busca determinar si una representación simplificada y robusta de la señal conserva la efectividad del método con datos reales.
 \end{itemize}
 
 Para cada bloque y cada paso de cuantización ($Q=\{24, 32, 48, 64\}$), el decisor RDO selecciona la combinación $(p, w)$ que minimiza el costo $J = R + \lambda D$. Los resultados agregados permiten cuantificar la eficiencia máxima alcanzable mediante métricas Bjontegaard.
@@ -69,7 +18,7 @@ Para cada bloque y cada paso de cuantización ($Q=\{24, 32, 48, 64\}$), el decis
 \subsection{Métricas Bjontegaard y Eficiencia RD}
 
 
-La Tabla \ref{tab:oracle_comparison} presenta las métricas BD-Rate y BD-PSNR de ambos oráculos comparadas con la línea base estructural (Structural Baseline). 
+La Tabla \ref{tab:oracle_comparison} presenta las métricas BD-Rate y BD-PSNR de ambos oráculos comparadas con el método básico estructural. 
 
 \begin{table}[ht]
 \centering
@@ -93,7 +42,7 @@ La Tabla \ref{tab:oracle_comparison} presenta las métricas BD-Rate y BD-PSNR de
 
 \subsection{Interpretación de Resultados}
 
-Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle supera consistentemente al Absolute Oracle}, logrando entre un 120\% y un 160\% de la reducción de tasa de bits esperada. Este fenómeno puede explicarse mediante la teoría de distorsión de tasa:
+Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle supera consistentemente al Absolute Oracle}, logrando entre un 120\% y un 160\% de la reducción de tasa de bits esperada. Este fenómeno puede explicarse mediante la teoría tasa-distorsión y las métricas de Bjoontgard:
 
 \begin{itemize}
     \item \textbf{Efecto de Filtro Paso Bajo:} El Linear Oracle utiliza una superficie plana ajustada, lo que actúa como un filtro paso bajo espacial. Al ignorar el ruido de alta frecuencia y las variaciones locales, la adaptación del grafo se guía por la tendencia global del bloque, lo que resulta en una base GFT más eficiente para compactar la energía de la señal.
@@ -114,3 +63,6 @@ Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle su
     \caption{Análisis de distribución de ganancias y parámetros óptimos de selección de nodos ($p$).}
     \label{fig:gain_analysis}
 \end{figure}
+
+Como se observa en la Figura \ref{fig:gain_analysis}, la distribución de los parámetros óptimos se mantiene estable para ambas ejecuciones del oráculo. Esta consistencia es fundamental, ya que sugiere que el comportamiento del sistema no es errático ante diferentes aproximaciones de la señal. Por consiguiente, es viable realizar un paso posterior de agrupación (clustering) de estos parámetros, lo que permitiría una representación compacta de la configuración de adaptación con un overhead de señalización mínimo en el flujo de bits final.
+

@@ -1,5 +1,7 @@
 # Ignore pyenv local version file
 .python-version
+*__pycache__
+.pyc
 
 # Ignore local virtual environment
 .venv/

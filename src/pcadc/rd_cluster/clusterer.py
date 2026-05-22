@@ -3,7 +3,7 @@ from pcadc.blocks import Block
 from pcadc.transforms import GFTStrategyWraper
 from pcadc.graph import StructuralGraph, AttributeGraph
 from pcadc.color import Approximator, FitCollection
-from pcadc.clusterer import Clusterer
+from pcadc.clusterer import YFitClusterer
 from pcadc.parameters import SequentialParameters, ClusteringParameters
 from pcadc.rd_cluster.convergence import ConvergenceChecker
 from pcadc.rd_cluster.optimizer import SlopeOptimizer
@@ -143,7 +143,7 @@ class RDClusterer:
             fit_result = approximator(block)
             fit_collection.add(fit_result)
             block.clear_data()
-        clusterer = Clusterer(
+        clusterer = YFitClusterer(
             self.num_clusters, self.sequential_parameters.normalize_slopes)
         codebook = clusterer(fit_collection)
         codebook.assign(blocks, vertices, attributes)
@@ -194,7 +194,7 @@ class RDClusterer:
             
             # Calculate gain for this block if a dynamic cluster was chosen
             if chosen_cluster != 0:
-                all_gains[i] = costs[chosen_cluster] - cost_structural
+                all_gains[i] = cost_structural - costs[chosen_cluster]
             else:
                 all_gains[i] = 0 # No gain if structural is chosen
 
@@ -255,21 +255,16 @@ class RDClusterer:
             json.dump(state.to_dict(), f, indent=4)
 
     def _compute_adaptive_gft(self, block: Block, slope: np.ndarray, label: int):
-        # TODO: Get structural graph
         structural_graph = StructuralGraph(block.metadata)
         structural_graph.set_data(block.Vblock)
 
-        # TODO: Add self-loops based on slope
-        attribute_graph = AttributeGraph(structural_graph, slope, label, self.sequential_parameters.self_loop_threshold, self.sequential_parameters.self_loop_weight)
-        #NOTE: Almost sure using the spatially normed vertices is the right way
+        attribute_graph = AttributeGraph(structural_graph, slope, label, self.sequential_parameters.self_loop_percentage, self.sequential_parameters.self_loop_weight)
+
         Vblock_rotated = Approximator()._spatial_norm(block.Vblock)
         Ablock_app = block.Ablock.copy()
         Ablock_app[:, 0] = Vblock_rotated @ slope.T
         attribute_graph.set_data(block.Vblock, Ablock_app)
 
-        # TODO: Compute new Laplacian
-        # TODO: Compute GFT (eigenvectors)
-        # TODO: Return GFT matrix
         _, coeffs = self.gft_computer(block, attribute_graph)
         attribute_graph.clear_data()
         return coeffs

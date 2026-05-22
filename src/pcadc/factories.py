@@ -50,7 +50,7 @@ class GraphBlockCreator(Creator):
         self.block = block
         self.centroid_label = centroid_label
         self.luminance_centroid = luminance_centroid
-        self.self_loop_threshold = parameters.self_loop_threshold
+        self.self_loop_percentage = parameters.self_loop_percentage
         self.self_loop_weight = parameters.self_loop_weight
 
     def factory_method(self) -> Tuple[Block, StructuralGraph | AttributeGraph]:
@@ -62,7 +62,7 @@ class GraphBlockCreator(Creator):
 
         if not self.is_structural:
             attribute_graph = AttributeGraph(structural_graph, self.luminance_centroid, self.centroid_label,
-                                             self.self_loop_threshold, self.self_loop_weight)
+                                             self.self_loop_percentage, self.self_loop_weight)
             Vblock_rotated = Approximator()._spatial_norm(Vblock)
             Ablock_app = Ablock.copy()
             Ablock_app[:, 0] = Vblock_rotated @ self.luminance_centroid.T
@@ -93,7 +93,7 @@ class GraphBlockCreator(Creator):
 
     @property
     def is_structural(self):
-        return np.equal(self.luminance_centroid, np.array([0, 0, 0])).any()
+        return np.equal(self.luminance_centroid, np.array([0, 0, 0])).all()
 
 
 class SubGraphCreator(Creator):
@@ -132,7 +132,7 @@ class SubGraphCreator(Creator):
                                            centroid_label=0,
                                            luminance_centroid=np.array(
                                                [0, 0, 0]),
-                                           self_loop_threshold=None,
+                                           self_loop_percentage=None,
                                            self_loop_weight=None)
         sub_graph = GraphBase(sub_graph_metadata)
         sub_graph.set_data(weights=weights_sub,
@@ -166,7 +166,7 @@ class MeanGraphFactory(Creator):
                                             centroid_label=0,
                                             luminance_centroid=np.array(
                                                 [0, 0, 0]),
-                                            self_loop_threshold=None,
+                                            self_loop_percentage=None,
                                             self_loop_weight=None)
         mean_graph = StructuralGraph(mean_block_metadata)
         mean_graph.set_metadata(mean_graph_metadata)

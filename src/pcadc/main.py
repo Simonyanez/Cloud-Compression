@@ -67,7 +67,8 @@ class Researcher():
     def run(self, params: ExperimentConfig):
         self._init_experiment(params)
         indexes, blocks = self._block_partitioning()
-        codebook = self._cluster_codebook(blocks)
+        sampled_blocks = self._block_sampling(blocks) # Sampled blocks are returned
+        codebook = self._cluster_codebook(sampled_blocks)
 
         coeffs_stream = self._compute_coeffs(blocks, codebook)  # generator
         for result in self._exec_encoding(coeffs_stream, indexes, codebook):
@@ -92,6 +93,11 @@ class Researcher():
         self.A = point_cloud.attributes
         mortonpartition = MortonBlockPartition()
         return mortonpartition.partition(point_cloud, bsize=self.sequence_params.block_size)
+
+    def _block_sampling(self, blocks: List[Block]):
+        sampler = Sampler(ratio=self.sequence_params.sample_percentage, n_strata=5)
+        sampled_blocks = sampler(self.V, self.A, blocks)
+        return sampled_blocks
 
     def _cluster_codebook(self,blocks: List[Block]):
         final_state, clustering_history = run_rd_clustering(blocks, self.V, self.A, self.experiment_params)
@@ -247,8 +253,9 @@ def main():
     parser.add_argument('--clusters', type=int, required=True, help='Mandatory: Number of clusters')
     
     # Optional overrides with defaults from base_config
-    parser.add_argument('--slt', type=float, default=base_params.sequential_params.self_loop_threshold, help='Self-loop threshold')
+    parser.add_argument('--slp', type=float, default=base_params.sequential_params.self_loop_percentage, help='Self-loop percentage')
     parser.add_argument('--slw', type=float, default=base_params.sequential_params.self_loop_weight, help='Self-loop weight')
+    parser.add_argument('--sample_frac', type=float, default=base_params.sequential_params.sample_percentage, help='Sample percentage')
     parser.add_argument('--qsteps', type=int, nargs='+', default=base_params.sequential_params.quantization_steps, help='Quantization steps list')
     
     # Execution flags
@@ -263,17 +270,18 @@ def main():
     # Apply overrides to base_params
     base_params.sequential_params.block_size = args.block_size
     base_params.clustering_params.number_of_clusters = args.clusters
-    base_params.sequential_params.self_loop_threshold = args.slt
+    base_params.sequential_params.self_loop_percentage = args.slp
     base_params.sequential_params.self_loop_weight = args.slw
+    base_params.sequential_params.sample_percentage = args.sample_frac
     base_params.sequential_params.quantization_steps = args.qsteps
     base_params.rewrite_results = args.rewrite
     base_params.metadata.experiment_name = args.name
 
-    # Automatic code generation: RD-B{Block_Size}-C{Cluster_Num}-SW_{Self_loop_weight}-ST_{Self_loop_threshold}
+    # Automatic code generation: RD-B{Block_Size}-C{Cluster_Num}-SW_{Self_loop_weight}-SP_{Self_loop_percentages}
     # Sanitize float strings for filenames (replace . with _)
     sw_str = str(args.slw).replace('.', '_')
-    st_str = str(args.slt).replace('.', '_')
-    base_params.metadata.experiment_code = f"RD-B{args.block_size}-C{args.clusters}-SW_{sw_str}-ST_{st_str}"
+    sp_str = str(args.slp).replace('.', '_')
+    base_params.metadata.experiment_code = f"RD-B{args.block_size}-C{args.clusters}-SW_{sw_str}-SP_{sp_str}"
 
     print("-" * 50)
     print(f"[*] Starting Experiment: {base_params.metadata.experiment_name}")
@@ -281,7 +289,8 @@ def main():
     print(f"[*] Block Size:          {base_params.sequential_params.block_size}")
     print(f"[*] Clusters:            {base_params.clustering_params.number_of_clusters}")
     print(f"[*] SL Weight:           {base_params.sequential_params.self_loop_weight}")
-    print(f"[*] SL Threshold:        {base_params.sequential_params.self_loop_threshold}")
+    print(f"[*] SL Percentage:        {base_params.sequential_params.self_loop_percentage}")
+    print(f"[*] Sample Percentage:        {base_params.sequential_params.sample_percentage}")
     print(f"[*] Q-Steps:             {base_params.sequential_params.quantization_steps}")
     print(f"[*] Visualization:       {'Enabled' if args.viz else 'Disabled'}")
     print(f"[*] Rewrite Results:     {'Enabled' if args.rewrite else 'Disabled'}")

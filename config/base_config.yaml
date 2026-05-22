@@ -1,4 +1,6 @@
 # CONFIG YAML
+# This is the base configuration. For any experiment this can be overide.
+#
 experiment_metadata:
   experiment_name: "Self-looped"
   experiment_code: "RT01"
@@ -15,10 +17,11 @@ pointcloud_metadata:
 
 sequential_params:
   point_cloud_path: "res/longdress_vox10_1051.ply"
-  normalize_slopes: True
+  normalize_slopes: False
   decider_mode: 0
-  self_loop_weight: 1.6
-  self_loop_threshold: 0.9
+  self_loop_weight: 1.6 # This should be dynamic too. Part of the optimization problem
+  self_loop_percentage: 0.2 # This should be dynamic too. Part of the optimization problem
+  sample_percentage: 1.0
   quantization_steps: [24,28,32,40,48,56,64]
   lagrange_proportional: 0.8
   block_size: 16

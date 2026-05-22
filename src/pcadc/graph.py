@@ -31,14 +31,14 @@ class GraphMetadata:
     distance_threshold: float
     luminance_centroid: np.ndarray
     centroid_label: int
-    self_loop_threshold: Optional[float]
+    self_loop_percentage: Optional[float]
     self_loop_weight: Optional[float]
 
     @property
     def graph_id(self):
         graph_id = f"{self.block_id}_{self.graph_type}"
-        if self.self_loop_threshold is not None:
-            graph_id += f"_sl_{self.self_loop_threshold}_{self.self_loop_weight}"
+        if self.self_loop_percentage is not None:
+            graph_id += f"_sl_{self.self_loop_percentage}_{self.self_loop_weight}"
         return graph_id
 
     @property
@@ -92,7 +92,7 @@ class StructuralGraph(GraphBase):
             distance_threshold=np.sqrt(3),
             centroid_label=0,
             luminance_centroid=np.array([0, 0, 0]),
-            self_loop_threshold=None,
+            self_loop_percentage=None,
             self_loop_weight=None
         )
         super().__init__(metadata)
@@ -138,18 +138,18 @@ class AttributeGraph(GraphBase):
                  structural_graph: StructuralGraph,
                  luminance_centroid: np.ndarray,
                  centroid_label: int,
-                 self_loop_threshold: float,
+                 self_loop_percentage: float,
                  self_loop_weight: float):
         metadata = deepcopy(structural_graph.metadata)
         metadata.graph_type = "Attribute"
         metadata.luminance_centroid = luminance_centroid
         metadata.centroid_label = centroid_label
-        metadata.self_loop_threshold = self_loop_threshold
+        metadata.self_loop_percentage = self_loop_percentage
         metadata.self_loop_weight = self_loop_weight
 
         super().__init__(metadata)
         self.structural_graph = structural_graph
-        self.self_loop_threshold = self_loop_threshold
+        self.self_loop_percentage = self_loop_percentage
         self.self_loop_weight = self_loop_weight
 
     def __getattr__(self, name):
@@ -181,25 +181,28 @@ class AttributeGraph(GraphBase):
 
     def _compute_attribute_graph(self, A: np.ndarray) -> None:
         self.M = self._attribute_motion_matrix(A)
-        self.S = self._sink_nodes_vector(self.M, normalization="minmax")
+        self.S = self._sink_nodes_vector(self.M)
         self._self_loops_selection()
 
     def _self_loops_selection(self):
         """Select nodes for self-loops based on sink vector `self.S`."""
         self.most_pointed = np.argsort(self.S)[::-1]
 
-        if self.self_loop_threshold is None:
-            raise ValueError("No threshold provided for self-loops")
+        if self.self_loop_percentage is None:
+            raise ValueError("No percentage provided for self-loops")
 
-        self.selected_nodes = np.argwhere(
-            self.S >= self.self_loop_threshold).flatten()
+        # self.selected_nodes = np.argwhere(
+        #     self.S >= self.self_loop_percentage).flatten()
+        index = int(self.self_loop_percentage * self.S.shape[0])
+        self.selected_nodes = self.most_pointed[:index]
         
         # Detailed logging for self-loop diagnostics
+        # TODO: Sink vector is crucial for this implemention. Consider creating its own class for easier monitoring
         max_s_value = np.max(self.S) if self.S.size > 0 else 0
         logger.info(
             f"Graph {self.metadata.graph_cluster_descriptor}: "
             f"Found {len(self.selected_nodes)} nodes for self-loops "
-            f"with threshold {self.self_loop_threshold}. "
+            f"with percentage {self.self_loop_percentage}. "
             f"Max S value was {max_s_value:.4f}."
         )
 
@@ -213,26 +216,10 @@ class AttributeGraph(GraphBase):
         # TODO: Check if it's pertinent to use 255 for the cluster slopes
         return self.weights * np.subtract.outer(Y, Y) #/ 255
 
-    def _sink_nodes_vector(self, M: np.ndarray, normalization: str = "standard") -> np.ndarray:
+    def _sink_nodes_vector(self, M: np.ndarray) -> np.ndarray:
         sink_vector = np.zeros(M.shape[0])
         unique, count = self._get_decreasing_count(M)
         sink_vector[unique] = count
-
-        if normalization == "standard":
-            neighbors_count = np.sum(self.weights > 0, axis=1)
-            with np.errstate(divide='ignore', invalid='ignore'):
-                sink_vector = np.true_divide(sink_vector, neighbors_count)
-                sink_vector[~np.isfinite(sink_vector)] = 0
-
-        elif normalization == "minmax":
-            min_val, max_val = np.min(sink_vector), np.max(sink_vector)
-            if max_val > min_val:
-                sink_vector = (sink_vector - min_val) / (max_val - min_val)
-            else:
-                sink_vector[:] = 0
-        else:
-            raise ValueError(f"Unknown normalization mode: {normalization}")
-
         return sink_vector
 
     def _get_decreasing_count(self, M: np.ndarray) -> np.ndarray:

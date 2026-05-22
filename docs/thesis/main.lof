@@ -14,4 +14,5 @@
 \contentsline {figure}{\numberline {4.6}{\ignorespaces Ejemplo de Grafo ($b=16$)}}{28}{figure.caption.21}%
 \contentsline {figure}{\numberline {4.7}{\ignorespaces Ejemplo de Normalización (b=16)}}{30}{figure.caption.22}%
 \addvspace {10\p@ }
-\contentsline {figure}{\numberline {5.1}{\ignorespaces Comparativa versión base contra versión dinámica 16 opciones}}{44}{figure.caption.27}%
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Curvas Rate-Distortion para diferentes tamaños de bloque comparando la línea base con ambos oráculos.}}{45}{figure.caption.28}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Análisis de distribución de ganancias y parámetros óptimos de selección de nodos ($p$).}}{46}{figure.caption.29}%

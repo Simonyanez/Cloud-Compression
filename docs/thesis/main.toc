@@ -93,4 +93,7 @@
 \contentsline {subsection}{\numberline {4.12.4}Conversión al Espacio de Color Final (YUV a RGB)}{42}{subsection.4.12.4}%
 \contentsline {subsection}{\numberline {4.12.5}Error de Reconstrucción}{43}{subsection.4.12.5}%
 \contentsline {chapter}{\numberline {5}Resultados}{44}{chapter.5}%
-\contentsline {chapter}{Bibliografía}{46}{chapter*.29}%
+\contentsline {section}{\numberline {5.1}Análisis de Límites Teóricos (Oracle Upper Bounds)}{44}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Métricas Bjontegaard y Eficiencia RD}{44}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Interpretación de Resultados}{44}{subsection.5.1.2}%
+\contentsline {chapter}{Bibliografía}{47}{chapter*.30}%

@@ -26,7 +26,8 @@ class SequentialParameters:
     point_cloud_path: Path
     normalize_slopes: bool
     self_loop_weight: float
-    self_loop_threshold: float
+    self_loop_percentage: float
+    sample_percentage: float
     quantization_steps: List[int]
     lagrange_proportional: float
     decider_mode: str
@@ -91,7 +92,8 @@ class ExperimentConfig:
             f"Iteration Window: {self.clustering_params.iteration_window}\n"
             f"Normalize Slopes: {self.sequential_params.normalize_slopes}\n"
             f"Self-loop Weight: {self.sequential_params.self_loop_weight}\n"
-            f"Self-loop Threshold: {self.sequential_params.self_loop_threshold}\n"
+            f"Self-loop Percentage: {self.sequential_params.self_loop_percentage}\n"
+            f"Sampler Percentage: {self.sequential_params.sample_percentage}\n"
             f"Quantization Steps: {self.sequential_params.quantization_steps}\n"
             f"Lagrange Proportional: {self.sequential_params.lagrange_proportional}\n"
             f"Decider Mode: {self.sequential_params.decider_mode}\n"
@@ -104,15 +106,15 @@ class ExperimentConfig:
     def descriptive_name(self) -> str:
         """
         Generates a string summarizing key parameters for unique filenames.
-        Format: RD-B{Block_Size}-C{Num_Clusters}-SLT{Self_loop_threshold}-SLW{Self_loop_weight}
-        Example: RD-B8-C4-SLT_0_4-SLW_2_0
+        Format: RD-B{Block_Size}-C{Num_Clusters}-SLP{self_loop_percentage}-SLW{Self_loop_weight}
+        Example: RD-B8-C4-SLP_0_4-SLW_2_0
         """
-        slt = str(self.sequential_params.self_loop_threshold).replace('.', '_')
+        slp = str(self.sequential_params.self_loop_percentage).replace('.', '_')
         slw = str(self.sequential_params.self_loop_weight).replace('.', '_')
         return (
             f"RD-B{self.sequential_params.block_size}-"
             f"C{self.clustering_params.number_of_clusters}-"
-            f"SLT{slt}-"
+            f"SLP{slp}-"
             f"SLW{slw}"
         )
 
@@ -177,7 +179,8 @@ def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
             point_cloud_path=Path(config["sequential_params"]["point_cloud_path"]),
             normalize_slopes=config["sequential_params"]["normalize_slopes"],
             self_loop_weight=config["sequential_params"]["self_loop_weight"],
-            self_loop_threshold=config["sequential_params"]["self_loop_threshold"],
+            self_loop_percentage=config["sequential_params"]["self_loop_percentage"],
+            sample_percentage=config["sequential_params"]["sample_percentage"],
             quantization_steps=config["sequential_params"]["quantization_steps"],
             lagrange_proportional=config["sequential_params"]["lagrange_proportional"],
             block_size=config["sequential_params"]["block_size"],

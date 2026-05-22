@@ -1,4 +1,7 @@
+from typing import List, Optional, Tuple
 import numpy as np
+import json
+from pcadc.graph import StructuralGraph, AttributeGraph
 from dataclasses import dataclass
 from typing import Optional, List
 from sklearn.metrics import pairwise_distances_argmin_min, root_mean_squared_error
@@ -111,7 +114,7 @@ class Codebook:
         return indices[0]  # or return indices if you expect multiple
 
 
-class Clusterer:
+class YFitClusterer:
     def __init__(self, n_clusters: int, normalize_slopes: bool):
         self.n_clusters = n_clusters
         self.normalize_slopes = normalize_slopes
@@ -131,7 +134,7 @@ class Clusterer:
         if norm_flag:
             logger.info(
                 f"Normalize is activated in clusterer. Normalizing slope matrix...")
-            slope_matrix = Clusterer.normalize_matrix(slope_matrix)
+            slope_matrix = YFitClusterer.normalize_matrix(slope_matrix)
         return slope_matrix
 
     @staticmethod
@@ -211,3 +214,4 @@ class Clusterer:
         logger.info(
             "Centroid distribution for coefficients (might change using luminance) \n" + centroids_info)
         return centers, labels
+
