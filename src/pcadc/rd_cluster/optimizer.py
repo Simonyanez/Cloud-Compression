@@ -1,68 +1,76 @@
 import numpy as np
-from typing import List
+from typing import List, Callable, Tuple
 from pcadc.blocks import Block
-from pcadc.color import Approximator
-
+from scipy.optimize import differential_evolution
 
 class SlopeOptimizer:
     
-    def __init__(self, learning_rate: float, add_intercept: bool = True):
-        # Not used. This is for the bias value
+    def __init__(self, add_intercept: bool = True):
         self.add_intercept = add_intercept
-        self.learning_rate = learning_rate
+        # Bumping this up slightly to give the coarse search room to breathe
+        self.max_nm_evals = 20
     
     def recalculate_slopes(self, blocks: List[Block], labels: np.ndarray,
-                          vertices: np.ndarray, attributes: np.ndarray,
-                          num_clusters: int, old_slopes: np.ndarray) -> np.ndarray:
-        """Returns: (K, 3) array of slopes"""
+                           vertices: np.ndarray, attributes: np.ndarray,
+                           num_clusters: int, old_slopes: np.ndarray,
+                           old_slw: np.ndarray, old_slp: np.ndarray,
+                           rd_cost_fn: Callable[[Block, np.ndarray, int], float]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        
         new_slopes = old_slopes.copy()
+        new_slw = old_slw.copy()
+        new_slp = old_slp.copy()
         
         for k in range(num_clusters):
-            # Static DC cluster
             if k == 0:
-                continue
+                continue # Skip DC cluster
 
             cluster_mask = (labels == k)
             cluster_indices = np.where(cluster_mask)[0]
             
             if len(cluster_indices) == 0:
-                # If cluster is empty, keep the old slope, do not randomize
                 continue
-            
-            V_list = []
-            Y_list = []
-            weight_list = []
-            
-            for idx in cluster_indices:
-                block = blocks[idx]
-                block.init_data(vertices, attributes)
                 
-                V_block = Approximator()._spatial_norm(block.Vblock)
-                Y_block = block.Ablock[:, 0]
-                n_i = len(V_block)
-                
-                V_list.append(V_block)
-                Y_list.append(Y_block)
-                weight_list.append(np.ones(n_i) / n_i)  # Peso por vértice
-                
-                block.clear_data()
+            print(f"\n[Cluster {k}] Starting Optimization (n={len(cluster_indices)} blocks)")
+            print(f"[Cluster {k}] Initial Guess Slope: {old_slopes[k]}, SLW: {old_slw[k]}, SLP: {old_slp[k]}")
             
-            V_stacked = np.vstack(V_list)
-            Y_stacked = np.concatenate(Y_list)
-            weights = np.concatenate(weight_list)  # Vector (N_total,)
+            eval_counter = 0
+            
+            # --- Objective Function ---
+            def objective(params):
+                nonlocal eval_counter
+                total_cost = 0.0
+                for idx in cluster_indices:
+                    blocks[idx].init_data(vertices, attributes)
+                    total_cost += rd_cost_fn(blocks[idx], params, k)
+                    blocks[idx].clear_data()
+                
+                eval_counter += 1
+                return total_cost
 
-            # Weighted least squares
-            W_sqrt = np.sqrt(weights)
-            V_weighted = V_stacked * W_sqrt[:, np.newaxis]
-            Y_weighted = Y_stacked * W_sqrt
+            # Bounds for [slope_x, slope_y, slope_z, slw, slp]
+            bounds = [(-5.0, 5.0), (-5.0, 5.0), (-20.0, 20.0), (0.01, 10.0), (0.01, 0.99)]
             
-            VtV = V_weighted.T @ V_weighted
-            VtY = V_weighted.T @ Y_weighted
+            # differential_evolution doesn't take an initial guess in standard scipy version, 
+            # but it uses the bounds to create the initial population.
+
+            # --- High-Speed Draft Configuration ---
+            # FIXME: THIS SHOULDN'T BE THE VARIABLES FOR REAL RUN
+            res = differential_evolution(
+                objective, 
+                bounds=bounds,
+                maxiter=2,           # Severely limit generations for fast prototyping
+                popsize=2,           # 2 candidates per parameter = 10 parallel searches total
+                mutation=(0.5, 1.0), 
+                recombination=0.7,
+                polish=False,        # CRITICAL: Disables the heavy local optimization phase
+                tol=0.5,             # Aggressive early termination tolerance
+                disp=False           # Set to True if you want to see it print its progress
+            )
+            print(f"[Cluster {k}] Optimization Finished | Success: {res.success} | Status: {res.message}")
+            print(f"[Cluster {k}] Final Adopted Params: {res.x}\n")
             
-            # Calculated average slope
-            beta = np.linalg.solve(VtV, VtY)
+            new_slopes[k] = res.x[:3]
+            new_slw[k] = res.x[3]
+            new_slp[k] = res.x[4]
             
-            # Apply learning rate
-            new_slopes[k] = (1 - self.learning_rate) * old_slopes[k] + self.learning_rate * beta
-        
-        return new_slopes
+        return new_slopes, new_slw, new_slp

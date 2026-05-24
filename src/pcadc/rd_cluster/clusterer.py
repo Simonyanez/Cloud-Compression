@@ -79,12 +79,21 @@ class RDClusterer:
 
         for iteration in tqdm(range(self.convergence_checker.max_iterations), "Running RD Clustering"):
             # _assignment_step will now return more data
-            new_labels, total_cost, all_rates, all_distortions, all_gains = self._assignment_step(blocks, state, vertices, attributes)
+            new_labels, total_cost, all_rates, all_distortions, all_gains = self._assignment_step(blocks, state, vertices, attributes, iteration)
             
-            new_slopes = self.slope_optimizer.recalculate_slopes(
-                blocks, new_labels, vertices, attributes, self.num_clusters, state.slopes
+            # Inside your main clustering loop
+            new_slopes, new_slw, new_slp = self.slope_optimizer.recalculate_slopes(
+                blocks=blocks,
+                labels=new_labels,
+                vertices=vertices,
+                attributes=attributes,
+                num_clusters=self.num_clusters,
+                old_slopes=state.slopes,
+                old_slw=state.self_loop_weights,
+                old_slp=state.self_loop_percentages,
+                rd_cost_fn=self._evaluate_rd_cost_for_optimizer  # Pass the callback
             )
-            
+
             # Calculate new metrics
             cluster_entropy = self._calculate_cluster_entropy(new_labels)
             avg_rate = np.mean(all_rates)
@@ -93,6 +102,8 @@ class RDClusterer:
 
             state = RDClusterState(labels=new_labels,
                                    slopes=new_slopes,
+                                   self_loop_weights=new_slw,
+                                   self_loop_percentages=new_slp,
                                    qstep_value=self.qstep_schedule[self.lambda_step],
                                    lambda_step=self.lambda_step,
                                    iteration=iteration,
@@ -120,7 +131,23 @@ class RDClusterer:
                 self.lambda_step += 1
 
         return state, history
-    
+
+    def _evaluate_rd_cost_for_optimizer(self, block: Block, params: np.ndarray, cluster_idx: int) -> float:
+        """
+        Callback function passed to SlopeOptimizer to evaluate candidate slopes and self-loop params.
+        params: [slope_x, slope_y, slope_z, slw, slp]
+        """
+        slope = params[:3]
+        slw = params[3]
+        slp = params[4]
+        # Calculate coefficients using the candidate parameters
+        coeffs = self._compute_adaptive_gft(block, slope, cluster_idx, slp, slw)
+        
+        # Calculate RD cost
+        rd_cost, _, _ = self.decider._RDcost(coeffs)
+        
+        return rd_cost
+
     def _precompute_structural_gfts(self, blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray):
         for block in tqdm(blocks, "Pre-computing Structural Coefficients"):
             block.init_data(vertices, attributes)
@@ -152,11 +179,15 @@ class RDClusterer:
         # Return RDClusterState with initialization values
         return RDClusterState(labels=codebook.labels,
                        slopes=codebook.centroids,
+                       self_loop_weights=np.full(self.num_clusters, self.sequential_parameters.self_loop_weight),
+                       self_loop_percentages=np.full(self.num_clusters, self.sequential_parameters.self_loop_percentage),
                        qstep_value=self.qstep_schedule[self.lambda_step],
                         lambda_step=self.lambda_step,
                        iteration=0)
 
-    def _assignment_step(self, blocks: List[Block], state: RDClusterState, vertices: np.ndarray, attributes: np.ndarray):
+
+    def _assignment_step(self, blocks: List[Block], state: RDClusterState, 
+                         vertices: np.ndarray, attributes: np.ndarray, iteration: int):
         new_labels = np.zeros(len(blocks), dtype=int)
         slopes = state.slopes
         total_cost = 0
@@ -164,44 +195,60 @@ class RDClusterer:
 
         all_rates = np.zeros(len(blocks))
         all_distortions = np.zeros(len(blocks))
-        all_gains = np.zeros(len(blocks)) # Store gain for each block
+        all_gains = np.zeros(len(blocks))
+
+        max_exploration_iters = 10
+        if iteration < max_exploration_iters:
+            # Linearly decays from 1.4 down to 1.0
+            margin = 1.4 - (0.4 * (iteration / max_exploration_iters))
+        else:
+            margin = 1.0
 
         for i, block in tqdm(enumerate(blocks), "Assigning blocks"):
             block.init_data(vertices, attributes)
             costs = []
             rates = []
             distortions = []
-            cost_structural = 0 # Store structural cost for gain calculation
 
             for k, slope in enumerate(slopes):
-                coeffs = self.gft_cache.get_coeffs(block.block_id)
-                if k != 0:
-                    coeffs = self._compute_adaptive_gft(block, slope, k)
+                if k == 0:
+                    coeffs = self.gft_cache.get_coeffs(block.block_id)
+                else:
+                    slw = state.self_loop_weights[k]
+                    slp = state.self_loop_percentages[k]
+                    coeffs = self._compute_adaptive_gft(block, slope, k, slp, slw)
                 
                 rd_cost, sparsity, qerror = self.decider._RDcost(coeffs)
                 costs.append(rd_cost)
                 rates.append(sparsity)
                 distortions.append(qerror)
 
-                if k == 0: # Store structural cost
-                    cost_structural = rd_cost
-            
-            chosen_cluster = self.annealing_scheduler.choose(np.array(costs), len(slopes))
+            # --- NEW DETERMINISTIC SELECTION LOGIC ---
+            cost_structural = costs[0]
+            dynamic_costs = np.array(costs[1:])
+            best_dynamic_idx = np.argmin(dynamic_costs) + 1 if len(dynamic_costs) > 0 else 0 # +1 to offset slicing
+            cost_best_dynamic = costs[best_dynamic_idx]
+
+            # If the best dynamic cluster is within our allowed margin of safety 
+            # compared to the flat transform, force the block into it.
+            if cost_best_dynamic < (cost_structural * margin):
+                chosen_cluster = best_dynamic_idx
+            else:
+                chosen_cluster = 0 # Fallback to structural
+
             new_labels[i] = chosen_cluster
             total_cost += costs[chosen_cluster]
             all_rates[i] = rates[chosen_cluster]
             all_distortions[i] = distortions[chosen_cluster]
             
-            # Calculate gain for this block if a dynamic cluster was chosen
             if chosen_cluster != 0:
                 all_gains[i] = cost_structural - costs[chosen_cluster]
             else:
-                all_gains[i] = 0 # No gain if structural is chosen
+                all_gains[i] = 0
 
             block.clear_data()
-            
-        return new_labels, total_cost, all_rates, all_distortions, all_gains
-    
+        return new_labels, total_cost, all_rates, all_distortions, all_gains    
+
     def _calculate_cluster_entropy(self, labels: np.ndarray) -> float:
         """Calculates the entropy of the cluster distribution."""
         unique_labels, counts = np.unique(labels, return_counts=True)
@@ -254,11 +301,16 @@ class RDClusterer:
         with open(filepath, 'w') as f:
             json.dump(state.to_dict(), f, indent=4)
 
-    def _compute_adaptive_gft(self, block: Block, slope: np.ndarray, label: int):
+    def _compute_adaptive_gft(self, block: Block, slope: np.ndarray, label: int, slp: Optional[float] = None, slw: Optional[float] = None):
+        if slp is None:
+            slp = self.sequential_parameters.self_loop_percentage
+        if slw is None:
+            slw = self.sequential_parameters.self_loop_weight
+
         structural_graph = StructuralGraph(block.metadata)
         structural_graph.set_data(block.Vblock)
 
-        attribute_graph = AttributeGraph(structural_graph, slope, label, self.sequential_parameters.self_loop_percentage, self.sequential_parameters.self_loop_weight)
+        attribute_graph = AttributeGraph(structural_graph, slope, label, slp, slw)
 
         Vblock_rotated = Approximator()._spatial_norm(block.Vblock)
         Ablock_app = block.Ablock.copy()

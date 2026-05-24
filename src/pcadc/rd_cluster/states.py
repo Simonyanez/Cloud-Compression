@@ -9,6 +9,8 @@ class RDClusterState:
     """Encapsulates the state of RD clustering at any iteration"""
     labels: np.ndarray          # (N_blocks,) cluster assignment per block
     slopes: np.ndarray          # (N_clusters, 3) cluster centroids
+    self_loop_weights: np.ndarray      # (N_clusters,) per cluster weight
+    self_loop_percentages: np.ndarray  # (N_clusters,) per cluster percentage
     qstep_value: int         # Current lambda for RD tradeoff
     lambda_step: int            # Current position in lambda schedule
     iteration: int              # Iteration counter
@@ -34,6 +36,8 @@ class RDClusterState:
         return {
             "labels": self.labels.tolist(),
             "slopes": self.slopes.tolist(),
+            "self_loop_weights": self.self_loop_weights.tolist(),
+            "self_loop_percentages": self.self_loop_percentages.tolist(),
             "qstep_value": self.qstep_value,
             "lambda_step": self.lambda_step,
             "iteration": self.iteration,
@@ -109,8 +113,8 @@ class RDClusterState:
         )
     
     def _format_slopes(self, unique_labels: np.ndarray, counts: np.ndarray) -> str:
-        """Format slope information for each cluster"""
-        lines = ["  Cluster Slopes (3D):"]
+        """Format parameters information for each cluster"""
+        lines = ["  Cluster Parameters (Slope 3D | SLW | SLP):"]
         
         # Create a mapping from label to count for quick lookup
         label_to_count = dict(zip(unique_labels, counts))
@@ -118,15 +122,18 @@ class RDClusterState:
         # Iterate through all clusters in order
         for cluster_id in range(len(self.slopes)):
             slope = self.slopes[cluster_id]
+            slw = self.self_loop_weights[cluster_id]
+            slp = self.self_loop_percentages[cluster_id]
             slope_str = f"[{slope[0]:7.4f}, {slope[1]:7.4f}, {slope[2]:7.4f}]"
+            params_str = f"{slope_str} | {slw:5.2f} | {slp:4.2f}"
             
             if cluster_id in label_to_count:
                 # Active cluster
                 count = label_to_count[cluster_id]
-                lines.append(f"    Cluster {cluster_id:2d} (n={count:4d}): {slope_str}")
+                lines.append(f"    Cluster {cluster_id:2d} (n={count:4d}): {params_str}")
             else:
                 # Empty cluster
-                lines.append(f"    Cluster {cluster_id:2d} (n=   0): {slope_str} [EMPTY]")
+                lines.append(f"    Cluster {cluster_id:2d} (n=   0): {params_str} [EMPTY]")
         
         return "\n".join(lines) + "\n"
     

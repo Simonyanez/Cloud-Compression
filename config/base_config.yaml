@@ -20,21 +20,21 @@ sequential_params:
   normalize_slopes: False
   decider_mode: 0
   self_loop_weight: 1.6 # This should be dynamic too. Part of the optimization problem
-  self_loop_percentage: 0.2 # This should be dynamic too. Part of the optimization problem
+  self_loop_percentage: 0.85 # This should be dynamic too. Part of the optimization problem
   sample_percentage: 1.0
-  quantization_steps: [24,28,32,40,48,56,64]
+  quantization_steps: [24,24,24,24,24,24]
   lagrange_proportional: 0.8
   block_size: 16
 
 clustering_params:
   number_of_clusters: 4
   max_iterations: 20
-  min_iterations: 5
-  rd_cost_threshold: 0.01
-  iteration_window: 3
+  min_iterations: 20
+  rd_cost_threshold: 0.001
+  iteration_window: 20
   initial_temperature: 1.0
-  final_temperature: 0.1
-  cooling_rate: 0
+  final_temperature: 0.0
+  cooling_rate: 0.9
   learning_rate: 0.5
 
 rewrite_results: False

@@ -132,20 +132,27 @@ class MortonBlockPartition(BlockPartitionStrategy):
         ]
     
 
+import random
+import numpy as np
+from typing import List
+
 class Sampler:
     # NOTE: For now this is just doing stratified sampling
-    def __init__(self, ratio: float, n_strata: int):
+    def __init__(self, ratio: float, n_strata: int, seed: int = 42):
         self.ratio = ratio
         self.n_strata = n_strata
+        self.seed = seed
+        # Create an independent, isolated random number generator instance
+        self.rng = random.Random(self.seed)
 
-    def __call__(self,V: np.ndarray, A:np.ndarray, blocks: List[Block]) -> List[Block]:
+    def __call__(self, V: np.ndarray, A: np.ndarray, blocks: List[Block]) -> List[Block]:
         Yvariances = np.array([self._get_luminansce_variance(V, A, block) for block in blocks])
         bins = self._build_bins(Yvariances)
         strata = self._build_strats(Yvariances, bins, blocks)
         subsampled_blocks = self._sample_blocks(strata, blocks)
         return subsampled_blocks
         
-    def _get_luminansce_variance(self,V: np.ndarray, A:np.ndarray, block: Block):
+    def _get_luminansce_variance(self, V: np.ndarray, A: np.ndarray, block: Block):
         block.init_data(V, A)
         Yblock = block.Ablock[:,0]
         Yvar = np.var(Yblock) if Yblock.shape[0] > 1 else 0.0
@@ -173,12 +180,14 @@ class Sampler:
 
             n_to_pick = max(1, int(len(group) * self.ratio))
             n_to_pick = min(n_to_pick, len(group)) # safety check
-            subsampled_blocks.extend(random.sample(group, n_to_pick))
+            
+            # Use self.rng instead of the global random module
+            subsampled_blocks.extend(self.rng.sample(group, n_to_pick))
 
         subsampled_blocks.sort(key=lambda b: b.block_idx)
         logger.info(f"Subsampled {len(blocks)} blocks down to {len(subsampled_blocks)} using {self.n_strata} luminance strata.")
-        return subsampled_blocks
-  
+        return subsampled_blocks  
+
 # --- Cache wrapper ---
 # TODO: This is unused.
 class PartitionCache:

@@ -3,6 +3,7 @@
 *__pycache__
 .pyc
 
+# Ignore
 # Ignore local virtual environment
 .venv/
 
@@ -11,6 +12,8 @@ build/
 
 # Ignore temporal folder
 tmp/
+temp/
+resukts/
 
 # Ignore logs folder
 logs/
