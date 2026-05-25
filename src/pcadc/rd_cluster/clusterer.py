@@ -53,11 +53,61 @@ class RDClusterer:
         )
     
     def fit(self, blocks: List, vertices: np.ndarray, attributes: np.ndarray) -> Tuple[RDClusterState, ClusteringHistory]:
+        if self.num_clusters == 1:
+            return self._fit_baseline(blocks, vertices, attributes)
         if self.use_two_stage:
             return self._fit_two_stage(blocks, vertices, attributes)
         else:
             return self._fit_full(blocks, vertices, attributes)
     
+    def _fit_baseline(self, blocks: List[Block], vertices: np.ndarray, attributes: np.ndarray) -> Tuple[RDClusterState, ClusteringHistory]:
+        """Special execution for C=1 to provide a pure structural baseline cost."""
+        self.temp_folder.mkdir(parents=True, exist_ok=True)
+        self._precompute_structural_gfts(blocks, vertices, attributes)
+        
+        # Initialize state (Flat: zero slope, default self-loops - though not used by structural)
+        labels = np.zeros(len(blocks), dtype=int)
+        slopes = np.zeros((1, 3))
+        slw = np.array([self.sequential_parameters.self_loop_weight])
+        slp = np.array([self.sequential_parameters.self_loop_percentage])
+        
+        # Calculate RD cost for structural baseline
+        self.decider._set_vars(self.qstep_schedule[self.lambda_step])
+        total_cost = 0
+        all_rates = np.zeros(len(blocks))
+        all_distortions = np.zeros(len(blocks))
+        
+        print(f"[*] Calculating baseline costs for Q={self.qstep_schedule[self.lambda_step]}...")
+        for i, block in enumerate(blocks):
+            coeffs = self.gft_cache.get_coeffs(block.block_id)
+            rd_cost, sparsity, qerror = self.decider._RDcost(coeffs)
+            total_cost += rd_cost
+            all_rates[i] = sparsity
+            all_distortions[i] = qerror
+            
+        state = RDClusterState(
+            labels=labels,
+            slopes=slopes,
+            self_loop_weights=slw,
+            self_loop_percentages=slp,
+            qstep_value=self.qstep_schedule[self.lambda_step],
+            lambda_step=self.lambda_step,
+            iteration=0,
+            total_cost=total_cost,
+            cluster_entropy=0.0,
+            avg_rate=np.mean(all_rates),
+            avg_distortion=np.mean(all_distortions),
+            cluster_gains={}, # No dynamic clusters to gain from
+            all_rates=all_rates,
+            all_distortions=all_distortions,
+            all_gains=np.zeros(len(blocks))
+        )
+        
+        history = ClusteringHistory([state])
+        self._save_intermediate_state(state)
+        print(f"Final State (Baseline): \n {state}")
+        return state, history
+
     def _fit_two_stage(self, blocks, vertices, attributes):
         # TODO: Select training blocks
         # TODO: Train on subset (_fit_full on subset)
@@ -77,7 +127,7 @@ class RDClusterer:
         history = ClusteringHistory([state])
         self._save_intermediate_state(state) # Save initial state
 
-        for iteration in tqdm(range(self.convergence_checker.max_iterations), "Running RD Clustering"):
+        for iteration in tqdm(range(1, self.convergence_checker.max_iterations + 1), "Running RD Clustering"):
             # _assignment_step will now return more data
             new_labels, total_cost, all_rates, all_distortions, all_gains = self._assignment_step(blocks, state, vertices, attributes, iteration)
             

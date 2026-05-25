@@ -13,7 +13,7 @@ build/
 # Ignore temporal folder
 tmp/
 temp/
-resukts/
+results/
 
 # Ignore logs folder
 logs/

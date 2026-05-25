@@ -48,6 +48,7 @@ class ClusteringParameters:
     final_temperature: float
     cooling_rate: float
     learning_rate: float
+    optimization_mode: str = "production"
 
 
 @dataclass
@@ -197,6 +198,7 @@ def load_experiment_config(yaml_file: Path) -> ExperimentConfig:
             final_temperature=config["clustering_params"]["final_temperature"],
             cooling_rate=config["clustering_params"]["cooling_rate"],
             learning_rate=config["clustering_params"]["learning_rate"],
+            optimization_mode=config["clustering_params"].get("optimization_mode", "production")
         )
         
         exp_config = ExperimentConfig(

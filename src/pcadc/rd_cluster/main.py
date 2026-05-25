@@ -30,8 +30,8 @@ def run_rd_clustering(blocks: List[Block], vertices: np.ndarray, attributes: np.
     decider = Decider(params.sequential_params.decider_mode, params.sequential_params.lagrange_proportional)
     gft_computer = GFTStrategyWraper()
     
-    # Instantiate SlopeOptimizer with learning rate
-    slope_optimizer = SlopeOptimizer()
+    # Instantiate SlopeOptimizer with learning rate and mode
+    slope_optimizer = SlopeOptimizer(mode=params.clustering_params.optimization_mode)
     
     # Instantiate ConvergenceChecker with clustering_parameters
     convergence_checker = ConvergenceChecker(

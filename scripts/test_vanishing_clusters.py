@@ -91,40 +91,25 @@ def test_vanishing_clusters():
     parser.add_argument("--sample_frac", type=float, default=0.1, help="Sample percentage (0.0 to 1.0)")
     parser.add_argument("--max_iters", type=int, default=20, help="Maximum number of iterations")
     parser.add_argument("--config", type=str, default="config/base_config.yaml", help="Path to base configuration")
+    parser.add_argument("--qsteps", type=int, nargs="+", default=[12, 24, 44, 64], help="Sequence of quantization steps")
+    parser.add_argument("--mode", type=str, choices=["draft", "production"], default="draft", help="Optimization mode")
     args = parser.parse_args()
 
     print(f"[*] Loading configuration from {args.config}...")
     config_path = Path(args.config)
     params = load_experiment_config(config_path)
     
-    # Override with command line arguments
+    # Override common parameters
     params.clustering_params.max_iterations = args.max_iters
     params.clustering_params.number_of_clusters = args.clusters
     params.sequential_params.block_size = args.block_size
     params.sequential_params.sample_percentage = args.sample_frac
+    params.clustering_params.optimization_mode = args.mode
 
-    # Setup experiment naming
+    # Setup top-level run timestamp
     run_timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    indicators = f"B{params.sequential_params.block_size}_C{params.clustering_params.number_of_clusters}"
-    experiment_code = f"VANISH_{indicators}"
-    params.metadata.experiment_code = experiment_code
     
-    # Ensure results directory exists (organized by date and run time)
-    results_dir = Path("results") / run_timestamp / experiment_code
-    results_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Update paths to be unique per experiment to avoid collisions
-    params.metadata.export_folder = results_dir
-    params.metadata.temp_folder = results_dir / "temp"
-    params.metadata.temp_folder.mkdir(parents=True, exist_ok=True)
-    
-    print(f"[*] Experiment Code: {experiment_code}")
-    print(f"[*] Saving results to: {results_dir}")
-
-    # Use indicators for the timestamp field in the result dataclass for uniqueness if needed, 
-    # but here we use the actual time of execution.
-    exec_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
+    # Pre-load data once for all Q-steps
     print(f"[*] Loading point cloud: {params.sequential_params.point_cloud_path}")
     colourist = Colourist()
     point_cloud = PointCloud.from_file(
@@ -146,62 +131,65 @@ def test_vanishing_clusters():
     print(f"[*] Subsampling blocks (ratio: {params.sequential_params.sample_percentage})...")
     sampler = Sampler(params.sequential_params.sample_percentage, n_strata=5, seed=42)
     sampled_blocks = sampler(vertices, attributes, blocks)
-    
-    # Run clustering
-    print("[*] Starting RD clustering experiment...")
-    # run_rd_clustering returns (final_state, history)
-    final_state, history = run_rd_clustering(sampled_blocks, vertices, attributes, params)
-    
-    # Manual save to SQLite
-    db_path = results_dir / f"{experiment_code}.db"
-    print(f"[*] Saving history to {db_path}...")
-    save_history_to_db(db_path, experiment_code, params.sequential_params.block_size, history)
-    
-    # Check for empty clusters
-    unique_labels = np.unique(final_state.labels)
-    active_clusters = len(unique_labels)
-    total_clusters = params.clustering_params.number_of_clusters
-    is_vanishing = active_clusters < total_clusters
-    empty_clusters = [k for k in range(total_clusters) if k not in unique_labels]
-    
-    print("\n" + "="*50)
-    print("CLUSTERING RESULTS")
-    print("="*50)
-    print(f"Final State: {final_state}")
-    print(f"Active clusters: {active_clusters} / {total_clusters}")
-    
-    if is_vanishing:
-        print("[!] WARNING: Clusters are vanishing!")
-        print(f"Empty clusters: {empty_clusters}")
-    else:
-        print("[+] SUCCESS: All clusters have assignments.")
 
-    # Create and save result dataclass
-    result = VanishingTestResult(
-        experiment_code=experiment_code,
-        active_clusters=active_clusters,
-        total_clusters=total_clusters,
-        is_vanishing=is_vanishing,
-        empty_clusters=empty_clusters,
-        final_cost=final_state.total_cost,
-        final_slopes=final_state.slopes.tolist(),
-        final_slw=final_state.self_loop_weights.tolist(),
-        final_slp=final_state.self_loop_percentages.tolist(),
-        iterations=len(history.states),
-        timestamp=exec_timestamp
-    )
-    
-    # Save result as JSON
-    result_path = results_dir / f"test_result_{indicators}.json"
-    with open(result_path, "w") as f:
-        json.dump(dataclasses.asdict(result), f, indent=4)
-    
-    # Save config as JSON
-    config_save_path = results_dir / "config.json"
-    with open(config_save_path, "w") as f:
-        json.dump(params.to_dict(), f, indent=4)
+    # Execute Sequential Q-steps
+    for q_step in args.qsteps:
+        print(f"\n" + "="*60)
+        print(f"[*] STARTING EXECUTION FOR Q-STEP: {q_step} (Mode: {args.mode.upper()})")
+        print("="*60)
         
-    print(f"[*] Results saved successfully in {results_dir}")
+        # Isolation: Update params for this specific run
+        params.sequential_params.quantization_steps = [q_step]
+        indicators = f"B{params.sequential_params.block_size}_C{params.clustering_params.number_of_clusters}_Q{q_step}"
+        experiment_code = f"VANISH_{indicators}"
+        params.metadata.experiment_code = experiment_code
+        
+        # Ensure separate results directory
+        results_dir = Path("results") / run_timestamp / experiment_code
+        results_dir.mkdir(parents=True, exist_ok=True)
+        
+        params.metadata.export_folder = results_dir
+        params.metadata.temp_folder = results_dir / "temp"
+        params.metadata.temp_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Run clustering for this Q-step
+        final_state, history = run_rd_clustering(sampled_blocks, vertices, attributes, params)
+        
+        # Manual save to SQLite
+        db_path = results_dir / f"{experiment_code}.db"
+        print(f"[*] Saving history to {db_path}...")
+        save_history_to_db(db_path, experiment_code, params.sequential_params.block_size, history)
+        
+        # Check for empty clusters
+        unique_labels = np.unique(final_state.labels)
+        active_clusters = len(unique_labels)
+        total_clusters = params.clustering_params.number_of_clusters
+        is_vanishing = active_clusters < total_clusters
+        empty_clusters = [k for k in range(total_clusters) if k not in unique_labels]
+        
+        # Create and save result dataclass
+        result = VanishingTestResult(
+            experiment_code=experiment_code,
+            active_clusters=active_clusters,
+            total_clusters=total_clusters,
+            is_vanishing=is_vanishing,
+            empty_clusters=empty_clusters,
+            final_cost=final_state.total_cost,
+            final_slopes=final_state.slopes.tolist(),
+            final_slw=final_state.self_loop_weights.tolist(),
+            final_slp=final_state.self_loop_percentages.tolist(),
+            iterations=len(history.states),
+            timestamp=datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
+        
+        # Save results
+        with open(results_dir / f"test_result_{indicators}.json", "w") as f:
+            json.dump(dataclasses.asdict(result), f, indent=4)
+        
+        with open(results_dir / "config.json", "w") as f:
+            json.dump(params.to_dict(), f, indent=4)
+            
+        print(f"[*] Results for Q={q_step} saved to {results_dir}")
 
 if __name__ == "__main__":
     test_vanishing_clusters()
