@@ -178,7 +178,11 @@ class RDClusterer:
                 return state, history
 
             if self.convergence_checker.should_increase_lambda(history):
-                self.lambda_step += 1
+                if self.lambda_step < len(self.qstep_schedule) - 1:
+                    self.lambda_step += 1
+                else:
+                    # If we are at the last lambda step and stable, we stop
+                    return state, history
 
         return state, history
 

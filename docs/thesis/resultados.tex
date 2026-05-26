@@ -66,3 +66,66 @@ Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle su
 
 Como se observa en la Figura \ref{fig:gain_analysis}, la distribución de los parámetros óptimos se mantiene estable para ambas ejecuciones del oráculo. Esta consistencia es fundamental, ya que sugiere que el comportamiento del sistema no es errático ante diferentes aproximaciones de la señal. Por consiguiente, es viable realizar un paso posterior de agrupación (clustering) de estos parámetros, lo que permitiría una representación compacta de la configuración de adaptación con un overhead de señalización mínimo en el flujo de bits final.
 
+\section{Análisis de Sensibilidad y Agrupamiento RD (RD-Clustering)}
+
+En esta sección se presentan los resultados de la estrategia de agrupamiento conjunta de pendientes y parámetros de auto-lazo ($S_x, S_y, S_z, SLW, SLP$). El objetivo es evaluar la estabilidad del sistema, su capacidad de aprendizaje y los límites de saturación del libro de códigos.
+
+\subsection{Saturación de Capacidad y Resolución Estructural}
+
+Se evaluó el comportamiento del costo RD final en función del número de clusters ($C$) para diferentes tamaños de bloque.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/resultados/capacity_saturation.png}
+    \caption{Curva de saturación de capacidad para diferentes tamaños de bloque (Q=24).}
+    \label{fig:capacity_saturation}
+\end{figure}
+
+% --- ESPACIO PARA ESCRITURA ---
+% Sugerencia: Analizar cómo B=4 responde mejor al incremento de C y dónde se observa el plateau.
+
+
+\subsection{Trayectoria de Aprendizaje y Sparsification del Grafo}
+
+La evolución de los parámetros de auto-lazo durante el proceso iterativo revela la estrategia de optimización del sistema para reducir la tasa de bits.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/resultados/parameter_drifts.png}
+    \caption{Evolución temporal de los parámetros SLP y SLW (B=4, C=6, Q=24).}
+    \label{fig:parameter_drifts}
+\end{figure}
+
+% --- ESPACIO PARA ESCRITURA ---
+% Sugerencia: Comentar la caída drástica de SLP y qué significa para la conectividad del grafo.
+
+
+\subsection{Velocidad de Convergencia e Impacto de la Inicialización}
+
+Se analiza el esfuerzo de reasignación (distancia Hamming) y la velocidad con la que el sistema alcanza un estado estable.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/resultados/convergence_velocity.png}
+    \caption{Evolución de la distancia Hamming (reasignaciones de bloques) por iteración.}
+    \label{fig:convergence_velocity}
+\end{figure}
+
+% --- ESPACIO PARA ESCRITURA ---
+% Sugerencia: Describir el "Iter 2 Breakthrough" y la persistencia de cambios en configuraciones complejas.
+
+
+\subsection{Frontera de Eficiencia Informacional}
+
+Finalmente, se mapea la relación entre la ganancia obtenida y el costo de señalización (entropía) requerido para transmitir los índices de los clusters.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/resultados/efficiency_frontier.png}
+    \caption{Frontera de Pareto: Entropía del libro de códigos vs. Ganancia Interna.}
+    \label{fig:efficiency_frontier}
+\end{figure}
+
+% --- ESPACIO PARA ESCRITURA ---
+% Sugerencia: Discutir qué configuraciones (C, B) ofrecen la mejor relación ganancia/overhead.
+

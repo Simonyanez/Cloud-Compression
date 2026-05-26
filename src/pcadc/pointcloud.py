@@ -175,18 +175,29 @@ class Sampler:
 
     def _sample_blocks(self, strata: List, blocks: List[Block]):
         subsampled_blocks = []
+        N_total = len(blocks)
+        
+        # 1. Compute Cochran's Dynamic Statistical Floor
+        n_0 = 32 # Higher variance tolerance to cap optimization complexity
+        n_cochran = int(n_0 / (1 + (n_0 - 1) / N_total))
+        
+        # 2. Determine target count (Use ratio, but enforce Cochran's floor)
+        target_n = max(int(N_total * self.ratio), n_cochran)
+        
+        # 3. Proportional Stratified Allocation
         for group in strata:
             if not group: continue
-
-            n_to_pick = max(1, int(len(group) * self.ratio))
-            n_to_pick = min(n_to_pick, len(group)) # safety check
             
-            # Use self.rng instead of the global random module
+            # Allocate blocks to this stratum based on its variance weight
+            proportion = len(group) / N_total
+            n_to_pick = max(1, int(target_n * proportion))
+            n_to_pick = min(n_to_pick, len(group)) # Safety check
+            
             subsampled_blocks.extend(self.rng.sample(group, n_to_pick))
 
         subsampled_blocks.sort(key=lambda b: b.block_idx)
-        logger.info(f"Subsampled {len(blocks)} blocks down to {len(subsampled_blocks)} using {self.n_strata} luminance strata.")
-        return subsampled_blocks  
+        logger.info(f"Dynamic Sampling: N_total={N_total}, Ratio Target={int(N_total * self.ratio)}, Cochran Floor={n_cochran} -> Sampled {len(subsampled_blocks)}")
+        return subsampled_blocks
 
 # --- Cache wrapper ---
 # TODO: This is unused.
