@@ -68,46 +68,33 @@ Como se observa en la Figura \ref{fig:gain_analysis}, la distribución de los pa
 
 \section{Análisis de Sensibilidad y Agrupamiento RD (RD-Clustering)}
 
-En esta sección se presentan los resultados de la estrategia de agrupamiento conjunta de pendientes y parámetros de auto-lazo ($S_x, S_y, S_z, SLW, SLP$). El análisis se desglosa por tamaño de bloque para identificar la resolución óptima y los límites de escalabilidad del sistema.
+En esta sección se presentan los resultados de la estrategia de agrupamiento conjunta de pendientes y parámetros de auto-lazo ($S_x, S_y, S_z, SLW, SLP$). El análisis se basa exclusivamente en la última suite de experimentos para garantizar consistencia en los parámetros del optimizador.
 
 \subsection{Desempeño Numérico y Ganancia de Codificación}
 
-Las Tablas \ref{tab:clustering_b4} y \ref{tab:clustering_b8_b16} resumen el desempeño final del sistema para diferentes configuraciones. Se observa que el tamaño de bloque $B=4$ es el que permite una mayor explotación de la redundancia local.
+La Tabla \ref{tab:clustering_last_run} resume el desempeño final de las configuraciones evaluadas en el barrido de la tarde. Se observa que el sistema logra una reducción de costo de hasta un 29\% en el bloque de menor tamaño.
 
 \begin{table}[ht]
 \centering
-\caption{Resultados de Agrupamiento para Bloques de $4 \times 4$ ($Q=24$)}
+\caption{Resultados Finales - Última Suite de Experimentos (Selección de B, C, Q)}
 \begin{tabular}{|c|c|c|c|c|c|c|}
 \hline
-\textbf{C} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Iters} & \textbf{Activos} \\
+\textbf{Config (B\_C\_Q)} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{SLW Avg} & \textbf{SLP Avg} \\
 \hline
-2 & 55,618.99 & 2.3333 & 15.3685 & 0.9662 & 20 & 2/2 \\
-4 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 20 & 4/4 \\
-6 & 46,856.72 & 1.9608 & 15.2298 & 2.5434 & 40 & 6/6 \\
-8 & 44,563.69 & 1.8627 & 15.4449 & 2.8455 & 12 & 8/8 \\
-10 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 20 & 8/10 \\
-\hline
-\end{tabular}
-\label{tab:clustering_b4}
-\end{table}
-
-\begin{table}[ht]
-\centering
-\caption{Resultados de Agrupamiento para Bloques de $8 \times 8$ y $16 \times 16$ ($Q=24, C=4$)}
-\begin{tabular}{|c|c|c|c|c|c|c|}
-\hline
-\textbf{B} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Iters} & \textbf{Activos} \\
-\hline
-8 & 105,564.73 & 7.5667 & 32.1042 & 1.3383 & 20 & 3/4 \\
-16 & 433,657.41 & 31.2333 & 62.9272 & 1.7709 & 20 & 4/4 \\
+B4\_C6\_Q24 & 46,856.72 & 1.9608 & 15.2298 & 2.5434 & 0.618 & 0.519 \\
+B4\_C8\_Q24 & 44,563.69 & 1.8627 & 15.4449 & 2.8455 & 0.712 & 0.400 \\
+B4\_C10\_Q24 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 1.907 & 0.409 \\
+B4\_C4\_Q36 & 81,959.46 & 1.5294 & 21.3542 & 1.8335 & 0.938 & 0.422 \\
+B4\_C4\_Q48 & 124,685.76 & 1.3137 & 23.3599 & 1.7791 & 2.251 & 0.400 \\
+B8\_C6\_Q24 & 99,134.42 & 7.1000 & 32.8008 & 2.3058 & 0.818 & 0.405 \\
 \hline
 \end{tabular}
-\label{tab:clustering_b8_b16}
+\label{tab:clustering_last_run}
 \end{table}
 
-\subsection{Evolución del Costo y Convergencia RD}
+\subsection{Evolución del Costo y Trayectorias RD}
 
-La Figura \ref{fig:cost_evolution} muestra cómo el optimizador reduce el costo total en cada iteración. Se destaca el descenso abrupto inicial seguido de una fase de refinamiento asintótico.
+La Figura \ref{fig:cost_evolution} detalla la trayectoria del costo RD. Se observa que independientemente de la configuración, la mayor parte de la optimización ocurre en las primeras 5 iteraciones.
 
 \begin{figure}[ht]
     \centering
@@ -115,21 +102,13 @@ La Figura \ref{fig:cost_evolution} muestra cómo el optimizador reduce el costo 
         \includegraphics[width=\textwidth]{img/resultados/cost_evolution_B4.png}
         \caption{Bloques $B=4$}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/cost_evolution_B8.png}
-        \caption{Bloques $B=8$}
-    \end{subfigure}
     \caption{Evolución del costo RD durante el proceso iterativo.}
     \label{fig:cost_evolution}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+\subsection{Dinámica de Convergencia (Hamming)}
 
-
-\subsection{Dinámica de Reasignación y Estabilidad (Hamming)}
-
-La velocidad de convergencia se mide a través de la distancia Hamming, que representa el número de bloques que cambian de cluster entre iteraciones.
+La Figura \ref{fig:hamming_evolution} muestra la estabilidad de las asignaciones de bloques.
 
 \begin{figure}[ht]
     \centering
@@ -137,70 +116,36 @@ La velocidad de convergencia se mide a través de la distancia Hamming, que repr
         \includegraphics[width=\textwidth]{img/resultados/hamming_evolution_B4.png}
         \caption{Bloques $B=4$}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/hamming_evolution_B8.png}
-        \caption{Bloques $B=8$}
-    \end{subfigure}
     \caption{Velocidad de convergencia (Distancia Hamming) por iteración.}
     \label{fig:hamming_evolution}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+\subsection{Evolución Estadística de Parámetros de Adaptación}
 
-
-\subsection{Trayectoria de Sparsification: Límites de SLP y SLW}
-
-Un hallazgo clave es la tendencia del sistema a simplificar las conexiones del grafo. Las figuras \ref{fig:slp_bounds} y \ref{fig:slw_bounds} muestran la evolución de los valores mínimos y máximos de los parámetros de auto-lazo entre los clusters activos.
+Las figuras \ref{fig:slp_bounds} y \ref{fig:slw_bounds} presentan la evolución de los parámetros de auto-lazo, mostrando el promedio, la desviación estándar y los límites absolutos del libro de códigos.
 
 \begin{figure}[ht]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/slp_bounds_B4.png}
-        \caption{SLP (B=4)}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/slp_bounds_B8.png}
-        \caption{SLP (B=8)}
-    \end{subfigure}
-    \caption{Evolución de los límites (mín/máx) del porcentaje de auto-lazos (SLP).}
+    \includegraphics[width=0.7\linewidth]{img/resultados/slp_bounds_B4.png}
+    \caption{Evolución estadística de SLP (Promedio, Std y Límites) para B=4.}
     \label{fig:slp_bounds}
 \end{figure}
 
 \begin{figure}[ht]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/slw_bounds_B4.png}
-        \caption{SLW (B=4)}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/slw_bounds_B8.png}
-        \caption{SLW (B=8)}
-    \end{subfigure}
-    \caption{Evolución de los límites (mín/máx) del peso de auto-lazos (SLW).}
+    \includegraphics[width=0.7\linewidth]{img/resultados/slw_bounds_B4.png}
+    \caption{Evolución estadística de SLW (Promedio, Std y Límites) para B=4.}
     \label{fig:slw_bounds}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+\subsection{Frontera de Eficiencia Informacional}
 
-
-\subsection{Saturación de Capacidad y Eficiencia Informacional}
-
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.8\linewidth]{img/resultados/capacity_saturation.png}
-    \caption{Curva de saturación de capacidad: Costo final vs. Clusters.}
-    \label{fig:capacity_saturation}
-\end{figure}
+Finalmente, se presenta la eficiencia del sistema comparando la ganancia interna obtenida frente al costo de señalización.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.8\linewidth]{img/resultados/efficiency_frontier.png}
-    \caption{Frontera de Eficiencia Informacional (Ganancia \% vs. Entropía).}
+    \caption{Frontera de Eficiencia Informacional por paso de cuantización.}
     \label{fig:efficiency_frontier}
 \end{figure}
-
-% --- ESPACIO PARA ESCRITURA ---
 
