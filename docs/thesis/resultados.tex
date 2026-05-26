@@ -91,9 +91,7 @@ C=10 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 8 \\
 \label{tab:capacity_sweep}
 \end{table}
 
-% --- ANÁLISIS DE CAPACIDAD (B=4) ---
-% Sugerencia: Analizar el punto de saturación (plateau). Observar que el paso de C=8 a C=10 
-% prácticamente no reduce el costo RD e incluso induce el desvanecimiento de clusters (8/10 activos).
+En el barrido de capacidad para bloques de $4 \times 4$ (Tabla \ref{tab:capacity_sweep}), se observa una reducción sustancial y monótona del costo RD a medida que el libro de códigos se expande de $C=2$ ($55,618.99$) a $C=8$ ($44,563.69$). Sin embargo, los resultados para $C=10$ revelan un punto de saturación absoluto: la mejora en el costo es insignificante (apenas 22 unidades) y el sistema induce automáticamente el desvanecimiento de dos clusters, operando con solo 8 activos. Este fenómeno identifica factualmene el límite de diversidad de señales que el optimizador puede extraer de la muestra actual.
 
 
 \begin{table}[ht]
@@ -112,10 +110,7 @@ Q=64 & 178,545.21 & 1.0588 & 31.3334 & 1.5176 & 4 \\
 \label{tab:quantization_sweep}
 \end{table}
 
-% --- ANÁLISIS DE SENSIBILIDAD Q ---
-% Sugerencia: Discutir cómo la entropía (H) decae a medida que Q aumenta. 
-% El ruido de cuantización "suaviza" el espacio RD, haciendo que menos transformadas 
-% sean necesarias para representar la señal degradada.
+La sensibilidad ante el ruido de cuantización (Tabla \ref{tab:quantization_sweep}) muestra que la complejidad informacional del libro de códigos ($H$) decrece a medida que $Q$ aumenta. Mientras que para $Q=24$ el sistema requiere $1.83$ bits por bloque para señalizar la asignación, este valor cae a $1.51$ para $Q=64$. Esto sugiere que el ruido de cuantización suaviza el espacio de búsqueda, haciendo que las transformadas especializadas pierdan relevancia frente a bases más genéricas en regímenes de baja tasa de bits.
 
 
 \begin{table}[ht]
@@ -133,9 +128,7 @@ B=16 & 433,657.41 & 31.2333 & 62.9272 & 1.7709 & 4 \\
 \label{tab:resolution_sweep}
 \end{table}
 
-% --- ANÁLISIS DE ESCALA (B) ---
-% Sugerencia: Evidenciar el castigo exponencial del costo RD al aumentar B. 
-% B=4 ofrece el mejor compromiso entre granularidad de adaptación y compactación de energía.
+La comparativa de escalas estructurales (Tabla \ref{tab:resolution_sweep}) evidencia un castigo severo al costo RD al incrementar el tamaño del bloque. El costo para $B=16$ es casi nueve veces superior al de $B=4$. Estos datos validan que la capacidad de adaptación de la GFT híbrida tiene mayor apalancamiento en resoluciones finas, donde las fluctuaciones locales de los atributos son más predecibles y compactables.
 
 
 \begin{table}[ht]
@@ -152,10 +145,7 @@ Prolongada (40 iters) & 46,856.72 & 439 \\
 \label{tab:iteration_impact}
 \end{table}
 
-% --- ANÁLISIS DE DURACIÓN ---
-% Sugerencia: Comentar si el esfuerzo computacional extra (40 iters) se traduce en ganancias 
-% reales. En este caso, el costo incluso subió ligeramente, sugiriendo una oscilación 
-% estocástica alrededor del mínimo sin convergencia absoluta.
+Finalmente, el análisis de duración (Tabla \ref{tab:iteration_impact}) revela que duplicar el esfuerzo computacional de 20 a 40 iteraciones no garantiza una mejora en el desempeño. De hecho, el costo final aumentó marginalmente, lo que indica que el sistema entra en una fase de oscilación estocástica alrededor de un mínimo local, confirmando que el límite práctico de ROI computacional se alcanza en la iteración 20.
 
 \subsection{Dinámica de Evolución del Costo}
 
@@ -174,10 +164,7 @@ Prolongada (40 iters) & 46,856.72 & 439 \\
     \label{fig:cost_evolution_split}
 \end{figure}
 
-% --- ANÁLISIS DE EVOLUCIÓN DE COSTO ---
-% Sugerencia: Contrastar la velocidad de descenso entre escalas estructurales (B=4 vs B=8). 
-% Un descenso asintótico suave indica un aprendizaje estable, mientras que oscilaciones 
-% sugieren inestabilidad por baja densidad de muestras.
+Las trayectorias de costo (Fig. \ref{fig:cost_evolution_split}) destacan el "Breakthrough" de la segunda iteración. En bloques de $B=4$, se observa un descenso casi vertical que representa la transición de la inicialización geométrica a la optimización conjunta de parámetros. A diferencia de las escalas mayores, $B=4$ muestra una convergencia asintótica mucho más suave, indicando un aprendizaje más estable de las correlaciones de señal.
 
 
 \subsection{Velocidad de Convergencia y Reasignación}
@@ -197,10 +184,7 @@ Prolongada (40 iters) & 46,856.72 & 439 \\
     \label{fig:hamming_evolution_split}
 \end{figure}
 
-% --- ANÁLISIS DE DINÁMICA HAMMING ---
-% Sugerencia: Identificar el "piso de vibración". Si la curva de Hamming no llega a cero, 
-% se confirma que el espacio de parámetros es altamente no convexo, obligando a los 
-% bloques a oscilar entre transformadas competitivas.
+El análisis de la distancia Hamming (Fig. \ref{fig:hamming_evolution_split}) confirma la presencia de un "piso de vibración". Ningún experimento alcanzó un estado de Hamming cero, lo que sugiere que el espacio de búsqueda es altamente no-convexo. En la escala $B=4$, los bloques continúan oscilando entre clusters competitivos incluso en la iteración 20, manteniendo el sistema en una búsqueda constante de refinamiento.
 
 
 \subsection{Evolución Estadística de Parámetros (SLP y SLW)}
@@ -235,11 +219,7 @@ Las figuras \ref{fig:slp_split_b4} a \ref{fig:slw_split_b8} desglosan la evoluci
     \label{fig:slw_split_b8}
 \end{figure}
 
-% --- ANÁLISIS DE PARÁMETROS (SLP/SLW) ---
-% Sugerencia: Contrastar la dinámica de sparsification entre B=4 y B=8. 
-% 1. Identificar si el decaimiento de SLP es más agresivo en bloques pequeños.
-% 2. Analizar la estabilidad del promedio vs la volatilidad de los límites (Min/Max).
-% 3. Discutir la "especialización" de clusters: ¿La Std crece mientras el promedio baja?
+La evolución de $SLP$ (Fig. \ref{fig:slp_split_b4}) revela una tendencia global de \textit{sparsification}. El promedio global decae drásticamente desde el valor inicial de $0.85$ hacia el rango $[0.40, 0.50]$, demostrando que el sistema aprende a simplificar la conectividad para maximizar la esparsidad espectral. Simultáneamente, la desviación estándar creciente en $SLW$ (Fig. \ref{fig:slw_split_b4}) indica que los clusters se están diferenciando funcionalmente para capturar patrones de señal específicos y heterogéneos.
 
 
 \subsection{Frontera de Eficiencia Informacional}
@@ -251,6 +231,4 @@ Las figuras \ref{fig:slp_split_b4} a \ref{fig:slw_split_b8} desglosan la evoluci
     \label{fig:efficiency_frontier}
 \end{figure}
 
-% --- ANÁLISIS DE FRONTERA DE EFICIENCIA ---
-% Sugerencia: Localizar el "punto de codo" (elbow) en el plano Ganancia-Entropía. 
-% Identificar la capacidad óptima (C) donde el beneficio en distorsión supera el costo de señalización.
+La frontera de eficiencia (Fig. \ref{fig:efficiency_frontier}) mapea el Pareto del sistema. Se identifica que las configuraciones de baja capacidad ($C=2, 4$) ofrecen la mejor relación ganancia por bit de entropía. A medida que se añaden clusters, la ganancia bruta aumenta, pero el costo de señalización de índices se vuelve desproporcionadamente alto, situando el punto óptimo de operación cerca de $C=6$.
