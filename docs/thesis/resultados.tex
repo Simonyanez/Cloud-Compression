@@ -91,6 +91,11 @@ C=10 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 8 \\
 \label{tab:capacity_sweep}
 \end{table}
 
+% --- ANÁLISIS DE CAPACIDAD (B=4) ---
+% Sugerencia: Analizar el punto de saturación (plateau). Observar que el paso de C=8 a C=10 
+% prácticamente no reduce el costo RD e incluso induce el desvanecimiento de clusters (8/10 activos).
+
+
 \begin{table}[ht]
 \centering
 \caption{Barrido de Cuantización (B=4, C=4): Estabilidad ante el ruido de cuantización.}
@@ -107,6 +112,12 @@ Q=64 & 178,545.21 & 1.0588 & 31.3334 & 1.5176 & 4 \\
 \label{tab:quantization_sweep}
 \end{table}
 
+% --- ANÁLISIS DE SENSIBILIDAD Q ---
+% Sugerencia: Discutir cómo la entropía (H) decae a medida que Q aumenta. 
+% El ruido de cuantización "suaviza" el espacio RD, haciendo que menos transformadas 
+% sean necesarias para representar la señal degradada.
+
+
 \begin{table}[ht]
 \centering
 \caption{Barrido de Resolución (Q=24, C=4): Comparativa entre escalas estructurales.}
@@ -122,6 +133,11 @@ B=16 & 433,657.41 & 31.2333 & 62.9272 & 1.7709 & 4 \\
 \label{tab:resolution_sweep}
 \end{table}
 
+% --- ANÁLISIS DE ESCALA (B) ---
+% Sugerencia: Evidenciar el castigo exponencial del costo RD al aumentar B. 
+% B=4 ofrece el mejor compromiso entre granularidad de adaptación y compactación de energía.
+
+
 \begin{table}[ht]
 \centering
 \caption{Impacto de la Duración de Optimización (B=4, C=6, Q=24).}
@@ -135,6 +151,11 @@ Prolongada (40 iters) & 46,856.72 & 439 \\
 \end{tabular}
 \label{tab:iteration_impact}
 \end{table}
+
+% --- ANÁLISIS DE DURACIÓN ---
+% Sugerencia: Comentar si el esfuerzo computacional extra (40 iters) se traduce en ganancias 
+% reales. En este caso, el costo incluso subió ligeramente, sugiriendo una oscilación 
+% estocástica alrededor del mínimo sin convergencia absoluta.
 
 \subsection{Dinámica de Evolución del Costo}
 
@@ -153,7 +174,11 @@ Prolongada (40 iters) & 46,856.72 & 439 \\
     \label{fig:cost_evolution_split}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+% --- ANÁLISIS DE EVOLUCIÓN DE COSTO ---
+% Sugerencia: Contrastar la velocidad de descenso entre escalas estructurales (B=4 vs B=8). 
+% Un descenso asintótico suave indica un aprendizaje estable, mientras que oscilaciones 
+% sugieren inestabilidad por baja densidad de muestras.
+
 
 \subsection{Velocidad de Convergencia y Reasignación}
 
@@ -172,27 +197,50 @@ Prolongada (40 iters) & 46,856.72 & 439 \\
     \label{fig:hamming_evolution_split}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+% --- ANÁLISIS DE DINÁMICA HAMMING ---
+% Sugerencia: Identificar el "piso de vibración". Si la curva de Hamming no llega a cero, 
+% se confirma que el espacio de parámetros es altamente no convexo, obligando a los 
+% bloques a oscilar entre transformadas competitivas.
+
 
 \subsection{Evolución Estadística de Parámetros (SLP y SLW)}
 
-Las figuras \ref{fig:slp_split} y \ref{fig:slw_split} desglosan la evolución de los parámetros de auto-lazo en sus cuatro componentes estadísticas fundamentales.
+Las figuras \ref{fig:slp_split_b4} a \ref{fig:slw_split_b8} desglosan la evolución de los parámetros de auto-lazo en sus cuatro componentes estadísticas fundamentales. Este desglose permite observar no solo la tendencia central, sino la dispersión y los límites del libro de códigos.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=1.0\linewidth]{img/resultados/slp_split_B4.png}
     \caption{Estadísticas detalladas de SLP (B=4, Q=24).}
-    \label{fig:slp_split}
+    \label{fig:slp_split_b4}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\linewidth]{img/resultados/slp_split_B8.png}
+    \caption{Estadísticas detalladas de SLP (B=8, Q=24).}
+    \label{fig:slp_split_b8}
 \end{figure}
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=1.0\linewidth]{img/resultados/slw_split_B4.png}
     \caption{Estadísticas detalladas de SLW (B=4, Q=24).}
-    \label{fig:slw_split}
+    \label{fig:slw_split_b4}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=1.0\linewidth]{img/resultados/slw_split_B8.png}
+    \caption{Estadísticas detalladas de SLW (B=8, Q=24).}
+    \label{fig:slw_split_b8}
+\end{figure}
+
+% --- ANÁLISIS DE PARÁMETROS (SLP/SLW) ---
+% Sugerencia: Contrastar la dinámica de sparsification entre B=4 y B=8. 
+% 1. Identificar si el decaimiento de SLP es más agresivo en bloques pequeños.
+% 2. Analizar la estabilidad del promedio vs la volatilidad de los límites (Min/Max).
+% 3. Discutir la "especialización" de clusters: ¿La Std crece mientras el promedio baja?
+
 
 \subsection{Frontera de Eficiencia Informacional}
 
@@ -203,4 +251,6 @@ Las figuras \ref{fig:slp_split} y \ref{fig:slw_split} desglosan la evolución de
     \label{fig:efficiency_frontier}
 \end{figure}
 
-% --- ESPACIO PARA ESCRITURA ---
+% --- ANÁLISIS DE FRONTERA DE EFICIENCIA ---
+% Sugerencia: Localizar el "punto de codo" (elbow) en el plano Ganancia-Entropía. 
+% Identificar la capacidad óptima (C) donde el beneficio en distorsión supera el costo de señalización.

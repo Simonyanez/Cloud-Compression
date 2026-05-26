@@ -286,9 +286,15 @@ y el conjunto completo de bloques se organiza en una matriz:
 
 donde cada fila corresponde a los coeficientes \((\beta_1, \beta_2, \beta_3)\) asociados a un bloque, en coherencia con la expresión general \(\hat{y} = \beta^\top \Phi\). 
 
-\subsubsection{Agrupamiento Tasa-Distorsión}
+\subsubsection{Estrategia de Entrenamiento y Ejecución}
 
-Sobre este conjunto se busca identificar un subconjunto óptimo de centroides que minimice el costo global de compresión, considerando simultáneamente la calidad de reconstrucción (distorsión) y la eficiencia de codificación (tasa de bits). A diferencia de los métodos de clusterización tradicionales que minimizan únicamente distancias geométricas, se implementa un algoritmo de \textbf{agrupamiento Tasa-Distorsión (RD Clustering)} que optimiza directamente el compromiso entre estos dos objetivos.
+La metodología opera en dos fases distintas:
+
+\begin{enumerate}
+    \item \textbf{Fase de Entrenamiento (Offline):} Se selecciona un subconjunto representativo de bloques (conjunto de entrenamiento) para ejecutar el algoritmo iterativo de RD-Clustering. El resultado de esta fase es un \textbf{libro de códigos optimizado} $\{\boldsymbol{\theta}_j\}_{j=0}^{K-1}$ que captura las dinámicas de señal predominantes en la nube de puntos.
+    
+    \item \textbf{Fase de Ejecución (Online):} Con el libro de códigos fijo, el resto de los bloques de la nube se codifican en un solo paso (single-pass). Para cada bloque, el sistema simplemente selecciona el cluster $j$ que ofrece el menor costo RD $J_j$, construye el grafo correspondiente y aplica la GFT. Esta separación garantiza que el costo computacional de la optimización evolutiva solo se pague una vez por secuencia.
+\end{enumerate}
 
 La función de costo a minimizar para cada bloque \(i\) al asignarlo al cluster \(j\) es:
 
@@ -296,40 +302,33 @@ La función de costo a minimizar para cada bloque \(i\) al asignarlo al cluster 
     J_j(i) = D_j(i) + \lambda R_j(i)
 \end{equation}
 
-donde:
-\begin{itemize}
-    \item \textbf{Distorsión} \(D_j(i)\): Representa el error de cuantización de los coeficientes de la GFT adaptativa \(\mathcal{F}_j\) aplicada al bloque \(i\). Esta distorsión mide la pérdida de calidad resultante de la aproximación y cuantización de los coeficientes espectrales.
-    
-    \item \textbf{Tasa} \(R_j(i)\): Estima el número de bits necesarios para codificar los coeficientes \(\mathcal{F}_j(f_i)\), donde \(f_i\) es la señal de luminancia del bloque \(i\).
-    
-    \item \textbf{Multiplicador de Lagrange} \(\lambda\): Controla el balance entre distorsión y tasa. Valores altos de \(\lambda\) priorizan la reducción de bits a costa de mayor distorsión, mientras que valores bajos favorecen la calidad de reconstrucción.
-\end{itemize}
+\subsubsection{Optimización Conjunta de Parámetros}
 
-\subsubsection{Algoritmo de Optimización}
+Una innovación fundamental de esta metodología es que el problema de optimización no se limita únicamente a las pendientes de color ($\mathbf{c}_j$), sino que se extiende a los parámetros de construcción del grafo. Cada cluster $j$ está definido por un vector de parámetros de 5 dimensiones:
+
+\begin{equation}
+    \boldsymbol{\theta}_j = [S_{x,j}, S_{y,j}, S_{z,j}, SLW_j, SLP_j]
+\end{equation}
+
+donde $SLW$ es el peso del auto-lazo y $SLP$ es el porcentaje de nodos seleccionados para incluir dicha conexión. Esta optimización conjunta permite que el sistema aprenda no solo la "dirección" del color, sino la topología de grafo más eficiente para compactar dicha señal.
+
+\subsubsection{Algoritmo de Optimización Evolutiva}
 
 El algoritmo procede de manera iterativa mediante los siguientes pasos:
 
-\paragraph{Inicialización:} Se define un conjunto de \(K\) centroides iniciales. El primer centroide (\(j=0\)) se fija como un vector de pendiente nula \(\mathbf{c}_0 = [0, 0, 0]^\top\), que corresponde a la GFT estructural basada únicamente en conectividad geométrica. Los restantes \(K-1\) centroides se inicializan a partir de las pendientes de bloques seleccionados aleatoriamente o mediante k-means sobre \(\tilde{\boldsymbol{\beta}}\).
+\paragraph{Inicialización:} Se definen \(K\) centroides iniciales. El primer centroide (\(j=0\)) es estructural (\(\mathbf{c}_0 = \mathbf{0}\)). Los restantes \(K-1\) se inicializan mediante k-means sobre las pendientes aproximadas \(\tilde{\boldsymbol{\beta}}\).
 
-\paragraph{Asignación Estocástica:} En cada iteración, para cada bloque \(i\), se calcula el costo RD \(J_j(i)\) que resultaría de asignarlo a cada uno de los \(K\) clusters. Para el cluster estructural (\(j=0\)), se utiliza la GFT precomputada. Para los clusters dinámicos (\(j \geq 1\)), se construye un grafo basado en atributos utilizando el centroide \(\mathbf{c}_j\) y los parámetros de auto-bucles configurados.
+\paragraph{Asignación y Refinamiento:} En cada iteración:
+\begin{enumerate}
+    \item \textbf{Paso de Asignación:} Cada bloque se asigna al cluster $j$ que minimiza $J_j(i)$ mediante un esquema de \textit{Simulated Annealing}.
+    \item \textbf{Paso de Optimización:} Se utiliza un algoritmo de \textbf{Evolución Diferencial (Differential Evolution)} para actualizar $\boldsymbol{\theta}_j$ buscando minimizar el costo agregado de los bloques asignados a dicho cluster. Este proceso permite una exploración global del espacio no convexo de los parámetros de auto-lazo.
+\end{enumerate}
 
-Para evitar la convergencia prematura a mínimos locales, la asignación no es determinista. Se emplea un esquema de \textbf{Simulated Annealing}, donde la probabilidad de asignar el bloque \(i\) al cluster \(j\) es:
-
-\begin{equation}
-    P(j|i) = \frac{e^{-J_j(i)/T}}{\sum_{k=0}^{K-1} e^{-J_k(i)/T}}
-\end{equation}
-
-La temperatura \(T\) disminuye gradualmente según un esquema de enfriamiento geométrico \(T \leftarrow \alpha T\), permitiendo exploración inicial del espacio de soluciones y convergencia hacia óptimos al final del proceso.
-
-\paragraph{Actualización de Centroides:} Una vez reasignados todos los bloques, cada centroide dinámico \(\mathbf{c}_j\) (\(j \geq 1\)) se recalcula como el promedio ponderado de las pendientes de los bloques asignados a ese cluster:
-
-\begin{equation}
-    \mathbf{c}_j \leftarrow (1-\eta)\mathbf{c}_j + \eta \cdot \frac{1}{|C_j|} \sum_{i \in C_j} \tilde{\beta}_i
-\end{equation}
-
-donde \(\eta\) es una tasa de aprendizaje que controla la velocidad de actualización de los centroides y \(C_j\) denota el conjunto de bloques asignados al cluster \(j\). El centroide estructural \(\mathbf{c}_0\) permanece fijo durante todo el proceso.
-
-\paragraph{Criterios de Convergencia:} El algoritmo se detiene cuando se alcanza el número máximo de iteraciones o cuando los cambios en las asignaciones de clusters entre iteraciones consecutivas caen por debajo de un umbral predefinido.
+\paragraph{Criterios de Parada (Sliding-Window Early Stopping):} Para evitar iteraciones redundantes y asegurar la estabilidad, se implementa un mecanismo de parada temprana basado en una ventana deslizante de las últimas 3 iteraciones. El sistema se detiene si:
+\begin{itemize}
+    \item \textbf{Convergencia de Costo:} La diferencia relativa máxima del costo RD en la ventana es menor a $10^{-4}$.
+    \item \textbf{Convergencia de Asignación:} El promedio de cambios de etiquetas (distancia Hamming) es inferior al 0.5\% del total de bloques.
+\end{itemize}
 
 \subsubsection{GFT Adaptativa y Construcción de Grafos}
 
@@ -685,15 +684,27 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
 % - Detallar la codificación RLGR
 % - Justificación de su uso y cómo se aplica al resultado cuantizado
 
-\section{\textit{Overhead} de Decisión}\label{sec:overhead_method}
-    % Offline(train set) o Online
-    El \textit{overhead}, en este contexto, corresponde a la porción de codigo reservada para las instrucciones de compresión y su representación económica es uno de los principales desafíos de este trabajo. Para la implementación óptima del presente algoritmo, es relevante que el codificador conozca las aproximaciones lineales posibles que representen la dinámica del color de distintos bloques. Esto se realiza a través de un proceso de entrenamiento, donde un subconjunto de diversidad estadística de bloques pertenecientes a una secuencia, determinan el conjunto de coeficientes representativos de la dinámica de los atributos del bloque. \\ 
-    
-    Si se encuentra un conjunto suficientemente representativo de \textit{clusters} de tamaño $K$, cada bloque debe tomar la decisión de pertenencia desde la cual se hará selección de \textit{self-loops} basado en dicha dinámica de color. El costo total en bits, se puede dimensionar en función de la representación binaria de la decisión ponderada por el número de bloques:
+\section{\textit{Overhead} de Decisión y Señalización}\label{sec:overhead_method}
 
-    \begin{equation}
-        B_{\text{decisión}}= N_{bloques}\cdot\log_2(K) 
-    \end{equation}
+El \textit{overhead} corresponde a la porción del flujo de bits reservada para las instrucciones de adaptación. En esta metodología, esto implica transmitir el índice del cluster $j$ seleccionado para cada bloque. 
+
+\subsection{Codificación por Entropía de Índices}
+
+A diferencia de una representación binaria simple de longitud fija, se utiliza la entropía de la distribución de clusters para estimar el costo mínimo de señalización. La entropía del libro de códigos $H$ se define como:
+
+\begin{equation}
+    H = -\sum_{j=0}^{K-1} p_j \log_2(p_j)
+\end{equation}
+
+donde $p_j$ es la probabilidad (frecuencia relativa) de que un bloque sea asignado al cluster $j$. El costo total en bits para señalizar las decisiones de $N_{bloques}$ es:
+
+\begin{equation}
+    B_{\text{decisión}} = N_{bloques} \cdot H
+\end{equation}
+
+\subsection{Capacidad Efectiva del Libro de Códigos}
+
+Un concepto clave para el análisis de eficiencia es la \textbf{Capacidad Efectiva} ($K_{eff}$), calculada como $2^H$. Esta métrica representa el número real de clusters que están contribuyendo significativamente a la compresión. Si $K_{eff} \ll K$, indica que el sistema ha convergido a una representación más compacta que la capacidad física permitida, sugiriendo un potencial para la reducción del overhead mediante la poda de clusters subutilizados.
     % - Qué metadatos deben ser transmitidos (por ejemplo, elección de base, cluster)
     % - Cómo se codifican esos datos adicionales
     % - Evaluar el impacto del overhead
@@ -766,5 +777,3 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
    \end{equation}
    
    recuperando así la información en su formato original con la distorsión controlada introducida durante el proceso de cuantización.
-
-   % INFORMATION THEORY ANALYSIS AND METRICS ARE MISSING 
