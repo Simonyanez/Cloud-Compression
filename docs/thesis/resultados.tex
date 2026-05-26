@@ -46,7 +46,7 @@ Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle su
 
 \begin{itemize}
     \item \textbf{Efecto de Filtro Paso Bajo:} El Linear Oracle utiliza una superficie plana ajustada, lo que actúa como un filtro paso bajo espacial. Al ignorar el ruido de alta frecuencia y las variaciones locales, la adaptación del grafo se guía por la tendencia global del bloque, lo que resulta en una base GFT más eficiente para compactar la energía de la señal.
-    \item \textbf{Compacidad de Energía:} Las funciones de base derivadas de la aproximación lineal se alinean mejor con los componentes de baja frecuencia, que contienen la mayor parte de la información visual.
+    \item \textbf{Efecto de Compacidad de Energía:} Las funciones de base derivadas de la aproximación lineal se alinean mejor con los componentes de baja frecuencia, que contienen la mayor parte de la información visual.
     \item \textbf{Sensibilidad al Tamaño del Bloque:} Las mayores ganancias se observan en bloques de $8 \times 8$. Para bloques de $16 \times 16$, aunque el Linear Oracle sigue siendo superior, la precisión de la aproximación lineal disminuye para superficies complejas.
 \end{itemize}
 
@@ -68,84 +68,139 @@ Como se observa en la Figura \ref{fig:gain_analysis}, la distribución de los pa
 
 \section{Análisis de Sensibilidad y Agrupamiento RD (RD-Clustering)}
 
-En esta sección se presentan los resultados de la estrategia de agrupamiento conjunta de pendientes y parámetros de auto-lazo ($S_x, S_y, S_z, SLW, SLP$). El análisis se basa exclusivamente en la última suite de experimentos para garantizar consistencia en los parámetros del optimizador.
+En esta sección se presentan los resultados de la estrategia de agrupamiento conjunta de pendientes y parámetros de auto-lazo ($S_x, S_y, S_z, SLW, SLP$). El análisis integra datos de múltiples barridos para evaluar la capacidad, resolución y robustez del sistema.
 
-\subsection{Desempeño Numérico y Ganancia de Codificación}
+\subsection{Desempeño Numérico y Análisis de Ganancia}
 
-La Tabla \ref{tab:clustering_last_run} resume el desempeño final de las configuraciones evaluadas en el barrido de la tarde. Se observa que el sistema logra una reducción de costo de hasta un 29\% en el bloque de menor tamaño.
+Las siguientes tablas presentan una visión factual del desempeño del sistema bajo diferentes ejes de sensibilidad.
 
 \begin{table}[ht]
 \centering
-\caption{Resultados Finales - Última Suite de Experimentos (Selección de B, C, Q)}
-\begin{tabular}{|c|c|c|c|c|c|c|}
+\caption{Barrido de Capacidad (B=4, Q=24): Impacto del tamaño del libro de códigos.}
+\begin{tabular}{|c|c|c|c|c|c|}
 \hline
-\textbf{Config (B\_C\_Q)} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{SLW Avg} & \textbf{SLP Avg} \\
+\textbf{Config} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Activos} \\
 \hline
-B4\_C6\_Q24 & 46,856.72 & 1.9608 & 15.2298 & 2.5434 & 0.618 & 0.519 \\
-B4\_C8\_Q24 & 44,563.69 & 1.8627 & 15.4449 & 2.8455 & 0.712 & 0.400 \\
-B4\_C10\_Q24 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 1.907 & 0.409 \\
-B4\_C4\_Q36 & 81,959.46 & 1.5294 & 21.3542 & 1.8335 & 0.938 & 0.422 \\
-B4\_C4\_Q48 & 124,685.76 & 1.3137 & 23.3599 & 1.7791 & 2.251 & 0.400 \\
-B8\_C6\_Q24 & 99,134.42 & 7.1000 & 32.8008 & 2.3058 & 0.818 & 0.405 \\
+C=2 & 55,618.99 & 2.3333 & 15.3685 & 0.9662 & 2 \\
+C=4 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 4 \\
+C=6 & 46,856.72 & 1.9608 & 15.2298 & 2.5434 & 6 \\
+C=8 & 44,563.69 & 1.8627 & 15.4449 & 2.8455 & 8 \\
+C=10 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 8 \\
 \hline
 \end{tabular}
-\label{tab:clustering_last_run}
+\label{tab:capacity_sweep}
 \end{table}
 
-\subsection{Evolución del Costo y Trayectorias RD}
+\begin{table}[ht]
+\centering
+\caption{Barrido de Cuantización (B=4, C=4): Estabilidad ante el ruido de cuantización.}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Config} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Activos} \\
+\hline
+Q=24 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 4 \\
+Q=36 & 81,959.46 & 1.5294 & 21.3542 & 1.8335 & 4 \\
+Q=48 & 124,685.76 & 1.3137 & 23.3599 & 1.7791 & 4 \\
+Q=64 & 178,545.21 & 1.0588 & 31.3334 & 1.5176 & 4 \\
+\hline
+\end{tabular}
+\label{tab:quantization_sweep}
+\end{table}
 
-La Figura \ref{fig:cost_evolution} detalla la trayectoria del costo RD. Se observa que independientemente de la configuración, la mayor parte de la optimización ocurre en las primeras 5 iteraciones.
+\begin{table}[ht]
+\centering
+\caption{Barrido de Resolución (Q=24, C=4): Comparativa entre escalas estructurales.}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Config} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Activos} \\
+\hline
+B=4 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 4 \\
+B=8 & 105,564.73 & 7.5667 & 32.1042 & 1.3383 & 3 \\
+B=16 & 433,657.41 & 31.2333 & 62.9272 & 1.7709 & 4 \\
+\hline
+\end{tabular}
+\label{tab:resolution_sweep}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Impacto de la Duración de Optimización (B=4, C=6, Q=24).}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Duración} & \textbf{Costo RD Final} & \textbf{Hamming Σ} \\
+\hline
+Estándar (20 iters) & 45,936.24 & 253 \\
+Prolongada (40 iters) & 46,856.72 & 439 \\
+\hline
+\end{tabular}
+\label{tab:iteration_impact}
+\end{table}
+
+\subsection{Dinámica de Evolución del Costo}
 
 \begin{figure}[ht]
     \centering
     \begin{subfigure}[b]{0.48\textwidth}
         \includegraphics[width=\textwidth]{img/resultados/cost_evolution_B4.png}
-        \caption{Bloques $B=4$}
+        \caption{Bloques B=4}
     \end{subfigure}
-    \caption{Evolución del costo RD durante el proceso iterativo.}
-    \label{fig:cost_evolution}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{img/resultados/cost_evolution_B8.png}
+        \caption{Bloques B=8}
+    \end{subfigure}
+    \caption{Trayectorias de reducción de costo RD.}
+    \label{fig:cost_evolution_split}
 \end{figure}
 
-\subsection{Dinámica de Convergencia (Hamming)}
+% --- ESPACIO PARA ESCRITURA ---
 
-La Figura \ref{fig:hamming_evolution} muestra la estabilidad de las asignaciones de bloques.
+\subsection{Velocidad de Convergencia y Reasignación}
 
 \begin{figure}[ht]
     \centering
     \begin{subfigure}[b]{0.48\textwidth}
         \includegraphics[width=\textwidth]{img/resultados/hamming_evolution_B4.png}
-        \caption{Bloques $B=4$}
+        \caption{Bloques B=4}
     \end{subfigure}
-    \caption{Velocidad de convergencia (Distancia Hamming) por iteración.}
-    \label{fig:hamming_evolution}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \includegraphics[width=\textwidth]{img/resultados/hamming_evolution_B8.png}
+        \caption{Bloques B=8}
+    \end{subfigure}
+    \caption{Evolución de la distancia Hamming por escala.}
+    \label{fig:hamming_evolution_split}
 \end{figure}
 
-\subsection{Evolución Estadística de Parámetros de Adaptación}
+% --- ESPACIO PARA ESCRITURA ---
 
-Las figuras \ref{fig:slp_bounds} y \ref{fig:slw_bounds} presentan la evolución de los parámetros de auto-lazo, mostrando el promedio, la desviación estándar y los límites absolutos del libro de códigos.
+\subsection{Evolución Estadística de Parámetros (SLP y SLW)}
+
+Las figuras \ref{fig:slp_split} y \ref{fig:slw_split} desglosan la evolución de los parámetros de auto-lazo en sus cuatro componentes estadísticas fundamentales.
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.7\linewidth]{img/resultados/slp_bounds_B4.png}
-    \caption{Evolución estadística de SLP (Promedio, Std y Límites) para B=4.}
-    \label{fig:slp_bounds}
+    \includegraphics[width=1.0\linewidth]{img/resultados/slp_split_B4.png}
+    \caption{Estadísticas detalladas de SLP (B=4, Q=24).}
+    \label{fig:slp_split}
 \end{figure}
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.7\linewidth]{img/resultados/slw_bounds_B4.png}
-    \caption{Evolución estadística de SLW (Promedio, Std y Límites) para B=4.}
-    \label{fig:slw_bounds}
+    \includegraphics[width=1.0\linewidth]{img/resultados/slw_split_B4.png}
+    \caption{Estadísticas detalladas de SLW (B=4, Q=24).}
+    \label{fig:slw_split}
 \end{figure}
+
+% --- ESPACIO PARA ESCRITURA ---
 
 \subsection{Frontera de Eficiencia Informacional}
-
-Finalmente, se presenta la eficiencia del sistema comparando la ganancia interna obtenida frente al costo de señalización.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.8\linewidth]{img/resultados/efficiency_frontier.png}
-    \caption{Frontera de Eficiencia Informacional por paso de cuantización.}
+    \caption{Relación entre ganancia interna y entropía del libro de códigos.}
     \label{fig:efficiency_frontier}
 \end{figure}
 
+% --- ESPACIO PARA ESCRITURA ---
