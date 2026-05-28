@@ -104,10 +104,19 @@ def main():
     parser.add_argument("--out_dir", type=str, required=True)
     parser.add_argument("--config", type=str, default="config/base_config.yaml")
     parser.add_argument("--mode", type=str, choices=["draft", "production"], default="production")
+    parser.add_argument("--skip-existing", action="store_true", help="Skip if result file already exists")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    
+    experiment_code = f"B{args.block_size}_C{args.clusters}_Q{args.q_step}"
+    
+    if args.skip_existing:
+        result_file = out_dir / f"result_{experiment_code}.json"
+        if result_file.exists():
+            print(f"[SKIP] Experiment {experiment_code} already completed.")
+            return
 
     params = load_experiment_config(Path(args.config))
     

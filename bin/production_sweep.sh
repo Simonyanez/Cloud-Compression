@@ -5,8 +5,22 @@
 # Total experiments: 126 (3 Resolution x 6 Quantization x 7 Capacity)
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTPUT_DIR="production_sweep_$TIMESTAMP"
-mkdir -p "$OUTPUT_DIR"
+RESUME_DIR=$1
+
+if [ -n "$RESUME_DIR" ]; then
+    if [ ! -d "$RESUME_DIR" ]; then
+        echo "[!] Error: Resume directory '$RESUME_DIR' does not exist."
+        exit 1
+    fi
+    OUTPUT_DIR="$RESUME_DIR"
+    SKIP_FLAG="--skip-existing"
+    echo "[*] RESUMING SWEEP in: $OUTPUT_DIR"
+else
+    OUTPUT_DIR="production_sweep_$TIMESTAMP"
+    SKIP_FLAG=""
+    mkdir -p "$OUTPUT_DIR"
+    echo "[*] STARTING NEW SWEEP in: $OUTPUT_DIR"
+fi
 
 # CONTEXTUAL PARAMS
 SAMPLE_RATE=0.005  # 0.5% sample (will be overridden by Cochran floor if too small)
@@ -38,7 +52,8 @@ do
                 --sample_rate "$SAMPLE_RATE" \
                 --max_iters "$MAX_ITERS" \
                 --mode "$MODE" \
-                --out_dir "$OUTPUT_DIR"
+                --out_dir "$OUTPUT_DIR" \
+                $SKIP_FLAG
             
             # Error check
             if [ $? -ne 0 ]; then
