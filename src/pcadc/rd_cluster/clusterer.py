@@ -16,6 +16,74 @@ import numpy as np
 import json
 from pathlib import Path
 import math # For log2 in entropy calculation
+from joblib import Parallel, delayed
+import os
+
+def _evaluate_block_assignment(i, block, vertices, attributes, slopes, 
+                               self_loop_weights, self_loop_percentages, 
+                               qstep_value, structural_coeffs, margin, 
+                               decider_mode, lagrange_proportional):
+    """
+    Worker function to evaluate cluster assignment for a single block.
+    Using PROCESSES (loky) to bypass the GIL.
+    """
+    # Force single-threaded numpy inside workers to avoid contention
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["OPENBLAS_NUM_THREADS"] = "1"
+
+    from pcadc.decider import Decider
+    from pcadc.graph import StructuralGraph, AttributeGraph
+    from pcadc.transforms import GFTStrategyWraper
+    from pcadc.color import Approximator
+
+    decider = Decider(decider_mode, lagrange_proportional)
+    decider._set_vars(qstep_value)
+    gft_computer = GFTStrategyWraper()
+    
+    block.init_data(vertices, attributes)
+    costs = []
+    rates = []
+    distortions = []
+
+    for k, slope in enumerate(slopes):
+        if k == 0:
+            coeffs = structural_coeffs
+        else:
+            slw = self_loop_weights[k]
+            slp = self_loop_percentages[k]
+            
+            # --- Inline _compute_adaptive_gft logic ---
+            structural_graph = StructuralGraph(block.metadata)
+            structural_graph.set_data(block.Vblock)
+            attribute_graph = AttributeGraph(structural_graph, slope, k, slp, slw)
+            
+            Vblock_rotated = Approximator()._spatial_norm(block.Vblock)
+            Ablock_app = block.Ablock.copy()
+            Ablock_app[:, 0] = Vblock_rotated @ slope.T
+            attribute_graph.set_data(block.Vblock, Ablock_app)
+            
+            _, coeffs = gft_computer(block, attribute_graph)
+            attribute_graph.clear_data()
+        
+        rd_cost, sparsity, qerror = decider._RDcost(coeffs)
+        costs.append(rd_cost)
+        rates.append(sparsity)
+        distortions.append(qerror)
+
+    cost_structural = costs[0]
+    dynamic_costs = np.array(costs[1:])
+    best_dynamic_idx = np.argmin(dynamic_costs) + 1 if len(dynamic_costs) > 0 else 0
+    cost_best_dynamic = costs[best_dynamic_idx]
+
+    if cost_best_dynamic < (cost_structural * margin):
+        chosen_cluster = best_dynamic_idx
+    else:
+        chosen_cluster = 0
+
+    block.clear_data()
+    gain = (cost_structural - costs[chosen_cluster] if chosen_cluster != 0 else 0)
+    return chosen_cluster, costs[chosen_cluster], rates[chosen_cluster], distortions[chosen_cluster], gain
 
 
 class RDClusterer:
@@ -141,7 +209,9 @@ class RDClusterer:
                 old_slopes=state.slopes,
                 old_slw=state.self_loop_weights,
                 old_slp=state.self_loop_percentages,
-                rd_cost_fn=self._evaluate_rd_cost_for_optimizer  # Pass the callback
+                q_step=state.qstep_value,
+                decider_mode=self.decider.mode,
+                lagrange_proportional=self.decider.lagrange_proportional
             )
 
             # Calculate new metrics
@@ -243,8 +313,9 @@ class RDClusterer:
     def _assignment_step(self, blocks: List[Block], state: RDClusterState, 
                          vertices: np.ndarray, attributes: np.ndarray, iteration: int):
         new_labels = np.zeros(len(blocks), dtype=int)
-        slopes = state.slopes
         total_cost = 0
+        
+        # Ensure the main thread decider is configured for subsequent use in the optimizer
         self.decider._set_vars(state.qstep_value)
 
         all_rates = np.zeros(len(blocks))
@@ -258,50 +329,26 @@ class RDClusterer:
         else:
             margin = 1.0
 
-        for i, block in tqdm(enumerate(blocks), "Assigning blocks"):
-            block.init_data(vertices, attributes)
-            costs = []
-            rates = []
-            distortions = []
+        # Parallel execution using PROCESSES (loky)
+        # This bypasses the GIL and should hit ~4000% CPU usage
+        results = Parallel(n_jobs=-1)(
+            delayed(_evaluate_block_assignment)(
+                i, block, vertices, attributes, state.slopes, 
+                state.self_loop_weights, state.self_loop_percentages, 
+                state.qstep_value, self.gft_cache.get_coeffs(block.block_id),
+                margin, self.decider.mode, self.decider.lagrange_proportional
+            ) for i, block in tqdm(enumerate(blocks), total=len(blocks), desc=f"Assigning blocks (Parallel iter {iteration})")
+        )
 
-            for k, slope in enumerate(slopes):
-                if k == 0:
-                    coeffs = self.gft_cache.get_coeffs(block.block_id)
-                else:
-                    slw = state.self_loop_weights[k]
-                    slp = state.self_loop_percentages[k]
-                    coeffs = self._compute_adaptive_gft(block, slope, k, slp, slw)
-                
-                rd_cost, sparsity, qerror = self.decider._RDcost(coeffs)
-                costs.append(rd_cost)
-                rates.append(sparsity)
-                distortions.append(qerror)
-
-            # --- NEW DETERMINISTIC SELECTION LOGIC ---
-            cost_structural = costs[0]
-            dynamic_costs = np.array(costs[1:])
-            best_dynamic_idx = np.argmin(dynamic_costs) + 1 if len(dynamic_costs) > 0 else 0 # +1 to offset slicing
-            cost_best_dynamic = costs[best_dynamic_idx]
-
-            # If the best dynamic cluster is within our allowed margin of safety 
-            # compared to the flat transform, force the block into it.
-            if cost_best_dynamic < (cost_structural * margin):
-                chosen_cluster = best_dynamic_idx
-            else:
-                chosen_cluster = 0 # Fallback to structural
-
+        # Unpack results
+        for i, (chosen_cluster, cost, rate, dist, gain) in enumerate(results):
             new_labels[i] = chosen_cluster
-            total_cost += costs[chosen_cluster]
-            all_rates[i] = rates[chosen_cluster]
-            all_distortions[i] = distortions[chosen_cluster]
-            
-            if chosen_cluster != 0:
-                all_gains[i] = cost_structural - costs[chosen_cluster]
-            else:
-                all_gains[i] = 0
+            total_cost += cost
+            all_rates[i] = rate
+            all_distortions[i] = dist
+            all_gains[i] = gain
 
-            block.clear_data()
-        return new_labels, total_cost, all_rates, all_distortions, all_gains    
+        return new_labels, total_cost, all_rates, all_distortions, all_gains
 
     def _calculate_cluster_entropy(self, labels: np.ndarray) -> float:
         """Calculates the entropy of the cluster distribution."""

@@ -2,7 +2,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from .graph import *
 from typing import List, Dict, Union
 import numpy as np
 import logging

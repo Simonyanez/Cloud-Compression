@@ -1,0 +1,30 @@
+{
+    "experiment_code": "B16_C2_Q36",
+    "active_clusters": 2,
+    "total_clusters": 2,
+    "is_vanishing": false,
+    "empty_clusters": [],
+    "final_cost": 658666.22934351,
+    "final_slopes": [
+        [
+            0.0,
+            0.0,
+            0.0
+        ],
+        [
+            2.72807932884906,
+            4.082081853345723,
+            -10.325819596492774
+        ]
+    ],
+    "final_slw": [
+        1.6,
+        0.044756401896840714
+    ],
+    "final_slp": [
+        0.85,
+        0.27485791002518223
+    ],
+    "iterations": 41,
+    "timestamp": "20260602_220628"
+}
