@@ -57,14 +57,14 @@
 \begin{column}{\colwidth}
 
 \begin{block}{Introduction}
-Point clouds are a fundamental data structure for representing 3D objects and scenes. Due to their large size, efficient compression is crucial for storage and transmission. This work proposes a novel lossy compression scheme for point cloud attributes, which leverages graph-based transforms and rate-distortion optimization.
+Point clouds are fundamental for 3D representation, but their density requires efficient compression. This work proposes an attribute compression scheme using \textbf{adaptive Graph-based Transforms (GFT)} and rate-distortion optimization. A key focus is solving the \textit{signaling tax} problem where per-block metadata can outweigh transform gains.
 
 \vspace{0.3em}
 
 \begin{figure}
     \centering
     \includegraphics[width=0.3\linewidth]{longdress_thumb.png}
-    \caption{"Longdress" point cloud from 8iVFBv2 dataset \cite{deon2017voxelized}.}
+    \caption{"Longdress" frame from 8iVFBv2 dataset \cite{deon2017voxelized}.}
 \end{figure}
 \end{block}
 
@@ -73,83 +73,61 @@ Point clouds are a fundamental data structure for representing 3D objects and sc
 \begin{figure}
     \centering
     \includegraphics[width=\linewidth]{methodology_diagram.png}
-    \caption{Compression pipeline: Block partitioning → Graph construction → GFT → RD-optimized clustering → Quantization → Entropy coding.}
+    \caption{Compression pipeline: Block partitioning → GFT → RD-optimized clustering with spatial regularization → Quantization → Context-adaptive coding.}
 \end{figure}
 
 \vspace{1em}
 
-\textbf{Key Steps:}
+\textbf{Key Components:}
 \begin{enumerate}
-  \item \textbf{Block Partitioning:} Morton ordering preserves spatial locality \cite{morton1966zorder}.
-  \item \textbf{Graph Transform:} GFT concentrates energy in few coefficients \cite{ortega2022gsp,pavez2020region}.
-  \item \textbf{RD-Optimized Clustering:} Minimize Lagrangian cost: $J = D + \lambda R$ where $\lambda = \alpha \cdot Q^2$ \cite{ortega1998rate}.
-  \item \textbf{Entropy Coding:} RLGR for coefficients \cite{malvar2006adaptive}, Huffman for cluster indices.
+  \item \textbf{RD-Clustering:} Optimizes codebooks to minimize $J = D + \lambda R$.
+  \item \textbf{Spatial Penalty ($\beta$):} Penalizes cluster-switching between adjacent blocks to force long ID runs.
+  \item \textbf{Context-Adaptive Coding:} Uses 1st-order conditional entropy to exploit spatial correlation in cluster labels.
+  \item \textbf{Scale Management:} Targets large block volumes (B16, B32) to dilute the per-block signaling overhead.
 \end{enumerate}
 
-\vspace{1em}
+\vspace{0.5em}
 
-\begin{figure}
-    \centering
-    % Center the whole pair by making a narrower box
-    \begin{minipage}{0.75\linewidth}  % adjust to taste
-        \centering
-        \begin{minipage}[t]{0.4\linewidth}
-            \centering
-            \includegraphics[width=0.8\linewidth]{rabbit.jpg}
-            \caption{Block partitioning (Morton).}
-        \end{minipage}
-        \hfill
-        \begin{minipage}[t]{0.5\linewidth}
-            \centering
-            \includegraphics[width=\linewidth]{Grafo_Ejemplo.png}
-            \caption{Graph from spatial proximity.}
-        \end{minipage}
-    \end{minipage}
-\end{figure}
+\textbf{Optimization Strategy:}
+\begin{itemize}
+    \item \textbf{Search:} Every block tests the entire codebook for the global minimum cost.
+    \item \textbf{Smoothing:} A sequential pass along the Morton path applies the $\beta$ penalty.
+\end{itemize}
 
 \end{block}
 
 \begin{block}{Information Theory Context}
-\textbf{Source Model:} Non-stationary graph signal with spatial and chromatic correlation \cite{ortega2022gsp}.
+\textbf{Rate Components:} $R_{\text{total}} = R_{\text{data}} + R_{\text{overhead}}$. 
+$R_{\text{data}}$ is the sparsity of quantized GFT coefficients.
 
-\textbf{Rate:} $R_{\text{total}} = R_{\text{coefficients}} + R_{\text{overhead}}$ where sparsity approximates entropy: $R \approx H(Q(\theta))$ \cite{shannon1948mathematical}.
+\textbf{Overhead Lower Bound:} For memoryless sources, $H(L)$. For spatially correlated sources, the conditional entropy $H(L_i | L_{i-1})$ represents the CABAC limit.
 
-\textbf{Distortion:} PSNR on luminance (Y) channel from MSE in transform domain.
+\textbf{The Dilution Principle:} As block volume increases ($B^3$), the signaling cost per point drops exponentially:
+\begin{equation}
+\text{BPV}_{\text{overhead}} = \frac{\text{bits/block}}{B^3}
+\end{equation}
 
-\textbf{RD Optimization:} Lagrangian finds Pareto-optimal points on achievable (R,D) curve \cite{ortega1998rate}.
-
-\textbf{Adaptive Codebook:} Vector quantization creates codebook of $K$ transforms \cite{pavez2017separable}. Trade-off: local adaptation vs. overhead ($\log_2 K$ bits/block).
-
-\textbf{Key Insight:} Smaller blocks (B4) preserve local stationarity, enabling superior adaptation \cite{pavez2020region}.
+\textbf{Key Insight:} True compression requires $B \geq 16$. Smaller blocks suffer from a "signaling tax" larger than their transform gain.
 \end{block}
 
 \begin{block}{Experimental Configuration}
-\textbf{Dataset:} "longdress" frame 1051, 10-bit voxelization \cite{deon2017voxelized,loop2016microsoft}.
+\textbf{Dataset:} "longdress" frame 1051, 10-bit YUV voxelization.
 
 \vspace{0.3em}
 
 \begin{table}[h]
 \centering
 \small
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-\textbf{Strategy} & \textbf{Blocks ($B$)} & \textbf{Clusters ($K$)} & \textbf{$\alpha$ ($\lambda$)} & \textbf{$\beta$ (Switch)} & \textbf{Coder} \\
+\textbf{Strategy} & \textbf{Blocks ($B$)} & \textbf{Clusters ($K$)} & \textbf{$\alpha$ ($\lambda$)} & \textbf{$\beta$ (Switch)} \\
 \midrule
-Small Scale & 4, 8 & 2, 4, 8 & 0.8 & 0 & Huffman \\
-Large Scale & 16, 32 & 2, 4 & 5.0 & 2000 & CABAC \\
+Local Detail & 4, 8 & 2, 4, 12 & 0.8 & 0 \\
+Global Scale & 16, 32 & 2, 4 & 5.0 & 2000 \\
 \bottomrule
 \end{tabular}
-\caption{Experimental Sweep: From local adaptation to global efficiency.}
+\caption{Parameters for overhead-diluted benchmarking.}
 \end{table}
-\end{block}
-
-\begin{block}{CABAC vs. Shannon Entropy}
-Standard entropy ignores spatial correlation. Using a 1st-order context (CABAC-Proxy) drastically reduces overhead:
-\begin{equation}
-R_{overhead} = H(L_i | L_{i-1}) \cdot N_{blocks}
-\end{equation}
-
-For B32, CABAC reduces overhead by \textbf{72\%} compared to LZMA.
 \end{block}
 
 \end{column}
@@ -157,71 +135,70 @@ For B32, CABAC reduces overhead by \textbf{72\%} compared to LZMA.
 
 \begin{column}{\colwidth}
 
-\begin{block}{Rate-Distortion Results}
+\begin{block}{Rate-Distortion Results: The Overhead Trap}
 
 \begin{figure}
 \centering
 
 \begin{minipage}[t]{0.45\linewidth}
     \textbf{Analysis:}\\
-    The \textit{Signaling Tax} dictates the optimal block size.
+    The \textit{Signaling Tax} dictates feasibility:
     \begin{itemize}
-        \item \textbf{B4/B8 (Overhead Dominated):} Transform gains are high (up to 20\%), but signaling a cluster ID for only 16 points costs ~0.20 BPV. The net bit-rate increases.
-        \item \textbf{B16 (Break-even):} Overhead drops to ~0.002 BPV. The system reaches the neutral point where transform savings equal signaling cost.
-        \item \textbf{B32 (True Compression):} Overhead is diluted to sub-0.001 BPV. With $\beta=2000$ and CABAC, we achieve a \textbf{Net Gain of -0.56\%}.
+        \item \textbf{B4/B8 (Inefficient):} Transform gains are ~15\%, but overhead is ~0.15 BPV. Net bitrate increases by >20\%.
+        \item \textbf{B16 (Break-even):} Overhead is reduced to ~0.004 BPV. Transform gains finally start to compensate for the signaling cost.
+        \item \textbf{B32 (Compression):} Overhead is negligible (<0.001 BPV). Adaptive gains translate directly to bit-rate reduction.
     \end{itemize}
-    True compression is only achievable when block size is large enough to make the decision overhead negligible.
+    True compression is achieved only when the per-block decision is shared by enough points.
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.45\linewidth}
-    \vspace{0pt} % <<< FIX: ensures both start at exactly the same height
     \centering
-    \includegraphics[width=0.9\linewidth]{B4_rd_comparison.png}\\[0.5em]
-    \includegraphics[width=0.9\linewidth]{B8_rd_comparison.png}\\[0.5em]
-    \includegraphics[width=0.9\linewidth]{B16_rd_comparison.png}
+    \includegraphics[width=0.45\linewidth]{B4_rd_comparison.png}
+    \includegraphics[width=0.45\linewidth]{B8_rd_comparison.png}\\[0.5em]
+    \includegraphics[width=0.45\linewidth]{B16_rd_comparison.png}
+    \includegraphics[width=0.45\linewidth]{B32_rd_comparison.png}
 \end{minipage}
 
 \end{figure}
 
 \end{block}
 
-\begin{block}{Performance Analysis: BPV and PSNR Gains}
+\begin{block}{Performance Metrics: CABAC vs. LZMA}
 
-\textbf{Interpretation:} Positive values indicate improvement (bitrate reduction or quality gain).
+\textbf{Comparison at Q=24:} Negative net gain indicates true compression.
 
 \vspace{0.5em}
 
 \begin{table}[h]
 \centering
 \small
-\begin{tabular}{@{}lcc@{}}
+\begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Method Comparison} & \textbf{BPV Gain \%} & \textbf{Net Gain (Status)} \\
+\textbf{Method ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Gain} & \textbf{Net Gain} \\
 \midrule
-\multicolumn{3}{l}{\textit{Fixed Codebook + CABAC}} \\
-\quad B4 C4 Q24 & +20.3\% & \textcolor{red}{Overhead Limited} \\
-\quad B16 C4 Q24 & +0.4\% & \textcolor{gray}{Neutral} \\
-\quad B32 C2 Q24 ($\beta=2000$) & \textcolor{blue}{-0.56\%} & \textcolor{blue}{True Compression} \\
+\textit{Small Scale (B4)} & 0.0239 & -1.4\% & \textcolor{red}{+10.47\%} \\
+\textit{Medium Scale (B8)} & 0.0189 & -4.8\% & \textcolor{red}{+7.02\%} \\
+\textit{Large Scale (B16)} & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
+\textbf{\textit{Production (B32)}} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
 \bottomrule
 \end{tabular}
-\caption{Comparative performance metrics across scales.}
+\caption{Net performance using context-adaptive signaling proxy.}
 \end{table}
 
 \vspace{0.1em}
 
-\textbf{Key Observations:}
+\textbf{Critical Findings:}
 \begin{itemize}
-    \item \textbf{Unit Discrepancy:} Massive training gains in RD-cost are often driven by distortion reduction, which may not translate to bit savings if overhead is high.
-    \item \textbf{Block Size Threshold:} True compression requires $B \geq 16$.
-    \item \textbf{Spatial Penalty:} High $\beta$ values are required to force label smoothness.
+    \item \textbf{Spatial Penalty:} Using $\beta=2000$ reduces CABAC overhead by \textbf{72\%} compared to memoryless entropy.
+    \item \textbf{Unit Trap:} Training gains in RD-cost are often numerically dominated by $D$. Large bit-savings require $\lambda \geq 5.0$.
 \end{itemize}
 
 \end{block}
 
 \begin{block}{Conclusions}
-True compression is achieved by \textbf{diluting overhead} in large blocks (B32) and \textbf{smoothing labels} via spatial regularization ($\beta$). Small blocks (B4) are effective for fidelity but inefficient for bit-rate.
+True compression in RD-optimized clustering is possible only through \textbf{overhead dilution} (using B32) and \textbf{spatial smoothing} (using $\beta$). While B4 offers the best local adaptation, its signaling cost is prohibitive.
 
-The optimal strategy for PCADC is \textbf{B32 with $K=2$ and high $\beta$}, leveraging CABAC to exploit the resulting spatial correlation.
+The optimal strategy for PCADC is \textbf{B32 with small K and high spatial penalty}, achieving a breakthrough in net-bitrate reduction.
 \end{block}
 
 \begin{block}{References}
