@@ -131,26 +131,25 @@ Point clouds are a fundamental data structure for representing 3D objects and sc
 \begin{table}[h]
 \centering
 \small
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
-\textbf{Strategy} & \textbf{Clusters ($K$)} & \textbf{Iterations} & \textbf{Q-Steps} & \textbf{$\alpha$} \\
+\textbf{Strategy} & \textbf{Blocks ($B$)} & \textbf{Clusters ($K$)} & \textbf{$\alpha$ ($\lambda$)} & \textbf{$\beta$ (Switch)} & \textbf{Coder} \\
 \midrule
-Baseline & 1 & 1 & [32, 48, 64] & 0.8 \\
-RD-Fast & 2 & 10 & [32, 48, 64] & 0.8 \\
-RD-Medium & 4 & 30 & [24, 32, 48, 64] & 0.8 \\
+Small Scale & 4, 8 & 2, 4, 8 & 0.8 & 0 & Huffman \\
+Large Scale & 16, 32 & 2, 4 & 5.0 & 2000 & CABAC \\
 \bottomrule
 \end{tabular}
-\caption{Configuration: $\tau = 0.7$, $B \in \{4, 8, 16\}$.}
+\caption{Experimental Sweep: From local adaptation to global efficiency.}
 \end{table}
 \end{block}
 
-\begin{block}{Huffman Code Analysis}
-Cluster indices entropy coded using Huffman \cite{sayood2006introduction}:
+\begin{block}{CABAC vs. Shannon Entropy}
+Standard entropy ignores spatial correlation. Using a 1st-order context (CABAC-Proxy) drastically reduces overhead:
 \begin{equation}
-L = \sum_{i=1}^{K} p_i \cdot \ell_i \quad \Rightarrow \quad \text{BPV}_{\text{overhead}} = \frac{L \cdot N_{\text{blocks}}}{N_{\text{voxels}}}
+R_{overhead} = H(L_i | L_{i-1}) \cdot N_{blocks}
 \end{equation}
 
-$L$ (bits/block): B16 (fast: 1.00, med: 1.95), B8 (fast: 1.00, med: 1.63), B4 (fast: 1.00, med: 1.50).
+For B32, CABAC reduces overhead by \textbf{72\%} compared to LZMA.
 \end{block}
 
 \end{column}
@@ -165,13 +164,13 @@ $L$ (bits/block): B16 (fast: 1.00, med: 1.95), B8 (fast: 1.00, med: 1.63), B4 (f
 
 \begin{minipage}[t]{0.45\linewidth}
     \textbf{Analysis:}\\
-    The impact of clustering depends strongly on block size.
+    The \textit{Signaling Tax} dictates the optimal block size.
     \begin{itemize}
-        \item \textbf{B4:} RD-Fast and RD-Medium both outperform the baseline. At 1.44 BPV, RD-Fast gains 0.05 dB with a 1\% bitrate drop; RD-Medium reaches 0.07 dB. Across all bitrates, RD-Medium remains slightly superior.
-        \item \textbf{B8:} Gains are modest. At low bitrate (~0.81 BPV) both strategies add ~0.01 dB and reduce bitrate by ~1\%. At higher bitrates, PSNR decreases slightly (–0.01 to –0.02 dB) while still yielding small bitrate savings.
-        \item \textbf{B16:} Clustering overhead dominates. Both methods show small but consistent PSNR losses (0.01–0.02 dB) with negligible bitrate reduction.
+        \item \textbf{B4/B8 (Overhead Dominated):} Transform gains are high (up to 20\%), but signaling a cluster ID for only 16 points costs ~0.20 BPV. The net bit-rate increases.
+        \item \textbf{B16 (Break-even):} Overhead drops to ~0.002 BPV. The system reaches the neutral point where transform savings equal signaling cost.
+        \item \textbf{B32 (True Compression):} Overhead is diluted to sub-0.001 BPV. With $\beta=2000$ and CABAC, we achieve a \textbf{Net Gain of -0.56\%}.
     \end{itemize}
-    In summary, clustering is clearly effective for \textbf{B4}, with consistent gains. Benefits diminish with larger blocks, and RD-Medium offers the best overall tradeoff at the cost of higher complexity.
+    True compression is only achievable when block size is large enough to make the decision overhead negligible.
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.45\linewidth}
@@ -197,40 +196,32 @@ $L$ (bits/block): B16 (fast: 1.00, med: 1.95), B8 (fast: 1.00, med: 1.63), B4 (f
 \small
 \begin{tabular}{@{}lcc@{}}
 \toprule
-\textbf{Method Comparison} & \textbf{Avg. BPV Gain} & \textbf{Avg. PSNR Gain (dB)} \\
+\textbf{Method Comparison} & \textbf{BPV Gain \%} & \textbf{Net Gain (Status)} \\
 \midrule
-\multicolumn{3}{l}{\textit{Block Size B4}} \\
-\quad RD-Fast-B4 vs Baseline-B4 & \textcolor{blue}{+0.0114} & \textcolor{blue}{+0.0232} \\
-\quad RD-Medium-B4-C4 vs Baseline-B4 & \textcolor{blue}{+0.0137} & \textcolor{blue}{+0.0466} \\
-\midrule
-\multicolumn{3}{l}{\textit{Block Size B8}} \\
-\quad RD-Fast-B8 vs Baseline-B8 & \textcolor{blue}{+0.0062} & \textcolor{red}{-0.0040} \\
-\quad RD-Medium-B8-C4 vs Baseline-B8 & \textcolor{blue}{+0.0085} & \textcolor{red}{-0.0090} \\
-\midrule
-\multicolumn{3}{l}{\textit{Block Size B16}} \\
-\quad RD-Fast-B16 vs Baseline-B16 & +0.0009 & \textcolor{red}{-0.0172} \\
-\quad RD-Medium-B16-C4 vs Baseline-B16 & +0.0006 & \textcolor{red}{-0.0184} \\
+\multicolumn{3}{l}{\textit{Fixed Codebook + CABAC}} \\
+\quad B4 C4 Q24 & +20.3\% & \textcolor{red}{Overhead Limited} \\
+\quad B16 C4 Q24 & +0.4\% & \textcolor{gray}{Neutral} \\
+\quad B32 C2 Q24 ($\beta=2000$) & \textcolor{blue}{-0.56\%} & \textcolor{blue}{True Compression} \\
 \bottomrule
 \end{tabular}
-\caption{Comparative performance metrics across configurations.}
+\caption{Comparative performance metrics across scales.}
 \end{table}
 
 \vspace{0.1em}
 
 \textbf{Key Observations:}
 \begin{itemize}
-    \item \textbf{B4:} Both methods achieve bitrate reduction and quality gains; Medium outperforms Fast.
-    \item \textbf{B8:} Maintains bitrate reduction with minimal quality loss ($<$0.01 dB).
-    \item \textbf{B16:} Diminishing returns with minimal bitrate gains and noticeable quality degradation.
-    \item \textbf{Optimal:} B4 provides best rate-distortion performance for practical use.
+    \item \textbf{Unit Discrepancy:} Massive training gains in RD-cost are often driven by distortion reduction, which may not translate to bit savings if overhead is high.
+    \item \textbf{Block Size Threshold:} True compression requires $B \geq 16$.
+    \item \textbf{Spatial Penalty:} High $\beta$ values are required to force label smoothness.
 \end{itemize}
 
 \end{block}
 
 \begin{block}{Conclusions}
-Clustering helps only when blocks are small. For B4, both RD-Fast and RD-Medium reduce bitrate and slightly improve PSNR. For B8, gains are minimal but generally neutral. For B16, overhead dominates and performance drops.
+True compression is achieved by \textbf{diluting overhead} in large blocks (B32) and \textbf{smoothing labels} via spatial regularization ($\beta$). Small blocks (B4) are effective for fidelity but inefficient for bit-rate.
 
-Overall, \textbf{B4 gives the best tradeoff}, with RD-Medium performing the best.
+The optimal strategy for PCADC is \textbf{B32 with $K=2$ and high $\beta$}, leveraging CABAC to exploit the resulting spatial correlation.
 \end{block}
 
 \begin{block}{References}
