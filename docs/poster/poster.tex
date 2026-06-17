@@ -26,17 +26,17 @@
 
 \newcommand{\separatorcolumn}{\begin{column}{\sepwidth}\end{column}}
 
-\title{\fontsize{38}{42}\selectfont Adaptive Graph Transform Clustering via Rate-Distortion Optimization for Point Cloud Attribute Compression}
+\title{Adaptive Graph Transform Clustering via RD Optimization for Point Cloud Attribute Compression}
 
 \author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
 
 \institute[shortinst]{{
-  \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \quad \inst{2} University of Southern California \\
+  \inst{1} Universidad de Chile \quad \inst{2} University of Southern California \\
   \textbf{EL7024 - Teoría de Información: Fundamentos y Aplicaciones}
 }}
 
 \footercontent{
-  Sesión de Pósters - Teoría de Información: Fundamentos y Aplicaciones \hfill \href{mailto:simon.yanez@ug.uchile.cl}{simon.yanez@ug.uchile.cl}
+  Sesión de Pósters - Teoría de Información \hfill \href{mailto:simon.yanez@ug.uchile.cl}{simon.yanez@ug.uchile.cl}
 }
 
 \begin{document}
@@ -56,25 +56,27 @@
 \begin{column}{\colwidth}
 
 \begin{block}{Introduction and Motivation}
-Point clouds (PC) represent 3D geometry and attributes (color/luminance) with high fidelity but massive data footprints \cite{zhang2014point}. Traditional compression leverages the Graph Fourier Transform (GFT) to compact energy into the spectral domain \cite{ortega2022gsp}. However, geometry-only graphs ignore the actual signal trends. This project develops \textbf{Point Cloud Attribute-Dependent Compression (PCADC)}, which adapts both the graph topology and the transform selection to local signal characteristics using Rate-Distortion (RD) optimization.
+Point clouds (PC) represent 3D geometry and attributes with high fidelity but massive data footprints \cite{zhang2014point}. Traditional compression leverages the Graph Fourier Transform (GFT) to compact energy into the spectral domain \cite{ortega2022gsp}. However, geometry-only graphs ignore the actual signal trends. This project develops \textbf{Point Cloud Attribute-Dependent Compression (PCADC)}, which adapts both the graph topology and the transform selection to local signal characteristics using Rate-Distortion (RD) optimization.
 \end{block}
 
 \begin{block}{Phase 1: Partitioning and Structural Foundation}
 \begin{columns}
 \begin{column}{0.65\textwidth}
-The PC is partitioned into cubes using a **Morton Path (Z-order)** to preserve spatial locality \cite{morton1966zorder}.
+The PC is partitioned into cubes using a \textbf{Morton Path (Z-order)} to preserve spatial locality \cite{morton1966zorder}.
 A \textit{Structural Graph} ($\mathcal{G}_s$) is built where weights $W_{ij}$ represent Euclidean proximity. 
 \end{column}
 \begin{column}{0.3\textwidth}
-    \centering
-    \includegraphics[width=\linewidth]{rabbit.jpg}
-    \caption{Morton partitioning.}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{rabbit.jpg}
+        \caption{Morton partitioning.}
+    \end{figure}
 \end{column}
 \end{columns}
 \end{block}
 
 \begin{block}{Phase 2: Adaptive Topology and RD-Clustering}
-We introduce an \textbf{Attribute-Dependent Graph} ($\mathcal{G}_a$) that modifies the structural weights by adding \textbf{self-loops} to signal "sinks."
+We introduce an \textbf{Attribute-Dependent Graph} ($\mathcal{G}_a$) that modifies structural weights by adding \textbf{self-loops} to signal "sinks."
 
 \vspace{0.5em}
 \begin{columns}
@@ -83,24 +85,26 @@ We introduce an \textbf{Attribute-Dependent Graph} ($\mathcal{G}_a$) that modifi
 \begin{enumerate}
     \item \textbf{Motion Matrix:} $M_{ij} = W_{ij}(y_i - y_j)$ where $y$ is the luminance gradient.
     \item \textbf{Topology Adaptation:} Nodes with high incoming gradient count ($S_j$) receive a self-loop with weight $w_{sl}$ \cite{pavez2017separable}.
-    \item \textbf{Learning:} A codebook of $K$ transforms is trained using \textbf{Simulated Annealing} (assignment) and \textbf{Differential Evolution} (refining parameters $\vec{slope}, w_{sl}, \tau$).
+    \item \textbf{Learning:} A codebook of $K$ transforms is trained using \textbf{Simulated Annealing} and \textbf{Differential Evolution}.
 \end{enumerate}
 \end{column}
 \begin{column}{0.35\textwidth}
-    \centering
-    \includegraphics[width=0.8\linewidth]{Grafo_Ejemplo.png}
-    \caption{Signal-driven topology.}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\linewidth]{Grafo_Ejemplo.png}
+        \caption{Signal-driven topology.}
+    \end{figure}
 \end{column}
 \end{columns}
 \end{block}
 
 \begin{block}{Phase 3: The Signaling Tax Discovery}
-A fundamental contribution of this work is identifying the \textit{Overhead Trap}. For small blocks (B4), signaling which transform to use for only 16 points costs $\sim$0.2 bits-per-voxel (BPV). 
+A fundamental contribution of this work is identifying the \textit{Overhead Trap}. For small blocks (B4), signaling which transform to use for only 16 points costs $\sim$0.2 BPV. 
 
 \vspace{0.5em}
 \textbf{The Dilution Principle:} Per-point overhead drops with block volume $B^3$:
 \begin{equation}
-\text{BPV}_{\text{overhead}} = \frac{\text{Signaling Bits}}{B^3} \quad \text{\cite{shannon1948mathematical,sayood2006introduction}}
+\text{BPV}_{\text{overhead}} = \frac{H(L_i | L_{i-1})}{B^3} \quad \text{\cite{shannon1948mathematical,sayood2006introduction}}
 \end{equation}
 This insight shifted our focus from local adaptation (B4) to \textbf{Global Scale Efficiency (B32)}.
 \end{block}
@@ -115,17 +119,17 @@ To reach true compression, we implemented \textbf{Spatial Regularization}. We ad
 \begin{equation}
 J_{total} = \sum (D_i + \lambda R_i) + \beta \cdot \mathds{1}(L_i \neq L_{i-1})
 \end{equation}
-This forces label "runs" which are compressed using **CABAC-Proxy** ($H(L_i | L_{i-1})$), capturing spatial correlation \cite{malvar2006adaptive}.
+This forces label "runs" which are compressed using \textbf{CABAC-Proxy} ($H(L_i | L_{i-1})$), capturing spatial correlation \cite{malvar2006adaptive}.
 \end{block}
 
-\begin{block}{Rate-Distortion Frontier: True Compression Breakthrough}
+\begin{block}{Rate-Distortion Frontier: Compression Breakthrough}
 \begin{figure}
 \centering
 \includegraphics[width=0.45\linewidth]{B4_rd_comparison.png}
 \includegraphics[width=0.45\linewidth]{B8_rd_comparison.png}\\[0.5em]
 \includegraphics[width=0.45\linewidth]{B16_rd_comparison.png}
 \includegraphics[width=0.45\linewidth]{B32_rd_comparison.png}
-\caption{RD Curves (PSNR-Y vs bpv). Dotted Red: Total Rate (Data + Signaling). In **B32**, the adaptive transform savings finally outweigh the signaling tax, crossing to the left of the baseline.}
+\caption{RD Curves (PSNR-Y vs bpv). Dotted Red: Total Rate (Data + Signaling). In \textbf{B32}, the adaptive transform savings finally outweigh the signaling tax, crossing to the left of the baseline.}
 \end{figure}
 
 \begin{table}[h]
@@ -133,12 +137,12 @@ This forces label "runs" which are compressed using **CABAC-Proxy** ($H(L_i | L_
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Configuration ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Saving} & \textbf{Net Gain} \\
+\textbf{Config ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Saving} & \textbf{Net Gain} \\
 \midrule
 Small Scale (B4) & 0.0239 & -1.4\% & \textcolor{red}{+10.47\%} \\
 Medium Scale (B8) & 0.0189 & -4.8\% & \textcolor{red}{+7.02\%} \\
 Large Scale (B16) & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
-\textbf{Compression Mode (B32)} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
+\textbf{Compression (B32)} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
 \bottomrule
 \end{tabular}
 \caption{Full Point Cloud results using context-adaptive signaling proxy.}
@@ -146,7 +150,7 @@ Large Scale (B16) & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
 \end{block}
 
 \begin{block}{Conclusions}
-This research demonstrates that \textbf{Attribute-Dependent Transforms} are viable for point cloud compression only when the per-block signaling overhead is diluted in large volumes (B16, B32) and smoothed via spatial penalties. While B4 offers the highest transform gain ($>$15\%), the bit-rate increase is prohibitive. The optimal strategy is **B32 with $K=2$ and high $\beta$**, achieving the project's first negative net-gain breakthrough.
+This research demonstrates that \textbf{Attribute-Dependent Transforms} are viable for point cloud compression only when signaling overhead is diluted in large volumes (B16, B32) and smoothed via spatial penalties. While B4 offers the highest transform gain, its bit-rate increase is prohibitive. The optimal strategy is \textbf{B32 with small K and high $\beta$}, achieving the project's first negative net-gain breakthrough.
 \end{block}
 
 \begin{block}{References}
