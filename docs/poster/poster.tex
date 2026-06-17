@@ -26,7 +26,7 @@
 
 \newcommand{\separatorcolumn}{\begin{column}{\sepwidth}\end{column}}
 
-\title{Point Cloud Attribute Dependent Compression using Rate-Distortion Optimized Clustering}
+\title{Adaptive Graph Transform Clustering via Rate-Distortion Optimization for Point Cloud Attribute Compression}
 
 \author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
 
@@ -57,77 +57,43 @@
 \begin{column}{\colwidth}
 
 \begin{block}{Introduction}
-Point clouds are fundamental for 3D representation, but their density requires efficient compression. This work proposes an attribute compression scheme using \textbf{adaptive Graph-based Transforms (GFT)} and rate-distortion optimization. A key focus is solving the \textit{signaling tax} problem where per-block metadata can outweigh transform gains.
-
-\vspace{0.3em}
-
-\begin{figure}
-    \centering
-    \includegraphics[width=0.3\linewidth]{longdress_thumb.png}
-    \caption{"Longdress" frame from 8iVFBv2 dataset \cite{deon2017voxelized}.}
-\end{figure}
+Point clouds (PC) are essential for 3D representation, but their unstructured nature and high density demand efficient compression. While geometry compression is well-studied, attribute (color/luminance) compression remains a challenge. We propose a framework that adapts the \textbf{Graph Fourier Transform (GFT)} to local signal trends through \textbf{RD-Optimized Clustering}, creating a dictionary of transforms that compacts energy better than static geometry-based graphs.
 \end{block}
 
-\begin{block}{Proposed Method}
-
-\begin{figure}
-    \centering
-    \includegraphics[width=\linewidth]{methodology_diagram.png}
-    \caption{Compression pipeline: Block partitioning → GFT → RD-optimized clustering with spatial regularization → Quantization → Context-adaptive coding.}
-\end{figure}
-
-\vspace{1em}
-
-\textbf{Key Components:}
-\begin{enumerate}
-  \item \textbf{RD-Clustering:} Optimizes codebooks to minimize $J = D + \lambda R$.
-  \item \textbf{Spatial Penalty ($\beta$):} Penalizes cluster-switching between adjacent blocks to force long ID runs.
-  \item \textbf{Context-Adaptive Coding:} Uses 1st-order conditional entropy to exploit spatial correlation in cluster labels.
-  \item \textbf{Scale Management:} Targets large block volumes (B16, B32) to dilute the per-block signaling overhead.
-\end{enumerate}
+\begin{block}{Innovation 1: Adaptive Graph Topology}
+Standard GFT uses a \textbf{Structural Graph} ($\mathcal{G}_s$) where weights $W_{ij}$ depend only on spatial distance. We introduce the \textbf{Attribute Graph} ($\mathcal{G}_a$), which modifies $\mathcal{G}_s$ by adding \textbf{self-loops} to nodes that act as "sinks" in the attribute gradient field.
 
 \vspace{0.5em}
+\textbf{Mathematical Formulation:}
+\begin{enumerate}
+    \item \textbf{Attribute Motion:} $M_{ij} = W_{ij} \cdot (y_i - y_j)$ where $y$ is the luminance.
+    \item \textbf{Sink Identification:} Nodes $j$ with the highest incoming gradient count $S_j$ are selected.
+    \item \textbf{Topology Adaptation:} $W_{jj} = w_{sl}$ for the top $\tau\%$ of sink nodes.
+\end{enumerate}
+This forces the GFT basis vectors to align with the local signal trend, maximizing energy compaction.
+\end{block}
 
-\textbf{Optimization Strategy:}
+\begin{block}{Innovation 2: RD-Optimized Clustering}
+We learn a codebook of $K$ transforms (defined by slopes $\vec{s}_k$ and self-loop parameters). Unlike K-means, assignments are based on the \textbf{Lagrangian Cost} $J = D + \lambda R$.
+
+\vspace{0.5em}
+\textbf{The Training Loop:}
 \begin{itemize}
-    \item \textbf{Search:} Every block tests the entire codebook for the global minimum cost.
-    \item \textbf{Smoothing:} A sequential pass along the Morton path applies the $\beta$ penalty.
+    \item \textbf{Assignment (Expectation):} Blocks choose the transform minimizing $J$. \textbf{Simulated Annealing} is used to explore the cost surface and avoid local minima.
+    \item \textbf{Optimization (Maximization):} Transform parameters ($\vec{s}, w_{sl}, \tau$) are refined using \textbf{Differential Evolution} to minimize the total RD-cost of the assigned blocks.
 \end{itemize}
-
 \end{block}
 
-\begin{block}{Information Theory Context}
-\textbf{Rate Components:} $R_{\text{total}} = R_{\text{data}} + R_{\text{overhead}}$. 
-$R_{\text{data}}$ is the sparsity of quantized GFT coefficients.
+\begin{block}{Innovation 3: Spatial Regularization \& Dilution}
+A major contribution of this work is identifying and solving the \textbf{Signaling Tax} problem. Even if an adaptive transform is superior, the cost of signaling the choice (cluster ID) can outweigh the gains.
 
-\textbf{Overhead Lower Bound:} For memoryless sources, $H(L)$. For spatially correlated sources, the conditional entropy $H(L_i | L_{i-1})$ represents the CABAC limit.
-
-\textbf{The Dilution Principle:} As block volume increases ($B^3$), the signaling cost per point drops exponentially:
-\begin{equation}
-\text{BPV}_{\text{overhead}} = \frac{\text{bits/block}}{B^3}
-\end{equation}
-
-\textbf{Key Insight:} True compression requires $B \geq 16$. Smaller blocks suffer from a "signaling tax" larger than their transform gain.
-\end{block}
-
-\begin{block}{Experimental Configuration}
-\textbf{Dataset:} "longdress" frame 1051, 10-bit YUV voxelization.
-
-\vspace{0.3em}
-
-\begin{table}[h]
-\centering
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Strategy} & \textbf{Blocks ($B$)} & \textbf{Clusters ($K$)} & \textbf{$\alpha$ ($\lambda$)} & \textbf{$\beta$ (Switch)} \\
-\midrule
-Local Detail & 4, 8 & 2, 4, 12 & 0.8 & 0 \\
-Global Scale & 16, 32 & 2, 4 & 5.0 & 2000 \\
-\bottomrule
-\end{tabular}
-\caption{Parameters for overhead-diluted benchmarking.}
-\end{table}
+\vspace{0.5em}
+\textbf{Methodology:}
+\begin{enumerate}
+    \item \textbf{Viterbi-Style Smoothing:} We add a penalty $\beta$ for cluster-switching between Morton-adjacent blocks: $J_{total} = \sum (D_i + \lambda R_i) + \beta \cdot \mathds{1}(L_i \neq L_{i-1})$.
+    \item \textbf{CABAC Signaling:} We use 1st-order conditional entropy $H(L_i | L_{i-1})$ to exploit the runs created by $\beta$.
+    \item \textbf{Overhead Dilution:} By increasing block size ($B=16, 32$), the signaling overhead is spread over more points, making the "tax" negligible.
+\end{enumerate}
 \end{block}
 
 \end{column}
@@ -135,70 +101,55 @@ Global Scale & 16, 32 & 2, 4 & 5.0 & 2000 \\
 
 \begin{column}{\colwidth}
 
-\begin{block}{Rate-Distortion Results: The Overhead Trap}
+\begin{block}{The Scaling Frontier: RD Results}
 
 \begin{figure}
 \centering
-
-\begin{minipage}[t]{0.45\linewidth}
-    \textbf{Analysis:}\\
-    The \textit{Signaling Tax} dictates feasibility:
-    \begin{itemize}
-        \item \textbf{B4/B8 (Inefficient):} Transform gains are ~15\%, but overhead is ~0.15 BPV. Net bitrate increases by >20\%.
-        \item \textbf{B16 (Break-even):} Overhead is reduced to ~0.004 BPV. Transform gains finally start to compensate for the signaling cost.
-        \item \textbf{B32 (Compression):} Overhead is negligible (<0.001 BPV). Adaptive gains translate directly to bit-rate reduction.
-    \end{itemize}
-    True compression is achieved only when the per-block decision is shared by enough points.
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.45\linewidth}
-    \centering
-    \includegraphics[width=0.45\linewidth]{B4_rd_comparison.png}
-    \includegraphics[width=0.45\linewidth]{B8_rd_comparison.png}\\[0.5em]
-    \includegraphics[width=0.45\linewidth]{B16_rd_comparison.png}
-    \includegraphics[width=0.45\linewidth]{B32_rd_comparison.png}
-\end{minipage}
-
+\includegraphics[width=0.45\linewidth]{B4_rd_comparison.png}
+\includegraphics[width=0.45\linewidth]{B8_rd_comparison.png}\\[0.5em]
+\includegraphics[width=0.45\linewidth]{B16_rd_comparison.png}
+\includegraphics[width=0.45\linewidth]{B32_rd_comparison.png}
+\caption{RD Curves (PSNR-Y vs bpv). Green: Transform Gain (Raw). Red Dotted: Total Rate (including CABAC overhead). Black: Structural Baseline.}
 \end{figure}
 
+\vspace{0.5em}
+\textbf{Analysis of the Scale Effect:}
+\begin{itemize}
+    \item \textbf{B4/B8:} While these scales show the highest \textit{Raw Gains} (green line far from black), the \textit{Signaling Tax} (red line) is prohibitive.
+    \item \textbf{B16:} The break-even point. Overhead drops to $\sim$0.004 bpv.
+    \item \textbf{B32:} The \textbf{Compression Breakthrough}. Overhead is diluted to $<$0.001 bpv, allowing adaptive gains to yield a negative net gain.
+\end{itemize}
 \end{block}
 
-\begin{block}{Performance Metrics: CABAC vs. LZMA}
-
-\textbf{Comparison at Q=24:} Negative net gain indicates true compression.
-
-\vspace{0.5em}
-
+\begin{block}{Performance Summary (Q=24)}
 \begin{table}[h]
 \centering
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Method ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Gain} & \textbf{Net Gain} \\
+\textbf{Config ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Saving} & \textbf{Net Gain} \\
 \midrule
-\textit{Small Scale (B4)} & 0.0239 & -1.4\% & \textcolor{red}{+10.47\%} \\
-\textit{Medium Scale (B8)} & 0.0189 & -4.8\% & \textcolor{red}{+7.02\%} \\
-\textit{Large Scale (B16)} & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
-\textbf{\textit{Production (B32)}} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
+Small Detail (B4) & 0.0239 & -1.4\% & \textcolor{red}{+10.47\%} \\
+Medium Scale (B8) & 0.0189 & -4.8\% & \textcolor{red}{+7.02\%} \\
+Large Scale (B16) & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
+\textbf{Global (B32)} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
 \bottomrule
 \end{tabular}
-\caption{Net performance using context-adaptive signaling proxy.}
+\caption{Full Point Cloud results with CABAC overhead estimation.}
 \end{table}
 
-\vspace{0.1em}
-
-\textbf{Critical Findings:}
+\vspace{0.5em}
+\textbf{Key Insights:}
 \begin{itemize}
-    \item \textbf{Spatial Penalty:} Using $\beta=2000$ reduces CABAC overhead by \textbf{72\%} compared to memoryless entropy.
-    \item \textbf{Unit Trap:} Training gains in RD-cost are often numerically dominated by $D$. Large bit-savings require $\lambda \geq 5.0$.
+    \item \textbf{Spatial Penalty ($\beta=2000$)} reduced CABAC overhead by \textbf{72\%} vs memoryless entropy.
+    \item \textbf{Unit Discrepancy:} Training gains in $D$ (MSE) can be massive (25\%+) while bit-savings are small. High $\lambda \geq 5.0$ is required for compression-first dictionaries.
 \end{itemize}
-
 \end{block}
 
 \begin{block}{Conclusions}
-True compression in RD-optimized clustering is possible only through \textbf{overhead dilution} (using B32) and \textbf{spatial smoothing} (using $\beta$). While B4 offers the best local adaptation, its signaling cost is prohibitive.
+This work validates that \textbf{Attribute-Dependent Graph Transforms} can achieve true compression if the signaling overhead is managed through \textbf{spatial regularization} and \textbf{scale management}. 
 
-The optimal strategy for PCADC is \textbf{B32 with small K and high spatial penalty}, achieving a breakthrough in net-bitrate reduction.
+We proved that B32 is the optimal production scale for per-block signaling, while B4/B8 are only suitable for high-fidelity scenarios where bit-rate is secondary to reconstruction quality. Future work will explore \textbf{skip-mode signaling} to further reduce the tax on structural blocks.
 \end{block}
 
 \begin{block}{References}
