@@ -28,7 +28,7 @@
 
 \title{Adaptive Graph Transform Clustering via Rate-Distortion Optimization \\ for Point Cloud Attribute Compression}
 
-\author{Simón Yáñez \inst{1} \dots Eduardo Pavez \inst{2} \dots Jorge Silva \inst{1}}
+\author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
 
 \institute[shortinst]{{
   \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \quad \inst{2} University of Southern California \\
@@ -104,7 +104,7 @@ True compression requires $B \geq 16$ to dilute the tax.
 \begin{block}{Geometric Complexity and Vanishing Clusters}
 \begin{columns}
 \begin{column}{0.65\textwidth}
-Analysis of \textit{Active Clusters} reveals a "Structural Ceiling." B4 blocks hit a limit of $\sim$8 distinct modes regardless of capacity. B32 blocks retain higher entropy, justifying more complex codebooks.
+Analysis of \textit{Active Clusters} reveals a "Structural Ceiling." B4 blocks hit a limit of $\sim$8 distinct modes regardless of capacity \cite{pavez2020region}. B32 blocks retain higher entropy, justifying more complex codebooks.
 \end{column}
 \begin{column}{0.3\textwidth}
     \begin{figure}
@@ -168,7 +168,7 @@ Large Scale (B16) & 0.0042 & -2.2\% & +0.61\% \\
 \end{block}
 
 \begin{block}{Conclusions}
-True compression in PCADC requires **overhead dilution** and **spatial smoothing**. While B4/B8 allow superior local adaptation \cite{pavez2020region}, their signaling cost is prohibitive. The optimal strategy is **B32 with $K=2$ and high $\beta$**, achieving the project's first true compression breakthrough.
+True compression in PCADC requires **overhead dilution** and **spatial smoothing**. While B4/B8 allow superior local adaptation, their signaling cost is prohibitive. The optimal strategy is **B32 with $K=2$ and high $\beta$**, achieving the project's first true compression breakthrough.
 \end{block}
 
 \begin{block}{References}
