@@ -28,7 +28,7 @@
 
 \title{Adaptive Graph Transform Clustering via Rate-Distortion Optimization \\ for Point Cloud Attribute Compression}
 
-\author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
+\author{Simón Yáñez \inst{1} \dots Eduardo Pavez \inst{2} \dots Jorge Silva \inst{1}}
 
 \institute[shortinst]{{
   \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \quad \inst{2} University of Southern California \\
@@ -56,21 +56,16 @@
 \begin{column}{\colwidth}
 
 \begin{block}{Introduction}
-Point clouds (PC) are fundamental for 3D representation, but their unstructured nature and high density demand efficient compression \cite{zhang2014point}. This project develops \textbf{Point Cloud Attribute-Dependent Compression (PCADC)}, which adapts both the graph topology and the transform selection to local signal characteristics. We address the \textit{signaling tax} problem where per-block metadata can outweigh transform gains, a common barrier in adaptive GFT frameworks.
-
-\vspace{0.3em}
-\begin{figure}
-    \centering
-    \includegraphics[width=0.3\linewidth]{longdress_thumb.png}
-    \caption{"Longdress" frame from 8iVFBv2 dataset \cite{deon2017voxelized}.}
-\end{figure}
+Point clouds (PC) represent 3D geometry and attributes with high fidelity but massive data footprints \cite{zhang2014point}. This work develops \textbf{Point Cloud Attribute-Dependent Compression (PCADC)}, which adapts the graph topology and transform selection to local signal characteristics. We solve the \textit{signaling tax} problem by leveraging overhead dilution in large block volumes.
 \end{block}
 
 \begin{block}{Methodology: Partitioning and Topology}
-The PC is partitioned using a \textbf{Morton Path (Z-order)} to preserve spatial locality \cite{morton1966zorder}.
-A \textit{Structural Graph} ($\mathcal{G}_s$) is built using Euclidean proximity \cite{ortega2022gsp}. We then introduce the \textbf{Attribute-Dependent Graph} ($\mathcal{G}_a$), which adapts $\mathcal{G}_s$ by adding \textbf{self-loops} to nodes identified as "sinks" in the attribute gradient field.
+The PC is partitioned using a \textbf{Morton Path} to preserve spatial locality \cite{morton1966zorder}.
+We introduce the \textbf{Attribute-Dependent Graph} ($\mathcal{G}_a$), which adapts the structural graph $\mathcal{G}_s$ by adding self-loops to nodes identified as "sinks" in the luminance gradient field.
+\begin{equation}
+L_{a} = L_{s} + \mathbf{W}_{sl} \quad \text{where } \mathbf{W}_{sl} = \text{diag}(w_i \cdot \mathds{1}(i \in \text{Sinks}))
+\end{equation}
 
-\vspace{0.5em}
 \begin{columns}
 \begin{column}{0.48\textwidth}
     \begin{figure}
@@ -90,20 +85,35 @@ A \textit{Structural Graph} ($\mathcal{G}_s$) is built using Euclidean proximity
 \end{block}
 
 \begin{block}{Learning the Dictionary: RD-Optimized Clustering}
-We learn a codebook of $K$ transforms (defined by slopes $\vec{s}_k$ and self-loop parameters) to minimize the Lagrangian cost $J = D + \lambda R$ \cite{ortega1998rate}.
+We learn a codebook of $K$ transforms to minimize the Lagrangian cost $J = D + \lambda R$ \cite{ortega1998rate}.
 \begin{itemize}
-    \item \textbf{Exploration:} \textit{Simulated Annealing} enables stochastic block-to-cluster assignments to avoid local minima.
-    \item \textbf{Refinement:} \textit{Differential Evolution} refines parameters ($\vec{slope}, w_{sl}, \tau$) to minimize the collective RD-cost \cite{pavez2017separable}.
+    \item \textbf{Exploration:} \textit{Simulated Annealing} enables stochastic assignments to avoid local minima.
+    \item \textbf{Refinement:} \textit{Differential Evolution} refines transform parameters ($\vec{slope}, w_{sl}, \tau$) to minimize the collective cost \cite{pavez2017separable}.
 \end{itemize}
 \end{block}
 
-\begin{block}{Information Theory Context: The Signaling Tax}
+\begin{block}{Information Theory: The Signaling Tax}
 A core finding is the \textbf{Overhead Trap}. For small blocks (B4), signaling which transform to use costs $\sim$0.2 BPV, exceeding transform gains. 
 \textbf{The Dilution Principle:} Per-point overhead drops with block volume $B^3$:
 \begin{equation}
 \text{BPV}_{\text{overhead}} = \frac{H(L_i | L_{i-1})}{B^3} \quad \text{\cite{shannon1948mathematical,sayood2006introduction}}
 \end{equation}
-This insight shifted our focus from local adaptation (B4) to \textbf{Global Scale Efficiency (B32)}.
+True compression requires $B \geq 16$ to dilute the tax.
+\end{block}
+
+\begin{block}{Geometric Complexity and Vanishing Clusters}
+\begin{columns}
+\begin{column}{0.65\textwidth}
+Analysis of \textit{Active Clusters} reveals a "Structural Ceiling." B4 blocks hit a limit of $\sim$8 distinct modes regardless of capacity. B32 blocks retain higher entropy, justifying more complex codebooks.
+\end{column}
+\begin{column}{0.3\textwidth}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{active_c_stability.png}
+        \caption{Utilization vs Capacity.}
+    \end{figure}
+\end{column}
+\end{columns}
 \end{block}
 
 \end{column}
@@ -112,17 +122,32 @@ This insight shifted our focus from local adaptation (B4) to \textbf{Global Scal
 \begin{column}{\colwidth}
 
 \begin{block}{Spatial Regularization and CABAC}
-To reach true compression, we implemented \textbf{Spatial Regularization}, adding a penalty $\beta$ for cluster-switching between adjacent blocks. This forces label "runs" that are efficiently compressed using \textbf{CABAC-Proxy} (1st-order conditional entropy), exploiting the spatial correlation that standard entropy ignores \cite{malvar2006adaptive}.
+To reach true compression, we implemented \textbf{Spatial Regularization}, adding a penalty $\beta$ for cluster-switching. This forces label "runs" efficiently compressed using \textbf{CABAC-Proxy} (1st-order conditional entropy), exploiting spatial correlation \cite{malvar2006adaptive}.
 \end{block}
 
-\begin{block}{Rate-Distortion Results: Breakthrough at B32}
+\begin{block}{The Capacity Elbow: Diminishing Returns}
+\begin{columns}
+\begin{column}{0.3\textwidth}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{capacity_elbow.png}
+        \caption{Cost vs Clusters.}
+    \end{figure}
+\end{column}
+\begin{column}{0.65\textwidth}
+The inflection point identifies the optimal $K$. For B32, $K=2$ captures the primary signal trends, while $K > 4$ leads to saturation where overhead growth negates residual reduction.
+\end{column}
+\end{columns}
+\end{block}
+
+\begin{block}{Rate-Distortion Frontier: Breakthrough at B32}
 \begin{figure}
 \centering
-\includegraphics[width=0.45\linewidth]{B4_rd_comparison.png}
-\includegraphics[width=0.45\linewidth]{B8_rd_comparison.png}\\[0.5em]
-\includegraphics[width=0.45\linewidth]{B16_rd_comparison.png}
-\includegraphics[width=0.45\linewidth]{B32_rd_comparison.png}
-\caption{RD Curves (PSNR-Y vs bpv). Dotted Red: Total Rate (Data + CABAC). In **B32**, the adaptive gains finally outweigh the tax, achieving net bit-rate reduction.}
+\includegraphics[width=0.42\linewidth]{B4_rd_comparison.png}
+\includegraphics[width=0.42\linewidth]{B8_rd_comparison.png}\\[0.5em]
+\includegraphics[width=0.42\linewidth]{B16_rd_comparison.png}
+\includegraphics[width=0.42\linewidth]{B32_rd_comparison.png}
+\caption{RD Curves (PSNR-Y vs bpv). Dotted Red: Total Rate (Data + CABAC). In **B32**, the gains finally outweigh the tax, achieving net reduction.}
 \end{figure}
 
 \begin{table}[h]
@@ -138,12 +163,12 @@ Large Scale (B16) & 0.0042 & -2.2\% & +0.61\% \\
 \textbf{Compression (B32)} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{-0.03\%} \\
 \bottomrule
 \end{tabular}
-\caption{Full Point Cloud results with CABAC overhead estimation at Q=24.}
+\caption{Net performance using context-adaptive signaling proxy.}
 \end{table}
 \end{block}
 
 \begin{block}{Conclusions}
-True compression in RD-optimized clustering requires **overhead dilution** (using B16/B32) and **spatial smoothing** (using $\beta$). While B4/B8 allow superior local adaptation \cite{pavez2020region}, their signaling cost is prohibitive. The optimal strategy is **B32 with small K and high spatial penalty**, achieving the project's first negative net-gain breakthrough.
+True compression in PCADC requires **overhead dilution** and **spatial smoothing**. While B4/B8 allow superior local adaptation \cite{pavez2020region}, their signaling cost is prohibitive. The optimal strategy is **B32 with $K=2$ and high $\beta$**, achieving the project's first true compression breakthrough.
 \end{block}
 
 \begin{block}{References}
