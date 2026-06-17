@@ -26,13 +26,12 @@
 
 \newcommand{\separatorcolumn}{\begin{column}{\sepwidth}\end{column}}
 
-\title{Adaptive Graph Transform Clustering via Rate-Distortion Optimization for Point Cloud Attribute Compression}
+\title{\fontsize{38}{42}\selectfont Adaptive Graph Transform Clustering via Rate-Distortion Optimization for Point Cloud Attribute Compression}
 
 \author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
 
 \institute[shortinst]{{
-  \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \\
-  \inst{2} University of Southern California \\
+  \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \quad \inst{2} University of Southern California \\
   \textbf{EL7024 - Teoría de Información: Fundamentos y Aplicaciones}
 }}
 
@@ -56,44 +55,38 @@
 
 \begin{column}{\colwidth}
 
-\begin{block}{Introduction}
-Point clouds (PC) are essential for 3D representation, but their unstructured nature and high density demand efficient compression. While geometry compression is well-studied, attribute (color/luminance) compression remains a challenge. We propose a framework that adapts the \textbf{Graph Fourier Transform (GFT)} to local signal trends through \textbf{RD-Optimized Clustering}, creating a dictionary of transforms that compacts energy better than static geometry-based graphs.
+\begin{block}{The Challenge: Unstructured Point Clouds}
+Point clouds are a fundamental structure for representing 3D geometry and attributes, but their density and irregularity demand high-efficiency compression \cite{zhang2014point}. Traditional Graph Fourier Transforms (GFT) rely on structural graphs where weights depend only on spatial distance \cite{ortega2022gsp}. However, attribute signals (like luminance) often follow manifolds that do not align perfectly with geometry, leading to suboptimal energy compaction.
 \end{block}
 
-\begin{block}{Innovation 1: Adaptive Graph Topology}
-Standard GFT uses a \textbf{Structural Graph} ($\mathcal{G}_s$) where weights $W_{ij}$ depend only on spatial distance. We introduce the \textbf{Attribute Graph} ($\mathcal{G}_a$), which modifies $\mathcal{G}_s$ by adding \textbf{self-loops} to nodes that act as "sinks" in the attribute gradient field.
+\begin{block}{From Geometry to Attribute-Dependent Graphs}
+Our framework introduces an \textbf{Attribute-Dependent Graph} ($\mathcal{G}_a$) that adapts to local signal trends. By computing an \textit{Attribute Motion Matrix} $M_{ij} = W_{ij}(y_i - y_j)$, we identify "sink" nodes in the gradient field where the signal concentrates. Adding \textbf{self-loops} to these sinks modifies the GFT basis vectors, aligning them with the local attribute trend and maximizing energy compaction \cite{pavez2017separable}.
 
 \vspace{0.5em}
-\textbf{Mathematical Formulation:}
-\begin{enumerate}
-    \item \textbf{Attribute Motion:} $M_{ij} = W_{ij} \cdot (y_i - y_j)$ where $y$ is the luminance.
-    \item \textbf{Sink Identification:} Nodes $j$ with the highest incoming gradient count $S_j$ are selected.
-    \item \textbf{Topology Adaptation:} $W_{jj} = w_{sl}$ for the top $\tau\%$ of sink nodes.
-\end{enumerate}
-This forces the GFT basis vectors to align with the local signal trend, maximizing energy compaction.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{methodology_diagram.png}
+    \caption{The PCADC Pipeline: Adaptive Topology $\to$ RD-Clustering $\to$ GFT $\to$ Quantization.}
+\end{figure}
 \end{block}
 
-\begin{block}{Innovation 2: RD-Optimized Clustering}
-We learn a codebook of $K$ transforms (defined by slopes $\vec{s}_k$ and self-loop parameters). Unlike K-means, assignments are based on the \textbf{Lagrangian Cost} $J = D + \lambda R$.
-
-\vspace{0.5em}
-\textbf{The Training Loop:}
+\begin{block}{Learning the Dictionary: RD-Optimized Clustering}
+To achieve high-efficiency adaptation, we learn a codebook of $K$ transforms. Assignments are driven by a \textbf{Rate-Distortion Lagrangian} $J = D + \lambda R$, rather than simple distance metrics. 
 \begin{itemize}
-    \item \textbf{Assignment (Expectation):} Blocks choose the transform minimizing $J$. \textbf{Simulated Annealing} is used to explore the cost surface and avoid local minima.
-    \item \textbf{Optimization (Maximization):} Transform parameters ($\vec{s}, w_{sl}, \tau$) are refined using \textbf{Differential Evolution} to minimize the total RD-cost of the assigned blocks.
+    \item \textbf{Exploration:} \textit{Simulated Annealing} enables stochastic block-to-cluster assignments, preventing early convergence to local minima on the non-convex cost surface.
+    \item \textbf{Refinement:} \textit{Differential Evolution} optimizes the transform parameters ($\vec{slope}, w_{sl}, \tau$) to minimize the collective RD-cost of each cluster.
 \end{itemize}
 \end{block}
 
-\begin{block}{Innovation 3: Spatial Regularization \& Dilution}
-A major contribution of this work is identifying and solving the \textbf{Signaling Tax} problem. Even if an adaptive transform is superior, the cost of signaling the choice (cluster ID) can outweigh the gains.
+\begin{block}{The Signaling Tax: A Theoretical Breakthrough}
+A critical discovery in this project is the \textbf{Overhead Trap}. In small block sizes (B4, B8), the bit-savings provided by a superior adaptive transform are often smaller than the cost of telling the decoder which transform to use.
 
 \vspace{0.5em}
-\textbf{Methodology:}
-\begin{enumerate}
-    \item \textbf{Viterbi-Style Smoothing:} We add a penalty $\beta$ for cluster-switching between Morton-adjacent blocks: $J_{total} = \sum (D_i + \lambda R_i) + \beta \cdot \mathds{1}(L_i \neq L_{i-1})$.
-    \item \textbf{CABAC Signaling:} We use 1st-order conditional entropy $H(L_i | L_{i-1})$ to exploit the runs created by $\beta$.
-    \item \textbf{Overhead Dilution:} By increasing block size ($B=16, 32$), the signaling overhead is spread over more points, making the "tax" negligible.
-\end{enumerate}
+\textbf{The Dilution Principle:} Signaling cost per voxel ($\text{BPV}_{\text{overhead}}$) is inversely proportional to block volume ($B^3$):
+\begin{equation}
+\text{BPV}_{\text{overhead}} = \frac{H(L_i | L_{i-1})}{B^3} \quad \text{\cite{shannon1948mathematical,sayood2006introduction}}
+\end{equation}
+By moving to **B16** and **B32**, we "dilute" this tax across thousands of points, finally allowing net compression.
 \end{block}
 
 \end{column}
@@ -101,55 +94,44 @@ A major contribution of this work is identifying and solving the \textbf{Signali
 
 \begin{column}{\colwidth}
 
-\begin{block}{The Scaling Frontier: RD Results}
-
-\begin{figure}
-\centering
-\includegraphics[width=0.45\linewidth]{B4_rd_comparison.png}
-\includegraphics[width=0.45\linewidth]{B8_rd_comparison.png}\\[0.5em]
-\includegraphics[width=0.45\linewidth]{B16_rd_comparison.png}
-\includegraphics[width=0.45\linewidth]{B32_rd_comparison.png}
-\caption{RD Curves (PSNR-Y vs bpv). Green: Transform Gain (Raw). Red Dotted: Total Rate (including CABAC overhead). Black: Structural Baseline.}
-\end{figure}
-
-\vspace{0.5em}
-\textbf{Analysis of the Scale Effect:}
-\begin{itemize}
-    \item \textbf{B4/B8:} While these scales show the highest \textit{Raw Gains} (green line far from black), the \textit{Signaling Tax} (red line) is prohibitive.
-    \item \textbf{B16:} The break-even point. Overhead drops to $\sim$0.004 bpv.
-    \item \textbf{B32:} The \textbf{Compression Breakthrough}. Overhead is diluted to $<$0.001 bpv, allowing adaptive gains to yield a negative net gain.
-\end{itemize}
+\begin{block}{Bridging the Gap: Smoothing and CABAC}
+To reach true bit-rate reduction, we implemented \textbf{Spatial Regularization}. By adding a penalty $\beta$ for cluster-switching between Morton-ordered blocks, we force long "runs" of identical labels. These runs are then exploited by a **CABAC-Proxy** (1st-order conditional entropy), which captures the spatial correlation that standard memoryless entropy ignores.
 \end{block}
 
-\begin{block}{Performance Summary (Q=24)}
+\begin{block}{Rate-Distortion Frontier: Crossing the Baseline}
+\begin{figure}
+\centering
+\includegraphics[width=0.42\linewidth]{B4_rd_comparison.png}
+\includegraphics[width=0.42\linewidth]{B8_rd_comparison.png}\\[0.5em]
+\includegraphics[width=0.42\linewidth]{B16_rd_comparison.png}
+\includegraphics[width=0.42\linewidth]{B32_rd_comparison.png}
+\caption{RD Curves (PSNR-Y vs bpv). The dotted red line represents the \textbf{Total Net Bitrate} (Data + Signaling). In B32, the red line finally moves to the left of the baseline, achieving compression.}
+\end{figure}
+
 \begin{table}[h]
 \centering
 \small
 \begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Config ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Saving} & \textbf{Net Gain} \\
+\textbf{Configuration ($K=4$)} & \textbf{Overhead (bpv)} & \textbf{Raw Saving} & \textbf{Net Gain} \\
 \midrule
-Small Detail (B4) & 0.0239 & -1.4\% & \textcolor{red}{+10.47\%} \\
+Small Scale (B4) & 0.0239 & -1.4\% & \textcolor{red}{+10.47\%} \\
 Medium Scale (B8) & 0.0189 & -4.8\% & \textcolor{red}{+7.02\%} \\
-Large Scale (B16) & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
-\textbf{Global (B32)} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
+Break-even Point (B16) & 0.0042 & -2.2\% & \textcolor{gray}{+0.61\%} \\
+\textbf{True Compression (B32)} & \textbf{0.0002} & \textbf{-0.2\%} & \textbf{\textcolor{blue}{-0.03\%}} \\
 \bottomrule
 \end{tabular}
-\caption{Full Point Cloud results with CABAC overhead estimation.}
+\caption{Net performance using context-adaptive signaling at Q=24.}
 \end{table}
-
-\vspace{0.5em}
-\textbf{Key Insights:}
-\begin{itemize}
-    \item \textbf{Spatial Penalty ($\beta=2000$)} reduced CABAC overhead by \textbf{72\%} vs memoryless entropy.
-    \item \textbf{Unit Discrepancy:} Training gains in $D$ (MSE) can be massive (25\%+) while bit-savings are small. High $\lambda \geq 5.0$ is required for compression-first dictionaries.
-\end{itemize}
 \end{block}
 
-\begin{block}{Conclusions}
-This work validates that \textbf{Attribute-Dependent Graph Transforms} can achieve true compression if the signaling overhead is managed through \textbf{spatial regularization} and \textbf{scale management}. 
-
-We proved that B32 is the optimal production scale for per-block signaling, while B4/B8 are only suitable for high-fidelity scenarios where bit-rate is secondary to reconstruction quality. Future work will explore \textbf{skip-mode signaling} to further reduce the tax on structural blocks.
+\begin{block}{Project Findings and Future Work}
+\begin{enumerate}
+    \item \textbf{Scale Inversion:} Small blocks (B4) offer the best PSNR but are bit-rate inefficient. Large blocks (B32) are the only path to true net compression.
+    \item \textbf{Unit Discrepancy:} Training must use high $\lambda$ ($\geq$5.0) to overcome the numerical dominance of MSE and prioritize bits.
+    \item \textbf{Symmetry:} High $\beta$ values ($>$1000) are essential to align the codebook selection with the capabilities of arithmetic coders.
+\end{enumerate}
+Future work will focus on **Skip-Mode signaling** for structural blocks and \textbf{Hierarchical partitioning} to combine B32 efficiency with B4 detail preservation.
 \end{block}
 
 \begin{block}{References}
