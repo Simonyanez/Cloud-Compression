@@ -4,7 +4,7 @@
 \usepackage{lmodern}
 \usepackage[orientation=portrait,size=a1,scale=1.1]{beamerposter}
 \usetheme{gemini}
-\usecolortheme{mit}
+\usecolortheme{kyb}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsfonts}
@@ -30,13 +30,13 @@
 
 \author{Simón Yáñez \inst{1} \and Eduardo Pavez \inst{2} \and Jorge Silva \inst{1}}
 
-\institute[shortinst]{{
-  \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \quad \inst{2} University of Southern California \\
-  \textbf{EL7024 - Teoría de Información: Fundamentos y Aplicaciones}
-}}
+\institute[shortinst]{
+  \inst{1} Departamento de Ingeniería Eléctrica, Universidad de Chile \quad
+  \inst{2} University of Southern California
+}
 
 \footercontent{
-  Sesión de Pósters - Teoría de Información: Fundamentos y Aplicaciones \hfill \href{mailto:simon.yanez@ug.uchile.cl}{simon.yanez@ug.uchile.cl}
+  Simposio de Postgrado \hfill \href{mailto:simon.yanez@ug.uchile.cl}{simon.yanez@ug.uchile.cl}
 }
 
 \begin{document}
@@ -106,12 +106,28 @@ True compression requires $B \geq 16$ to dilute the tax.
 \begin{column}{0.65\textwidth}
 Analysis of \textit{Active Clusters} reveals a "Structural Ceiling." B4 blocks hit a limit of $\sim$8 distinct modes regardless of capacity \cite{pavez2020region}. B32 blocks retain higher entropy, justifying more complex codebooks.
 \end{column}
-\begin{column}{0.3\textwidth}
+\begin{column}{0.4\textwidth}
     \begin{figure}
         \centering
         \includegraphics[width=\linewidth]{active_c_stability.png}
         \caption{Utilization vs Capacity.}
     \end{figure}
+\end{column}
+\end{columns}
+\end{block}
+
+\begin{block}{The Capacity Elbow: Diminishing Returns}
+\begin{columns}
+\begin{column}{0.4\textwidth}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\linewidth]{capacity_elbow.png}
+        \caption{Cost vs Clusters.}
+    \end{figure}
+\end{column}
+
+\begin{column}{0.65\textwidth}
+The inflection point identifies the optimal $K$. For B32, $K=2$ captures the primary signal trends, while $K > 4$ leads to saturation where overhead growth negates residual reduction.
 \end{column}
 \end{columns}
 \end{block}
@@ -125,20 +141,6 @@ Analysis of \textit{Active Clusters} reveals a "Structural Ceiling." B4 blocks h
 To reach true compression, we implemented \textbf{Spatial Regularization}, adding a penalty $\beta$ for cluster-switching. This forces label "runs" efficiently compressed using \textbf{CABAC-Proxy} (1st-order conditional entropy), exploiting spatial correlation \cite{malvar2006adaptive}.
 \end{block}
 
-\begin{block}{The Capacity Elbow: Diminishing Returns}
-\begin{columns}
-\begin{column}{0.3\textwidth}
-    \begin{figure}
-        \centering
-        \includegraphics[width=\linewidth]{capacity_elbow.png}
-        \caption{Cost vs Clusters.}
-    \end{figure}
-\end{column}
-\begin{column}{0.65\textwidth}
-The inflection point identifies the optimal $K$. For B32, $K=2$ captures the primary signal trends, while $K > 4$ leads to saturation where overhead growth negates residual reduction.
-\end{column}
-\end{columns}
-\end{block}
 
 \begin{block}{Rate-Distortion Frontier: Breakthrough at B32}
 \begin{figure}
