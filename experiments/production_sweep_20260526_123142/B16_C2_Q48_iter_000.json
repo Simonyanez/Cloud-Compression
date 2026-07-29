@@ -1,0 +1,65 @@
+{
+    "labels": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "slopes": [
+        [
+            0.0,
+            0.0,
+            0.0
+        ],
+        [
+            0.8134970021458733,
+            -0.7869849029665711,
+            -5.6305983220847695
+        ]
+    ],
+    "self_loop_weights": [
+        1.6,
+        1.6
+    ],
+    "self_loop_percentages": [
+        0.85,
+        0.85
+    ],
+    "qstep_value": 48,
+    "lambda_step": 0,
+    "iteration": 0,
+    "total_cost": null,
+    "cluster_entropy": null,
+    "avg_rate": null,
+    "avg_distortion": null,
+    "cluster_gains": {},
+    "all_rates": null,
+    "all_distortions": null,
+    "all_gains": null
+}

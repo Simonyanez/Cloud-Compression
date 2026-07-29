@@ -1,0 +1,30 @@
+{
+    "experiment_code": "B4_C2_Q64",
+    "active_clusters": 2,
+    "total_clusters": 2,
+    "is_vanishing": false,
+    "empty_clusters": [],
+    "final_cost": 1158597.400990029,
+    "final_slopes": [
+        [
+            0.0,
+            0.0,
+            0.0
+        ],
+        [
+            -4.691688879153481,
+            -3.4389901215661256,
+            -2.075184936683727
+        ]
+    ],
+    "final_slw": [
+        1.6,
+        0.4430794457099027
+    ],
+    "final_slp": [
+        0.85,
+        0.3643864910223521
+    ],
+    "iterations": 22,
+    "timestamp": "20260529_034812"
+}

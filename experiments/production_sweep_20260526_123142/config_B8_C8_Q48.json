@@ -1,0 +1,43 @@
+{
+    "metadata": {
+        "experiment_name": "Self-looped",
+        "experiment_code": "B8_C8_Q48",
+        "experiment_date": "2025-08-31",
+        "experiment_info": "Bestie",
+        "export_folder": "production_sweep_20260526_123142",
+        "temp_folder": "production_sweep_20260526_123142"
+    },
+    "sequential_params": {
+        "point_cloud_path": "res/longdress_vox10_1051.ply",
+        "normalize_slopes": false,
+        "self_loop_weight": 1.6,
+        "self_loop_percentage": 0.85,
+        "sample_percentage": 0.005,
+        "quantization_steps": [
+            48
+        ],
+        "lagrange_proportional": 0.8,
+        "decider_mode": "0",
+        "block_size": 8
+    },
+    "clustering_params": {
+        "number_of_clusters": 8,
+        "max_iterations": 40,
+        "min_iterations": 20,
+        "rd_cost_threshold": 0.001,
+        "iteration_window": 20,
+        "initial_temperature": 1.0,
+        "final_temperature": 0.0,
+        "cooling_rate": 0.9,
+        "learning_rate": 0.5,
+        "optimization_mode": "production"
+    },
+    "pointcloud": {
+        "dataset": "8iVFB v2",
+        "sequence": "longdress",
+        "depth": 10,
+        "frame": 1051
+    },
+    "rewrite_results": false,
+    "debugging": false
+}

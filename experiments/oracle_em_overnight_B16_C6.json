@@ -1,0 +1,242 @@
+{
+  "config": {
+    "block_size": 16,
+    "clusters": 6,
+    "q_step": 24,
+    "gamma": 1200.0,
+    "max_iters": 6,
+    "freeze_slopes": true,
+    "gamma_warmup": 3,
+    "spatially_adaptive": true
+  },
+  "final_slopes": [
+    [
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.2559811141718653,
+      0.1379046306666083,
+      0.49323950735211264
+    ],
+    [
+      -0.07789998985300543,
+      0.005633747926214072,
+      1.1064933747969359
+    ],
+    [
+      -0.044570240972399776,
+      -0.3590717379294907,
+      -0.49832834310688384
+    ],
+    [
+      0.20054476246365627,
+      0.3776288403231663,
+      -0.7427657601664753
+    ],
+    [
+      -0.27756209477451466,
+      0.06302987874650923,
+      0.987119346391619
+    ]
+  ],
+  "final_slp": [
+    0.0,
+    0.44666666666666666,
+    0.925,
+    0.99,
+    0.2933333333333333,
+    0.8716666666666666
+  ],
+  "final_slw": [
+    1.0,
+    0.325,
+    0.1,
+    0.325,
+    0.1,
+    0.1
+  ],
+  "iterations": [
+    {
+      "total_cost": 51947015.266705856,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 0.9690082670023032,
+      "entropy_marginal": 0.8651056438216093,
+      "entropy_markov": 0.884733686182381,
+      "overhead_bpv_marginal": 0.003931163601545531,
+      "overhead_bpv_markov": 0.004020356229346918,
+      "net_bpv_marginal": -0.002497031366382122,
+      "net_bpv_markov": -0.0025862239941835093,
+      "active_clusters": 6,
+      "cluster_sizes": [
+        3022,
+        110,
+        108,
+        77,
+        84,
+        79
+      ],
+      "num_switches": 0,
+      "mean_delta_rd_second_best": 3538.459257319118,
+      "mean_delta_rd_worst_best": 7098.946737601635,
+      "avg_energy_compaction": 0.013651998610344187,
+      "avg_l1_norm": 8410.925327609935,
+      "avg_sparsity_ratio": 0.4301655131652401,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 1
+    },
+    {
+      "total_cost": 49594124.432009906,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 5.454523201847118,
+      "entropy_marginal": 2.3937507143938155,
+      "entropy_markov": 2.384272795059984,
+      "overhead_bpv_marginal": 0.010877545126198521,
+      "overhead_bpv_markov": 0.01083447610709127,
+      "net_bpv_marginal": -0.002804850787464787,
+      "net_bpv_markov": -0.002761781768357537,
+      "active_clusters": 6,
+      "cluster_sizes": [
+        1305,
+        377,
+        352,
+        547,
+        417,
+        482
+      ],
+      "num_switches": 2107,
+      "mean_delta_rd_second_best": 646.6559840175212,
+      "mean_delta_rd_worst_best": 2736.420019184376,
+      "avg_energy_compaction": 0.01362560265425336,
+      "avg_l1_norm": 8696.143176604448,
+      "avg_sparsity_ratio": 0.39177324886373255,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 2
+    },
+    {
+      "total_cost": 49923260.01720851,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.827064179428,
+      "entropy_marginal": 2.5662321189417447,
+      "entropy_markov": 2.560218726413568,
+      "overhead_bpv_marginal": 0.01166132526258391,
+      "overhead_bpv_markov": 0.011633999548091807,
+      "net_bpv_marginal": -0.00451727027703047,
+      "net_bpv_markov": -0.0044899445625383675,
+      "active_clusters": 6,
+      "cluster_sizes": [
+        767,
+        595,
+        470,
+        511,
+        602,
+        535
+      ],
+      "num_switches": 2537,
+      "mean_delta_rd_second_best": 417.0814290591239,
+      "mean_delta_rd_worst_best": 1813.5906980119937,
+      "avg_energy_compaction": 0.013620233341316996,
+      "avg_l1_norm": 8161.482337966912,
+      "avg_sparsity_ratio": 0.4230305253822174,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 3
+    },
+    {
+      "total_cost": 49924095.94720035,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.825470575335706,
+      "entropy_marginal": 2.5689653013881113,
+      "entropy_markov": 2.411923590849428,
+      "overhead_bpv_marginal": 0.011673745233978471,
+      "overhead_bpv_markov": 0.010960125272297325,
+      "net_bpv_marginal": -0.004532048782481626,
+      "net_bpv_markov": -0.0038184288208004792,
+      "active_clusters": 6,
+      "cluster_sizes": [
+        649,
+        654,
+        445,
+        488,
+        660,
+        584
+      ],
+      "num_switches": 633,
+      "mean_delta_rd_second_best": 417.0814290591239,
+      "mean_delta_rd_worst_best": 1813.5906980119937,
+      "avg_energy_compaction": 0.013619687580080786,
+      "avg_l1_norm": 8166.819344898159,
+      "avg_sparsity_ratio": 0.4206792416968976,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 4
+    },
+    {
+      "total_cost": 50126039.793132916,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.440487930338674,
+      "entropy_marginal": 2.5715308234885295,
+      "entropy_markov": 2.1895817109312157,
+      "overhead_bpv_marginal": 0.011685403332815479,
+      "overhead_bpv_markov": 0.009949772014662213,
+      "net_bpv_marginal": -0.005113481195914242,
+      "net_bpv_markov": -0.0033778498777609764,
+      "active_clusters": 6,
+      "cluster_sizes": [
+        656,
+        654,
+        440,
+        522,
+        624,
+        584
+      ],
+      "num_switches": 772,
+      "mean_delta_rd_second_best": 410.4779143842216,
+      "mean_delta_rd_worst_best": 1804.1888911795947,
+      "avg_energy_compaction": 0.013619811451145507,
+      "avg_l1_norm": 8170.217503189849,
+      "avg_sparsity_ratio": 0.419656648803569,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 5
+    },
+    {
+      "total_cost": 50242319.02662376,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.218814986254593,
+      "entropy_marginal": 2.571528101073818,
+      "entropy_markov": 2.004265775159398,
+      "overhead_bpv_marginal": 0.01168539096177421,
+      "overhead_bpv_markov": 0.009107669935343513,
+      "net_bpv_marginal": -0.005441544782117413,
+      "net_bpv_markov": -0.002863823755686717,
+      "active_clusters": 6,
+      "cluster_sizes": [
+        662,
+        646,
+        437,
+        525,
+        616,
+        594
+      ],
+      "num_switches": 755,
+      "mean_delta_rd_second_best": 417.0814290591239,
+      "mean_delta_rd_worst_best": 1813.5906980119937,
+      "avg_energy_compaction": 0.013620330436618991,
+      "avg_l1_norm": 8167.719723593691,
+      "avg_sparsity_ratio": 0.419157869462544,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 6
+    }
+  ]
+}

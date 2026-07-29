@@ -1,0 +1,114 @@
+{
+  "config": {
+    "block_size": 16,
+    "clusters": 4,
+    "q_step": 24,
+    "gamma": 4000.0,
+    "max_iters": 10,
+    "freeze_slopes": false,
+    "gamma_warmup": 3,
+    "spatially_adaptive": false
+  },
+  "final_slopes_2d": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      0.9733093458423832,
+      -0.7663350348013929
+    ],
+    [
+      -1.2586945803767224,
+      0.6471735663709965
+    ],
+    [
+      -0.3812030384886618,
+      -1.3754663111974297
+    ]
+  ],
+  "final_slp": [
+    0.0,
+    0.33999999999999997,
+    0.5533333333333333,
+    0.5533333333333333
+  ],
+  "final_slw": [
+    1.0,
+    0.1,
+    0.325,
+    0.55
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "rate_reduction_pct": 0.6717264175290873,
+      "entropy_markov": 0.6354961302963262,
+      "overhead_bpv_markov": 0.0028877851788227473,
+      "net_bpv_markov": -0.001893630080879698
+    },
+    {
+      "iteration": 2,
+      "rate_reduction_pct": 3.0810194972115545,
+      "entropy_markov": 1.4528699795395137,
+      "overhead_bpv_markov": 0.006602048688658978,
+      "net_bpv_markov": -0.0020421398327858777
+    },
+    {
+      "iteration": 3,
+      "rate_reduction_pct": 3.0955406599766615,
+      "entropy_markov": 1.4778599486515291,
+      "overhead_bpv_markov": 0.006715606677418511,
+      "net_bpv_markov": -0.0021342065006530516
+    },
+    {
+      "iteration": 4,
+      "rate_reduction_pct": 3.003472064182156,
+      "entropy_markov": 1.4610643912931995,
+      "overhead_bpv_markov": 0.006639285266009073,
+      "net_bpv_markov": -0.0021941466110194825
+    },
+    {
+      "iteration": 5,
+      "rate_reduction_pct": 4.285777396976889,
+      "entropy_markov": 1.8838677587499997,
+      "overhead_bpv_markov": 0.008560564153307365,
+      "net_bpv_markov": -0.0022176136057815692
+    },
+    {
+      "iteration": 6,
+      "rate_reduction_pct": 4.252560420846634,
+      "entropy_markov": 1.880148581596785,
+      "overhead_bpv_markov": 0.00854366368114326,
+      "net_bpv_markov": -0.0022498742582902423
+    },
+    {
+      "iteration": 7,
+      "rate_reduction_pct": 4.2455833095876,
+      "entropy_markov": 1.876699686083489,
+      "overhead_bpv_markov": 0.008527991407353079,
+      "net_bpv_markov": -0.002244528109163431
+    },
+    {
+      "iteration": 8,
+      "rate_reduction_pct": 4.257060297415662,
+      "entropy_markov": 1.8766420922918539,
+      "overhead_bpv_markov": 0.008527729692938234,
+      "net_bpv_markov": -0.0022272804527630544
+    },
+    {
+      "iteration": 9,
+      "rate_reduction_pct": 4.228700214068543,
+      "entropy_markov": 1.8768718612051258,
+      "overhead_bpv_markov": 0.008528773795696172,
+      "net_bpv_markov": -0.002270297478874728
+    },
+    {
+      "iteration": 10,
+      "rate_reduction_pct": 1.46514353668385,
+      "entropy_markov": 0.40827925025366313,
+      "overhead_bpv_markov": 0.0018552792243654167,
+      "net_bpv_markov": 0.000313133209926681
+    }
+  ]
+}

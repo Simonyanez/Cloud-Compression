@@ -98,7 +98,7 @@ class PCADC(MovingCameraScene):
         self.wait(2)
         
         self.play(self.camera.frame.animate.move_to(ORIGIN).scale(1))
-        final_text = Text("PCADC: A Framework for High-Fidelity Compression", color=C_TEXT, font_size=36).scale_to_fit_width(14)
+        final_text = Text("PCADC: A Framework for High-Fidelity Compression", color=C_TEXT, font_size=36).scale_to_fit_width(11.5)
         self.play(FadeOut(rd_curve_group), Write(final_text))
         self.wait(2)
 
@@ -125,7 +125,6 @@ class PCADC(MovingCameraScene):
         for i, node_idx in enumerate(graph_obj.vertices):
             graph_obj.vertices[node_idx].set_color(interpolate_color(PURPLE, YELLOW, luminance[i]))
         
-        # FIX: Remove VGroup wrapper here so it stays a pure Graph object
         graph = graph_obj.move_to(ORIGIN)
 
         basis_dc = graph_obj.copy()
@@ -141,7 +140,8 @@ class PCADC(MovingCameraScene):
         for i in range(16):
             basis_high.vertices[i].set_color(PURPLE if (i//4 + i%4)%2==0 else YELLOW)
         
-        bases = VGroup(basis_dc, basis_low, basis_high).arrange(RIGHT, buff=1).scale(0.5).next_to(graph, DOWN, buff=0.8)
+        # FIX 1: Increased scaling from 0.5 to 0.85 and adjusted layout margins
+        bases = VGroup(basis_dc, basis_low, basis_high).arrange(RIGHT, buff=1.5).scale(0.85).next_to(graph, DOWN, buff=0.5)
         return { "graph": graph, "basis_dc": bases[0], "basis_low": bases[1], "basis_high": bases[2] }
 
     def create_grid_graph(self):
@@ -152,7 +152,6 @@ class PCADC(MovingCameraScene):
         return graph_obj
 
     def get_gradient_graph(self):
-        # Same as before
         vertices = list(range(8)); edges = [(i, (i+1)%8) for i in range(8)] + [(0,4), (1,5), (2,7)]
         luminance = [0.1, 0.2, 0.9, 0.7, 0.3, 0.4, 0.8, 0.15]
         g = Graph(vertices, edges, vertex_config={"radius": 0.2}).scale(1.2).to_edge(LEFT, buff=1)
@@ -168,14 +167,31 @@ class PCADC(MovingCameraScene):
         return VGroup(tex1, tex2).arrange(DOWN, buff=0.8, aligned_edge=LEFT)
 
     def get_block_grid(self):
-        return VGroup(*[Square(side_length=0.6, fill_opacity=0.7, stroke_width=1, color=C_ORANGE) for _ in range(16)]).arrange_in_grid(4, 4, buff=0.1).move_to(ORIGIN)
+        # FIX 2: Added highly non-smooth initial color layout mapping the chaotic_labels sequence ("1010011010110101")
+        chaotic_seq = "1010011010110101"
+        blocks = []
+        for char in chaotic_seq:
+            initial_color = C_BLUE if char == "1" else C_GREEN
+            blocks.append(Square(side_length=0.6, fill_opacity=0.7, fill_color=initial_color, stroke_width=1, color=initial_color))
+        return VGroup(*blocks).arrange_in_grid(4, 4, buff=0.1).move_to(ORIGIN)
     
     def get_overhead_chart(self):
-        return BarChart([1.0, 0.15], bar_names=["Entropy (Chaotic)", "CABAC (Smoothed)"], y_range=[0, 1.2], y_length=5, bar_width=0.8,
-                        bar_colors=[C_RED, C_GREEN]).scale(0.8).move_to(ORIGIN)
+        chart = BarChart(
+            [1.0, 0.15], 
+            bar_names=["Entropy (Chaotic)", "CABAC (Smoothed)"], 
+            y_range=[0, 1.2], 
+            y_length=5, 
+            bar_width=0.8,
+            bar_colors=[C_RED, C_GREEN]
+        ).scale(0.8).move_to(ORIGIN)
+        
+        # FIX 3: Preventing X-label collision by downsizing font scale and adding breathing room
+        for label in chart.x_axis.labels:
+            label.scale(0.75).shift(DOWN * 0.25)
+            
+        return chart
 
     def get_rd_curve(self):
-        # Same as before
         axes = Axes(x_range=[0, 0.16], y_range=[53, 57], x_length=8, y_length=5).add_coordinates()
         base = [[0.1436, 56.57], [0.1049, 55.82], [0.0659, 54.84], [0.0463, 54.18]]
         total = [[0.1428, 56.57], [0.1046, 55.82], [0.0659, 54.84], [0.0466, 54.18]]
@@ -188,5 +204,3 @@ class PCADC(MovingCameraScene):
 
 if __name__ == "__main__":
     pass
-
-

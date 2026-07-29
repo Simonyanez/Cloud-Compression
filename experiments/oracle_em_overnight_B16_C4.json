@@ -1,0 +1,160 @@
+{
+  "config": {
+    "block_size": 16,
+    "clusters": 4,
+    "q_step": 24,
+    "gamma": 300.0,
+    "max_iters": 4,
+    "freeze_slopes": true,
+    "gamma_warmup": 2,
+    "spatially_adaptive": true
+  },
+  "final_slopes": [
+    [
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      -0.22750539126838448,
+      0.814486332262779,
+      -0.2623288536550229
+    ],
+    [
+      0.1373313790737117,
+      0.41676803552310837,
+      0.6238388235141603
+    ],
+    [
+      -0.21611939228044785,
+      0.29278452345453304,
+      -0.8814243311320108
+    ]
+  ],
+  "final_slp": [
+    0.0,
+    0.5999999999999999,
+    0.6599999999999999,
+    0.2933333333333333
+  ],
+  "final_slw": [
+    1.0,
+    0.55,
+    0.325,
+    0.325
+  ],
+  "iterations": [
+    {
+      "total_cost": 52069679.71231428,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 0.735162652646745,
+      "entropy_marginal": 0.6617911790820677,
+      "entropy_markov": 0.6677940152916346,
+      "overhead_bpv_marginal": 0.0030072736360136324,
+      "overhead_bpv_markov": 0.003034551381086296,
+      "net_bpv_marginal": -0.00191923291009645,
+      "net_bpv_markov": -0.0019465106551691137,
+      "active_clusters": 4,
+      "cluster_sizes": [
+        3106,
+        138,
+        128,
+        108
+      ],
+      "num_switches": 0,
+      "mean_delta_rd_second_best": 3959.6864256115978,
+      "mean_delta_rd_worst_best": 6398.828798682248,
+      "avg_energy_compaction": 0.013647999248380258,
+      "avg_l1_norm": 8291.391079387482,
+      "avg_sparsity_ratio": 0.4340208416958122,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 1
+    },
+    {
+      "total_cost": 50101781.97484611,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.486732662396667,
+      "entropy_marginal": 1.823560051540912,
+      "entropy_markov": 1.8185666799409992,
+      "overhead_bpv_marginal": 0.008286517318488751,
+      "overhead_bpv_markov": 0.008263826724775995,
+      "net_bpv_marginal": -0.0016461529781416845,
+      "net_bpv_markov": -0.001623462384428928,
+      "active_clusters": 4,
+      "cluster_sizes": [
+        1611,
+        418,
+        679,
+        772
+      ],
+      "num_switches": 1826,
+      "mean_delta_rd_second_best": 795.3461084052991,
+      "mean_delta_rd_worst_best": 2496.1842552034004,
+      "avg_energy_compaction": 0.013626356442733687,
+      "avg_l1_norm": 8516.67342485272,
+      "avg_sparsity_ratio": 0.394118264815432,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 2
+    },
+    {
+      "total_cost": 50135579.1146248,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.4223023144192455,
+      "entropy_marginal": 1.8278441220529578,
+      "entropy_markov": 1.7551319986850302,
+      "overhead_bpv_marginal": 0.00830598474675452,
+      "overhead_bpv_markov": 0.007975570473288021,
+      "net_bpv_marginal": -0.0017609773214140364,
+      "net_bpv_markov": -0.0014305630479475376,
+      "active_clusters": 4,
+      "cluster_sizes": [
+        1578,
+        395,
+        697,
+        810
+      ],
+      "num_switches": 845,
+      "mean_delta_rd_second_best": 777.2646306154529,
+      "mean_delta_rd_worst_best": 2462.885569833548,
+      "avg_energy_compaction": 0.013628564488974678,
+      "avg_l1_norm": 8525.333188064236,
+      "avg_sparsity_ratio": 0.3932283502317808,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 3
+    },
+    {
+      "total_cost": 50136576.0319349,
+      "structural_cost": 52455311.572323486,
+      "rate_reduction_pct": 4.420401806577004,
+      "entropy_marginal": 1.8196714432044485,
+      "entropy_markov": 1.7474575490783215,
+      "overhead_bpv_marginal": 0.008268846926829483,
+      "overhead_bpv_markov": 0.007940696678195764,
+      "net_bpv_marginal": -0.0017266522530955172,
+      "net_bpv_markov": -0.0013985020044617984,
+      "active_clusters": 4,
+      "cluster_sizes": [
+        1589,
+        382,
+        681,
+        828
+      ],
+      "num_switches": 429,
+      "mean_delta_rd_second_best": 780.0533473190033,
+      "mean_delta_rd_worst_best": 2458.402635018942,
+      "avg_energy_compaction": 0.013628388951760467,
+      "avg_l1_norm": 8521.203801580727,
+      "avg_sparsity_ratio": 0.3938302043653224,
+      "structural_energy_compaction": 0.013615205574696228,
+      "structural_l1_norm": 7938.3653917104875,
+      "structural_sparsity_ratio": 0.446390735562467,
+      "iteration": 4
+    }
+  ]
+}
