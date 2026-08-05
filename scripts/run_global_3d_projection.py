@@ -124,7 +124,7 @@ def compute_entropy(labels, K):
 # Configuration
 K = 4
 K_hybrid = K - 1
-gammas = [2000.0,3000.0, 4000.0]
+gammas = [1000.0, 2000.0, 4000.0]
 
 print(f"\n============================================================")
 print(f"PHASE 1: TRAINING UNCONSTRAINED GLOBAL 3D EM")
