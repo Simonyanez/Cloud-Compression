@@ -22,7 +22,7 @@ Cuando la fuente está compuesta por varios eventos posibles $A_i$, cada uno con
 H = -\sum_i P(A_i) \log_b P(A_i)
 \end{equation}
 
-La entropía mide la incertidumbre promedio de la fuente. Shannon demostró que esta cantidad representa el límite inferior teórico del número de bits necesarios para codificar la salida de una fuente sin pérdida \cite{sayood2006introduction, mackay_nodate}. Esto implica que ningún esquema de codificación sin pérdida puede, en promedio, superar la compresión indicada por $H$.
+La entropía mide la incertidumbre promedio de la fuente. Shannon demostró que esta cantidad representa el límite inferior teórico del número de bits necesarios para codificar la salida de una fuente sin pérdida \cite{shannon1948mathematical, sayood2006introduction, mackay_nodate}. Esto implica que ningún esquema de codificación sin pérdida puede, en promedio, superar la compresión indicada por $H$.
 
 Si se dispone de información adicional sobre el contexto de la fuente, es posible reducir aún más esta incertidumbre. Esta idea se formaliza mediante la \textit{entropía condicional}, que mide la incertidumbre de una variable $X$ dado que se conoce otra variable $Y$ relacionada:
 
@@ -40,27 +40,70 @@ I(X;Y) = H(X) - H(X|Y)
 
 La información mutua mide la dependencia o redundancia entre variables, lo que en el contexto de compresión permite aprovechar correlaciones para eliminar duplicidades y reducir la cantidad total de información a representar \cite{mackay_nodate}.
 
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+Un caso particular de la entropía condicional, relevante para el análisis de secuencias de
+símbolos, se obtiene cuando la variable de contexto $Y$ corresponde al símbolo inmediatamente
+anterior dentro de la propia secuencia, en lugar de una variable externa arbitraria. Bajo esta
+especialización se distingue la entropía de orden 0, $H_0 = H(X)$ -- que trata cada símbolo
+como independiente e idénticamente distribuido -- de la entropía de orden 1 o de Markov,
+$H_1 = H(X_t \mid X_{t-1})$, que condiciona cada símbolo al inmediatamente precedente. Como
+condicionar nunca puede aumentar la incertidumbre, se cumple siempre $H_1 \leq H_0$; la brecha
+entre ambas cuantifica la dependencia secuencial de la fuente, es decir, la redundancia que un
+modelo de orden 0 no puede explotar.
+
+En la práctica, $H_0$ y $H_1$ se estiman a partir de conteos de frecuencia sobre una muestra
+finita de $N$ símbolos, lo que introduce un sesgo sistemático: el estimador \textit{plug-in}
+(reemplazar probabilidades por frecuencias relativas) subestima la entropía real cuando el
+número de símbolos posibles $m$ es comparable al tamaño de la muestra $N$, situación habitual al
+estimar $H_1$ sobre alfabetos pequeños con pocas observaciones. La corrección de primer orden más
+utilizada para este sesgo es la de Miller-Madow \cite{miller1955note}:
+
+\begin{equation}
+    \hat{H}_{MM} = \hat{H}_{\text{plugin}} + \frac{m - 1}{2N\ln 2}
+\label{eq: miller_madow}
+\end{equation}
+
+donde el término de corrección crece con el número de categorías observadas $m$ y decrece con el
+tamaño de muestra $N$, anulándose asintóticamente a medida que $N \to \infty$.
+
 La base del logaritmo en estas definiciones determina la unidad en que se mide la información. En aplicaciones de compresión digital, se usa comúnmente la base 2, dando lugar a unidades en bits, que representan la cantidad mínima de decisiones binarias necesarias para codificar una señal. En contextos más teóricos, también se emplean bases como $e$ (nats) o 10 (hartleys), aunque su uso es menos frecuente en aplicaciones prácticas \cite{sayood2006introduction}.
 
 En resumen, la teoría de la información no solo permite comprender cuánto es posible comprimir una señal sin perder información, sino que también establece límites y directrices para diseñar sistemas de compresión eficientes. La identificación de redundancias, la modelación de fuentes y la toma de decisiones óptimas en codificación descansan sobre estos conceptos fundamentales \cite{sayood2006introduction}.
 
-% EXPLICAR PCAAAAAAA
 \section{Transform Based Coding}\label{sec:transform_based_coding}
-    La codificación basada en transformadas es un fundamento esencial en el campo de la compresión de datos. Esta detalla la capacidad de una o varias funciones (transformadas) de representar cierto espacio $U$ en otro $V$ donde la concentración de la energía de ciertas características de la señal sea mayor. Estas características se consideran de interés mediante métricas cuantitativas o cualitativas de interés para cada contexto de aplicación.
+    La codificación basada en transformadas es un fundamento esencial en el campo de la compresión de datos. Esta describe la capacidad de una o varias funciones (transformadas) de representar cierto espacio $U$ en otro $V$ donde la concentración de la energía de las características de interes sobre la señal sea mayor. Estas características de interés y la información que las representa se puede medir mediante métricas cuantitativas o cualitativas para cada contexto de aplicación.
     \\
     
     
     \subsection{Transformación Lineal}
-        En otras palabras, una transformación lineal diseñada principalmete para producir ante todo coeficientes no correlacionados\cite{goyal2001theoretical}. Un ejemplo clásico de este tipo de transformaciones es la transformada de Fourier, donde una señal se puede representar como un conjunto ponderado de señales base. Es decir, considerando $f$ invertible:
+        En otras palabras, este tipo de codificación, depende de una transformación lineal diseñada específicamente para decorrelacionar la información más relevanta que se quiere preservar\cite{goyal2001theoretical}. Un ejemplo clásico de este tipo de transformaciones es la transformada de Fourier, donde una señal se puede representar como un conjunto ponderado de señales base. Es decir, considerando $f$ invertible:
     
         \begin{equation}
             f(U) \longrightarrow V \quad f^{-1}(V) \longrightarrow U
         \end{equation}
     
-        Donde $U$ correspondería al espacio de la señal original, el cuál posee información altamente correlacionada, por ejemplo, una señal de audio cuyas dimensiones será en su forma más simple una magnitud adimensional y el tiempo. Al aplicar una transformada lineal priorizaremos una representación decorrelacionada, en la misma linea, Fourier nos entregará un espacio espectral de magnitud y frecuencia cuya combinación lineal podrá reconstruir la señal.\\
+        Donde $U$ correspondería al espacio de la señal original, el cuál posee información altamente correlacionada, por ejemplo, una señal de audio cuyas dimensiones será en su forma más simple una magnitud adimensional y el tiempo. Al aplicar la transformada lineal de Fourier la señal pasará sin perdida a una representación más decorrelacionada. Dicha transformada nos entregará un espacio espectral de magnitud y frecuencia cuya combinación lineal podrá reconstruir la señal y será perfectamente invertible al dominio original.\\
+
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    \subsection{Transformadas Derivadas de los Datos: PCA}
+        La transformada de Fourier recién descrita es \textit{fija}: su base no depende de los datos que se estén comprimiendo, sino que está determinada de antemano por su definición matemática. Existe otra familia de transformadas lineales cuya base se construye a partir de las propiedades estadísticas de los datos mismos. El caso más representativo es el Análisis de Componentes Principales (PCA).
+
+        Sea $X \in \mathbb{R}^{N \times d}$ un conjunto de $N$ muestras centradas (media cero) en $d$ dimensiones. Su matriz de covarianza se define como:
+
+        \begin{equation}
+            \Sigma = \frac{1}{N} X^\top X \in \mathbb{R}^{d \times d}
+        \end{equation}
+
+        $\Sigma$ describe cómo varía cada dimensión respecto de las demás. Al ser simétrica y semidefinida positiva, admite una descomposición en valores y vectores propios:
+
+	\begin{equation}
+	    \Sigma = \Phi \Lambda \Phi^\top, \quad \Phi = [\phi_1, \phi_2, \dots, \phi_d], \quad \lambda_1 \geq \lambda_2 \geq \dots \geq \lambda_d
+	\end{equation}
+
+        Los vectores propios $\phi_i$ (componentes principales) son ortonormales entre sí, y cada valor propio $\lambda_i$ corresponde a la varianza de los datos proyectados sobre su respectivo $\phi_i$. Proyectar los datos sobre $Q$ decorrelaciona las dimensiones -- la covarianza resultante es diagonal -- y concentra la mayor parte de la varianza total en los primeros componentes, de la misma manera en que la transformada de Fourier concentra energía en pocos coeficientes espectrales. La diferencia central es que, mientras la base de Fourier es la misma para cualquier señal, la base de PCA es distinta para cada conjunto de datos: se ajusta a la orientación particular de \emph{esa} muestra.
 
     \subsection{Cuantización}
-        Hasta el momento, al menos con transformadas invertibles, solo hemos transformado el formato de los datos desde un espacio a otro buscando una representación más informativa. Dicho de otra manera, se ha aplicado una transformación sin pérdida de información. Por el contrario, un cuantizador corresponde a un mapeo desde una fuente de información continua a una representación codificada. De manera más formal un cuantificador se puede describir matemáticamente:
+        Hasta el momento, al menos con transformadas invertibles, solo hemos transformado el dominio de los datos desde un espacio de representación a otro propiciando la decorrelación de la señal. Dicho de otra manera, se ha aplicado una transformación sin pérdida de información. Por el contrario, un cuantizador corresponde a un mapeo desde una fuente de información continua a una representación codificada. De manera más formal un cuantificador se puede describir matemáticamente:
         \begin{equation}
             q: \mathcal{R}^N \longrightarrow \mathcal{C} \subset \mathcal{R}^N
         \end{equation}
@@ -80,17 +123,49 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
     \subsection{Codificación Entrópica}
         Este tipo de codificación se utiliza para variables aleatorias discretas, como por ejemplo un conjunto de coeficientes cuantizados por el paso anterior. Un código basado en entropía $\gamma$ asigna una secuencia binaria única a cada valor del alfabeto ($I$) de la variable aleatoria ($z$). Este codificador debe asegurar que ninguna de las secuencias es el prefijo de otra otorgando la capacidad de identificar los símbolos sin ningún otro tipo de separador.\\
 
-        El objetivo es generar una codificación tal que el largo promedio de los mensajes sea el menor posible a expensas de hacer el peor caso de codificación peor. En otras palabras, es un metodología probabilística que se preocupa de priorizar la simplificación de la representación de símbolos de menor concurrencia a costa de complejizar la representación de símbolos de mayor concurrencia. Consecuencia de lo anterior, estos son métodos especialmente sensibles a la distribución de la variable $z$. Sea $l$ el largo de la secuencia, el código esperado para una codificación entrópica corresponde a:
+        El objetivo es generar una codificación tal que el largo promedio de los mensajes sea el menor posible a expensas de hacer el peor caso de codificación peor. En otras palabras, es un metodología probabilística que se preocupa de priorizar la simplificación de la representación de símbolos de mayor concurrencia a costa de complejizar la representación de símbolos de menor concurrencia. Consecuencia de lo anterior, estos son métodos especialmente sensibles a la distribución de la variable aleatoria $z$. Sea $l$ el largo de la secuencia, el código esperado para una codificación entrópica corresponde a:
 
         \begin{equation}
             L(\gamma) = \mathbb{E}[l(\gamma(Z))] = \sum_{i \in I} p_z(i) \, l(\gamma(i))
         \end{equation}
             
-        Donde $p_z (i)$ es la probabilidad del símbolo $i$. Luego $\gamma$ se dirá que es una codificación entrópica óptima si minimiza $L(\gamma)$.\\
+	Donde $p_z (i)$ es la probabilidad del símbolo $i$. Luego $\gamma$ se dirá que es una codificación entrópica óptima si minimiza $L(\gamma)$~\cite{goyal2001theoretical}.\\
 
-        Dado que la probabilidad del símbolo está dado por su distribución de probabilidad, cada codificador basado en entropía debe estimar la distribución de la fuente. Dependiendo de dicha distribución existen distintos codificadores entrópicos que combinan distintas técnicas como por ejemplo run-length 
+        Dado que la probabilidad del símbolo está dado por su distribución de probabilidad, cada codificador basado en entropía debe estimar la distribución de la fuente. Dependiendo de dicha distribución existen distintos codificadores entrópicos que combinan distintas técnicas, como por ejemplo la codificación por longitud de rachas (\textit{run-length}), los códigos de Golomb-Rice o la codificación aritmética, que se describen a continuación.
 
-          % DESCRIBIR EL RUNLENGTH!!!
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+Dentro de estas técnicas conviene distinguir explícitamente a la codificación aritmética (o de
+rango) de la familia de códigos de prefijo descrita anteriormente. Un código de prefijo asigna a
+cada símbolo una secuencia binaria de largo entero, $l(\gamma(i)) \in \mathbb{N}$, restricción
+que impide alcanzar exactamente el largo ideal $-\log_2 p_z(i)$ salvo que las probabilidades
+sean potencias exactas de dos. La codificación aritmética elimina esta restricción: en vez de
+asignar una secuencia binaria por símbolo, representa la secuencia completa como un único
+subintervalo de $[0,1)$, que se estrecha progresivamente a medida que cada símbolo llega, en
+proporción a su probabilidad acumulada. Esto permite que el largo efectivo asignado a cada
+símbolo sea fraccionario -- ajustándose al límite de Shannon con mayor precisión que un código
+de prefijo -- y que el modelo de probabilidad $p_z$ se actualice en línea (de forma adaptativa)
+a medida que se observan más símbolos, en lugar de fijarse de antemano.
+% [NOTA: Esto está difícil de seguir y muy compacto para la explicación. Además no tiene referencias
+
+\subsection{Codificación Run-Length}
+Los algoritmos de codificación principalmente se encargan de aprovechar la distribución para lograr representaciones más eficiente. En una forma diferente pero muchas veces complementaria la codificación por longitud de rachas (\textit{Run-Length Encoding}, RLE) es un método de compresión sin pérdidas adecuado para secuencias discretas con alta correlación espacial o redundancia consecutiva, como secuencias de coeficientes de transformada cuantizados que presentan una elevada concentración de ceros \cite{ortega1998rate, malvar2006adaptive}.
+
+    Sea una secuencia discreta $\mathbf{s} = (s_1, s_2, \dots, s_N)$ obtenida a partir de los coeficientes cuantizados, donde $s_n \in \mathcal{I}$. Cuando el alfabeto incluye un símbolo altamente redundante (típicamente $s_n = 0$), RLE descompone la secuencia en una sucesión de tuplas $(r_k, v_k)_{k=1}^K$, donde:
+    \begin{itemize}
+        \item $r_k \in \mathbb{N}_0$ denota la longitud de racha (\textit{run}), correspondiente al número de símbolos nulos consecutivos que preceden al $k$-ésimo símbolo no nulo.
+        \item $v_k \in \mathcal{I} \setminus \{0\}$ denota el valor (\textit{value} o \textit{level}) del coeficiente no nulo correspondiente.
+    \end{itemize}
+
+    De este modo, la secuencia original de longitud $N$ se transforma en una secuencia de $K$ pares:
+    \begin{equation}
+        \mathbf{s} \mapsto \big( (r_1, v_1), (r_2, v_2), \dots, (r_K, v_K), \text{EOB} \big)
+    \end{equation}
+    donde el marcador especial $\text{EOB}$ (\textit{End of Block}) se emite opcionalmente para señalar que todos los coeficientes restantes hasta completar la secuencia de longitud $N$ son cero \cite{ortega1998rate}.
+
+    Los pares generados $(r_k, v_k)$ constituyen un nuevo alfabeto conjunto sobre el cual se aplica el codificador entrópico $\gamma$, optimizando el largo promedio de la representación conforme a su distribución de probabilidad conjunta $p(r, v)$ \cite{goyal2001theoretical, malvar2006adaptive}.
+
+    % Nota: Se puede hacer más intuitivo con un ejemplo numérico muy sencillo. Prefiero que se explique de forma lo más abstracta posible junto a un ejemplo numérico a este intermedio un poco difuso
+
     \subsection{Implementaciones}
         Esta técnica ha visto éxito y popularidad en estándares tan comunes actualmente como MP3 para audio o JPEG para imágenes. Las anteriores se basan en la utilización de la transformada coseno discreta y las llamadas \textit{wavelets} que son los ejemplos más clásicos del potencial que tienen estos métodos de compresión y la razón por lo que predominan en el estado del arte.\\
 
@@ -120,7 +195,7 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
     Esta transformación tiene una capacidad impresionante de compactación de energía. En general es capaz de representar una señal en pocos coeficientes.
 
 
-    De esta manera entendiendo que la transformada de coseno discreta es una función de $\mathbb{R}^N \rightarrow \mathbb{R}^N$ biyectiva, se puede representar también como una matriz de $NxN$ invertible, es decir, posee inversa. Existen distintos tipos de DCT cuyo objetivo es hacer la matriz de transformación ortonormal, pero perdiendo la conexión directa con la DFT.\\
+    De esta manera entendiendo que la transformada de coseno discreta es una función de $\mathbb{R}^N \rightarrow \mathbb{R}^N$ biyectiva, se puede representar también como una matriz de $NxN$ invertible, es decir, que podemos recuperar completamente la información original. Existen distintos tipos de DCT cuyo objetivo es hacer la matriz de transformación ortonormal, pero perdiendo la conexión directa con la DFT.\\
 
     Para una secuencia de valores reales desde $x_0$ hasta $x_{N-1}$ la transformada DCT-II y DCT-III respectivamente son:
 
@@ -154,10 +229,10 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
             \label{fig:DCT_pattern}
         \end{figure}
     \subsubsection{JPEG}\label{subsubsec: jpeg}
-    JPEG es un algoritmo de compresión con la capacidad de disminuir muy significativamente el tamaño de imágenes con pérdidas poco notorias de calidad \cite{jpeg1992}. En general, este algoritmo es bueno en eliminar aquellos elementos que son difíciles de detectar para el ojo humano, privilegiando la luminiscencia por sobre la crominancia cuya detección es menor debido a la concentración de conos y bastones cuya razón es de 6 a 100. Por tanto, la capacidad de reconocer diferencias de brillo y luz es mucho mayor que la de color. Luego los pasos para este algoritmos son:
+    JPEG es un algoritmo de compresión con la capacidad de disminuir muy significativamente el tamaño de imágenes con pérdidas poco notorias de calidad \cite{jpeg1992}. En general, este algoritmo es bueno en eliminar aquellos elementos que son difíciles de detectar para el ojo humano. Privilegia las diferencias en la intensidad de luz por sobre la diferencia cromática de color. La motivación biológica de esta desición yace en la concentración de conos y bastones en el ojo humano (6 a 100) razon por la cual la capacidad de reconocer diferencias de brillo y luz es mucho mayor que la de color en nuestra especie. Bajo este paradigma, el algoritmo en su versión más básica se enfoca en los siguientes pasos:
     
     \subsubsubsection{Conversión del espacio de color}
-        En este paso, se cambia el espacio de color desde RGB a YCbCr. Este último se describe como luminescencia, crominancia azul diferenciada y crominancia roja diferenciada. Agrupando de forma efectiva la dimensión perceptiva de los bastones. La fórmula para esta conversión para cada pixel corresponde a:
+        En este paso, se cambia el espacio de color desde RGB a YCbCr. Este último se describe como luminancia, crominancia azul diferenciada y crominancia roja diferenciada. Agrupando de forma efectiva la dimensión perceptiva de los bastones. La fórmula para esta conversión para cada pixel corresponde a:
 
         \begin{align*}
             \centering
@@ -179,6 +254,7 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
     \subsubsubsection{Longitud de ejecución y codificación Huffman}
         De este resultado, se genera una codificación que recorre toda la imagen de forma serpenteada desde la esquina superior derecha a la inferior izquierda agrupandola en un arreglo. Y con la longitud de ejecución se declara la cantidad de veces que se repite un valor de forma consecutiva en vez de agregarlo esa cantidad de veces.
         
+	% Me parece que esto se podría reducir significativamente y simplificar, no es necesario ahondar tanto en esto
 
 \section{Orden de Morton}\label{sec:morton_order}
     El orden de Morton, también conocido como \textit{Z-order curve}, es una técnica de indexación espacial que permite mapear puntos en un espacio multidimensional (por ejemplo, 2D o 3D) a un valor escalar unidimensional preservando, en la medida de lo posible, la localidad espacial. Fue introducida con el objetivo de mejorar la eficiencia en el acceso secuencial a bases de datos geoespaciales. \cite{morton1966zorder}\\
@@ -204,6 +280,7 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
     
     En otras palabras, los bits de menor peso de \(x, y, z\) ocupan las posiciones 0, 1, 2 respectivamente en \(m\); los siguientes bits ocupan las posiciones 3, 4, 5; y así sucesivamente. Este procedimiento genera un valor único que se puede utilizar para ordenar o indexar los puntos en memoria.
     
+    % [PLACEHOLDER] Sería bueno agregar una representación visual
     \subsection{Propiedades}
     
     El orden de Morton tiene las siguientes propiedades fundamentales:
@@ -269,13 +346,41 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
     \end{equation*}
 
     \vspace{0.4cm}
-    
+
+    % [PLACEHOLDER 6 -- MARCO_TEORICO] Efecto espectral de los self-loops sobre el término DC:
+    % sin self-loops, el primer vector propio de L (valor propio 0) es constante (promedio
+    % plano); con self-loops, el valor propio deja de ser cero y el primer vector propio pasa a
+    % ser un promedio PONDERADO que penaliza a los nodos con self-loop. Por qué: esta derivación
+    % completa (con ecuaciones) ya existe -- pero solo en metodologia.tex (Transformada Gráfica
+    % de Fourier, "Caso Base" vs. "Caso Modificado"), un capítulo de resultados/método, no de
+    % teoría general. Aquí en marco_teórico se define el self-loop y el Laplaciano generalizado
+    % pero nunca se explica QUÉ cambia espectralmente al agregarlo -- es exactamente el hecho
+    % general de GSP que metodologia.tex aplica después. Sugerido: aquí, inmediatamente después
+    % de esta definición de $L_g$; metodologia.tex podría entonces referenciar esto en vez de
+    % re-derivarlo (decisión tuya, no la estoy asumiendo).
+
     Describiendo lo anterior, tendremos completamente representada la estructura del grafo en una sola expresión algebraica. A partir de ella, podremos procesar las señales involucrando. %la información de señal con la información impuesta por su estructura.
-    
-% Transformada 
+
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+Una propiedad estructural relevante de todo grafo es su \textit{conectividad}. Un grafo se dice
+conexo si existe un camino de aristas entre cualquier par de nodos $v_i, v_j \in \mathcal{V}$; en
+caso contrario, se descompone en dos o más \textit{componentes conexas}, subconjuntos de nodos
+mutuamente alcanzables entre sí pero sin ninguna arista hacia el resto del grafo. Esta propiedad
+tiene una manifestación espectral directa sobre el Laplaciano $L$: la multiplicidad del valor
+propio $\lambda = 0$ es exactamente igual al número de componentes conexas del grafo
+\cite{ortega2022gsp}. Intuitivamente, cada componente aporta su propio vector propio constante
+(plano) asociado a $\lambda = 0$, pues dicho vector no involucra ninguna arista que cruce hacia
+otra componente y, por lo tanto, no es penalizado por la estructura del grafo. Esta propiedad es
+relevante para la transformada descrita a continuación: si el grafo sobre el que se construye la
+GFT no es conexo, no existe un único término de continua (DC) que resuma a todos los nodos, sino
+uno por cada componente.
+
+% NOTA: Demasiado compacto difícil de entender, falta notación y ecuaciones separadas para hacer esto más visual. Un parrafo de este tamaño hace dificil de entender de que se está hablando y cuál es su importancia. La conclusión final tiene que ser un poco más abstracta y conectarla posteriormente en la sección de transformada gráfica de fourier
+
+% Transformada
 \subsection{Transformada Gráfica de Fourier}\label{subsec: gft}
 
-    GFT (\textit{graph fourier transform}) es una transformada ortogonal generada a través de los vectores propios ordenados del laplaciano generalizado. Es decir sean $\{ \phi_1, \phi_2, ..., \phi_n \}$ los vectores propios considerando los valores propios $\lambda_1 \leq \lambda_2 \leq ... \leq \lambda_n$ diremos que:
+    GFT (\textit{graph fourier transform}) es una transformada ortogonal generada a través de los vectores propios ordenados del laplaciano generalizado ($L_g$). Es decir sean $\{ \phi_1, \phi_2, ..., \phi_n \}$ los vectores propios considerando los valores propios $\lambda_1 \leq \lambda_2 \leq ... \leq \lambda_n$ diremos que:
 
         \begin{equation*}
             U = [\phi_1, \phi_2, ..., \phi_n] \Longrightarrow GFT = U^T
@@ -316,59 +421,91 @@ En resumen, la teoría de la información no solo permite comprender cuánto es 
         RMSE(x_M, x) = \sqrt{\frac{\sum_{i=1}^N{\left(x_M(i) - x(i)\right)^2}}{N}}
     \end{equation*}
 
-    
-\section{Rate-Distorsion Theory}\label{sec: rdt}
-    La teoría de tasa distorsión es una de las muchas derivadas de la teoría de Shannon y la codificación de fuentes. El concepto es aprovechar de la mayor manera posible la redundancia de la fuente sujeto a un criterio de fidelidad. En otras palabras, el objetivo de esta teoría es la representación de la fuente con el menor número de bits posibles (tasa) para una dada calidad de reproducción (distorsión) \cite{ortega1998rate}. \\
 
-    Una reflexión previa relevante para estos métodos es que así como las distintas metodologías de compresión pueden diferir mucho en efectividad según el tipo de dato, también pueden diferir entre muestras. Es por tanto otro objetivo de esta teoría aprovechar lo mejor de ambos mundos, primero utilizando la información muestra a muestra para encontrar los mejores parámetros de compresión como también aprovechar la eventual correlación entre muestras subsecuentes. \\
+% [PLACEHOLDER 8 -- MARCO_TEORICO o ESTADO_DEL_ARTE, ambigüedad intencional] Algoritmo de
+% Viterbi / programación dinámica para decisiones óptimas sobre una secuencia bajo costos por
+% pares. Por qué: la selección real de modo (metodologia.tex, Selección de Modo) es
+% explícitamente un "trellis de Viterbi", pero ni el concepto general de programación dinámica
+% ni una cita para Viterbi (1967) existen en la bibliografía real de esta tesis (library.bib)
+% -- la única cita a Viterbi que he visto en toda la sesión está en la lista de referencias
+% separada y no integrada de docs/report/main_es.tex. Es una brecha de cita tan real como de
+% teoría. Sugerido: la teoría general de DP/Viterbi encaja aquí, en marco_teórico (después de
+% Rate-Distortion Theory, ya que es otra forma de resolver una optimización restringida, pero
+% aprovechando dependencia de primer orden entre decisiones consecutivas en vez de tratarlas
+% como independientes); la cita y la motivación de "por qué un trellis y no una decisión
+% independiente por bloque" encajarían igual de bien en estado_del_arte. Dejo ambas opciones
+% abiertas a propósito.
 
-    Otra mención relevante, es que estos métodos solo hacen sentido en un contexto donde exista un escenario de ganancia-pérdida lo que hace matemáticamente relevante un proceso de optimización. En ese sentido, esta teoría es aplicable para métodos de compresión con pérdida de información, donde la pregunta es; cuánta fidelidad de representación se está dispuesto a perder para reducir el almacenamiento necesario para la fuente o sus indicaciones de transmisión.
+\section{Rate-Distortion Theory}\label{sec: rdt}
+    La teoría de tasa-distorsión, derivada formal de la teoría de la información y codificación de fuentes de Shannon, modela el límite teórico fundamental para la compresión de información bajo un criterio de fidelidad predeterminado. En términos concretos, su objetivo es determinar la representación de una fuente que minimice el número promedio de bits por muestra (tasa, $R$) para un nivel de degradación admisible tolerable (distorsión, $D$) \cite{ortega1998rate}. \\
+
+    En los esquemas prácticos de codificación, la efectividad de una técnica de compresión no solo depende de la naturaleza estadística del medio (e.g., audio, imagen o video), sino también de la variabilidad local entre muestras o bloques de datos. Por ende, la optimización operativa de tasa-distorsión busca tanto adaptar los parámetros de compresión de forma local e intra-muestra, como explotar la correlación residual entre muestras o coeficientes subsecuentes. \\
+
+    Dado que esta formulación parte de una disyuntiva intrínseca (*trade-off*) entre pérdida de fidelidad y ahorro de ancho de banda o almacenamiento, el marco es estrictamente aplicable a esquemas de compresión con pérdida (*lossy compression*). En estos sistemas, el problema formal radica en cuantificar cuánta fidelidad de la señal original es admisible sacrificar para alcanzar un determinado umbral de tasa de bits o capacidad de almacenamiento.
 
     \subsection{Métricas de distorsión}
-        Ahora, la definición de la métrica de distorsión no es una discusión trivial, en tanto es relevante considerar una combinación de variables cuantitativas y cualitativas. Es decir, es especialmente relevante para datos que dependen de la percepción del consumidor o usuario, en la mayoría de las casos un humano. En resumen, las métricas deben buscar una correlación con el impacto perceptivo del sujeto.\\
+        La formulación de la función de distorsión dista de ser trivial, puesto que requiere equilibrar la viabilidad computacional con la fidelidad respecto a la percepción del usuario final (generalmente humano). Por consiguiente, una métrica adecuada debe correlacionar significativamente con la degradación perceptualmente advertible.\\
 
-        Sin embargo, lo anterior lleva a otra discusión respecto a la generalidad del método, ya que considerar las diferencias individuales de cada sujeto es impracticable. Este objetivo se ha demostrado complejo de resolver, mas a través del conocimiento especializado, por ejemplo en la percepción del color en tanto su resolución biológica (conos y bastones) o el audio según la capacidad humana de escuchar cierto rango de frecuencias.\\
+        No obstante, modelar la respuesta visual o auditiva individual de cada sujeto es computacionalmente inviable y carece de generalidad analítica. Para mitigar esta limitación, se recurre a aproximaciones biofísicas estandarizadas del sistema sensorial humano; por ejemplo, la descomposición cromática y la respuesta no uniforme de conos y bastones en la visión humana, o las curvas de umbral auditivo dependientes de la frecuencia en señales sonoras.\\
 
-        Mezclando lo anterior con el error mínimo cuadrado, existe una ponderación perceptual conjunta con una métrica cuantitativa para dimensionar la distorsión de los métodos de compresión con pérdida. Un buen ejemplo, observando lo mencionado anteriormente en JPEG es, en el espacio transformado, enfocar el error en la percepción humana enfocandose matemáticamente en el canal de luminiscencia. Por ejemplo, considerando la distorsión como:
+        En el dominio de imágenes, una práctica estándar consiste en articular métricas de distancia cuadrática (como el error cuadrático medio) sobre representaciones perceptualmente ponderadas. Un caso representativo es el estándar JPEG, el cual desacopla la información en un espacio de color transformado (e.g., $\text{YC}_b\text{C}_r$) para priorizar el canal de luminancia ($Y$), al cual el ojo humano es sensiblemente más crítico que a los canales de crominancia. Formalmente, si se considera la señal original $Y$ y su versión reconstruida tras un proceso de cuantización $q(\cdot)$ e inversión $q^{-1}(\cdot)$, la distorsión puede expresarse a través de la raíz del error cuadrático medio ($\mathrm{RMSE}$):
 
         \begin{equation}
             \mathrm{RMSE}(Y, q) = \frac{1}{\sqrt{n}} \left\| Y - q^{-1}(q(Y)) \right\|_2
         \label{eq: rmse_dist}
         \end{equation}
-            
-    \subsection{Optimización en sistema concreto}
-        Si bien existe una discusión teórica sobre cual es el espacio de optimización y el mejor desempeño en tasa distorsión sin restricciones. La presente investigación se centra en la propuesta de un esquema de codificación que limita la optimización a un sistema específico. Este se puede considerar que captura la relevancia estadística y las dependencias asociadas a la fuente, por tanto, el proceso de optimización se centrará en el mejor punto de operación para un esquema ya no abstracto, sino concreto.\\
 
-        Como se mencionó anteriormente en esta sección, considerando el paradigma analizado anteriormente de codificación basado en transformadas, estamos en un esquema bien definido que cumple con los requisitos descritos anteriormente. Desde ese escenario existen multiplicidad de métodos bien estudiados de optimización tasa-distorsión.
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        A partir del $\mathrm{RMSE}$ se define la métrica de Relación Señal-Ruido de Pico (PSNR, \textit{Peak Signal-to-Noise
+        Ratio}). Sea $L$ el valor máximo que puede tomar una muestra de la señal (para una
+        componente de color de 8 bits, $L=255$); el PSNR se define como:
+        \begin{equation}
+            \mathrm{PSNR}(Y, q) = 20 \log_{10}\left( \frac{L}{\mathrm{RMSE}(Y,q)} \right) \ [\text{dB}]
+        \label{eq: psnr_dist}
+        \end{equation}
+        Expresar la distorsión en decibeles -- una escala logarítmica relativa al valor pico de la
+        señal, en vez del error absoluto que entrega el RMSE -- permite comparar la calidad de
+        reconstrucción de manera consistente independientemente del rango dinámico de la señal
+        original, y es la convención estándar en la literatura de compresión de imágenes, video y,
+        en particular, de atributos de nubes de puntos.
 
-        Es relevante mencionar, que lo anterior también incluiría el conocimiento del decodificador, ya que no considerar la información necesaria para la recuperación de la fuente y la calidad de la fuente recuperada, sería miope para el análisis de tasa-distorsión.\\
+    \subsection{Optimización en un sistema concreto}
+        A diferencia de la formulación teórica general de Shannon —que describe límites asintóticos no restringidos sobre espacios continuos—, la presente investigación aborda el problema de optimización condicionado a una arquitectura de codificación específica. Dicho sistema delimita de antemano el espacio de operaciones factibles, integrando la estructura estadística y las dependencias contextuales de la fuente.\\
 
-        Por lo tanto, estaremos en presencia de un espacio de optimización tasa-distorsión discreto para una tipo de entrada específica. Luego el objetivo es: "Dado un entorno de codificación donde el decodificador es completamente definido, optimizar la codificación de una secuencia particular de imagen tal que cumpla algunos objectivos tasa-distorsión"\cite{ortega1998rate}\\
+        Específicamente, este trabajo opera bajo el paradigma de codificación por transformadas (Sección~\ref{sec:transform_based_coding}). Bajo este enfoque, el decodificador se encuentra completamente definido y estandarizado, lo que impone una restricción determinista: cualquier estrategia de optimización en el codificador debe maximizar la fidelidad de la señal recuperable sin comprometer la compatibilidad con el proceso inverso de decodificación.\\
 
-        Para esta tarea, existen dos elementos relevantes a considerar según la aplicación final esperada para la metodología planteada. Primero, está la complejidad, donde será importante diferenciar entre métodos pensados en tiempo real y aquellos que no lo son. En este último caso, la complejidad siempre que los recursos computacionales lo permitan, no está limitada y se pueden realizar multitud de operaciones a diferencia de una propuesta en tiempo real. Segundo, está la definición de la función de costo donde el diseño debe considerar la prioridad, la ponderación y la escala de los elementos a minimizar y como estos afectan el resultado final. Ya que, como se mencionó anteriormente, existe una relevancia de la percepción no es lo mismo optimizar para un resultado local que para un resultado globalmente óptimo.\\
+        En consecuencia, el problema se reduce a la búsqueda sobre un espacio discreto de parámetros admisibles. En palabras de Ortega y Ramchandran: \textit{``Dado un entorno de codificación donde el decodificador está completamente definido, optimizar la codificación de una secuencia particular de imagen tal que cumpla ciertos objetivos de tasa-distorsión''} \cite{ortega1998rate}.\\
 
-        \subsubsection{Restricciones de almacenamiento posible}
-            En distintos contextos, la optimización de nuestro método puede estar restringido por condiciones físicas de almacenamiento o una tasa de referencia a superar. Por ejemplo, el espacio restante en disco puede limitar las elecciones de parámetros del método. Sea $x(i)$ un punto de operación para una secuencia de código $i$ y $R_T$ una restricción general de memoria. Podemos expresar esto tal que:
+        La resolución de este problema involucra dos consideraciones de diseño:
+        \begin{enumerate}
+            \item \textbf{Restricción computacional y latencia:} En aplicaciones en tiempo real, el presupuesto computacional acota el espacio de búsqueda paramétrica a heurísticas locales o subóptimas; en contraste, en esquemas fuera de línea (*offline*), es factible evaluar exhaustivamente múltiples trayectorias de optimización global.
+            \item \textbf{Definición de la función de costo:} La ponderación y escala relativa asignada a la distorsión frente a la tasa condicionan si la asignación de recursos optimiza bloques de manera aislada (óptimo local) o distribuye el presupuesto de bits a lo largo de la señal completa (óptimo global).
+        \end{enumerate}
+
+        \subsubsection{Restricciones de almacenamiento y formulación lagrangiana}
+            En entornos prácticos, la asignación de bits está acotada por capacidades físicas de almacenamiento o cuotas de canal de transmisión. Si denotamos por $x(i)$ la elección del modo o parámetro de cuantización para una unidad de codificación $i$ (con $i \in \{1, \dots, N\}$), y $R_T$ como el presupuesto total de almacenamiento, la restricción global se define como:
 
             \begin{equation}
-                \sum_{i=1}^{N} r_{ix(i)} \leq R_T
+                \sum_{i=1}^{N} r_{i, x(i)} \leq R_T
             \end{equation}
 
-            o de manera local, siendo $r_t$ una restricción de referencia:
+            o bien, bajo una cuota local estricta $r_t$ por bloque o unidad de código:
 
             \begin{equation}
-                r_{ix(i)} \leq r_t
-             \end{equation}
-            Además de alguna métrica $f_i$, $f$ que debe ser minimizada local o globalmente respectivamente.\\
+                r_{i, x(i)} \leq r_t
+            \end{equation}
 
-            Este consideracón del almacenamiento posible o de restricción de tasa obliga a considerar no tan solo la métrica de distorsión como la discutida en \ref{eq: rmse_dist} sino también la tasa. Para incluir esta restricción el paradigma más clásico y utilizado ampliamente en el contexto de compresión es la optimización Lagrangiana. Básicamente, se introduce un multiplicador de Lagrange $\lambda \geq 0$ y una función de costo de Lagrange tal que:
+            sujeto a la minimización concurrente de la métrica de distorsión agregada $\sum_{i} d_{i, x(i)}$.\\
+
+            Dado que este problema de optimización combinatoria bajo restricciones es computacionalmente costoso, el enfoque prevalente en codificación de medios es la relajación por multiplicadores de Lagrange. Al introducir un escalar $\lambda \geq 0$, el problema restringido se transforma en la minimización no restringida de un funcional de costo lagrangiano:
 
             \begin{equation}\label{eq: rdo_lagrange}
-                J_{g}(\lambda) = d_{ij} + \lambda \cdot r_{ij}
+                J(\lambda) = d_{ij} + \lambda \cdot r_{ij}
             \end{equation}
 
-            Donde $d_{ij}$ corresponde a la distorsión para el índice de cuantización $j$ (cierto paso de cuantización) y $r_{ij}$ corresponde a la tasa o tamaño del código que representa dicha información cuantizada. Con esto podemos controlar la relevancia que damos a la tasa en el proceso de optimización minimizando local o globalmente la función objetivo. \\
+            donde $d_{ij}$ y $r_{ij}$ representan la distorsión y la tasa resultantes de aplicar la opción de cuantización $j$ sobre la unidad $i$, respectivamente. El parámetro $\lambda$ actúa como un factor de equilibrio: valores reducidos de $\lambda$ priorizan la fidelidad visual a expensas de una mayor tasa, mientras que valores elevados penalizan severamente el volumen de datos resultante. \\
 
-            Finalmente, hay una cuestión relevante que surge de este análisis respecto a como obtenemos métricas precisas para optimizar resultados en un proceso que no es determinístico. Por ejemplo, al ocupar codificación entrópica, este es un método estadístico y probabilístico que no es independiente de la distribución de los coeficientes transformados. Es por tanto recurrente la utilización de aproximaciones de la tasa, basadas en la compresión específica de la codificación a utilizar y esto es algo que se debe abordar al desarrollar un método de compresión.
+            Un desafío crítico en la aplicación práctica de la Ecuación \eqref{eq: rdo_lagrange} es que el cálculo exacto de la tasa $r_{ij}$ requiere la ejecución completa de las etapas de codificación entrópica (e.g., Huffman, codificación aritmética o CABAC). Dado que estas etapas dependen de modelos probabilísticos dinámicos y de las estadísticas locales de los coeficientes cuantizados, calcular la tasa exacta en cada iteración de prueba incrementa notablemente la latencia. Por esta razón, los sistemas de compresión frecuentemente recurren a modelos analíticos de estimación de tasa o tablas precalculadas basadas en la entropía empírica para guiar la optimización lagrangiana de manera eficiente.
 
+% HABLAR DE RATE-DISTORTION OPTIMIZATION CLUSTERING (RDOC)
 

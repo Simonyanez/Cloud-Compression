@@ -1,116 +1,351 @@
 \chapter{Estado del Arte}
 
-% Mejoras necesarias:
-% 1. Introducción
+Este capítulo tiene como objetivo describir los distintos algoritmos de compresión para nubes de puntos que predominan tanto en los codificadores actuales como en la frontera del conocimiento. Aborda tanto métodos de compresión geométrica, es decir de la información volumétrica de la nube, como de los métodos de compresión de atríbutos, en nuestro caso el color.\\
+Con este propósito lo primero que se realiza es la descripción de los estándares implementados de compresión. Siendo los más fundamentales los desarrollos a cargo del Moving Picture Expert Group (MPEG) quienes articulan versiones del estado del arte con pasos posteriores de mejora construyendo así un solo método coordinado. Estos se dividen en dos tipos: 1) Algoritmos de compresión basados unicamente en la geometría (G-PCC) 2) Algoritmos de compresión predictivos para videos (V-PCC)
+Estos algoritmos recopilatorios mejorados anteriormente mencionados dependen de investigaciones más atómicas como base. Por ejemplo G-PCC se funda en el método de compresión geométrica Octree y el método de compresión de atributos adaptativo por regiones jerárquicas (RAHT) derivadas de versiones más simples de compresión por atributos basado en transformadas de grafos. Además de desarrollos posteriores que motivan este trabajo que combinan ambas ideas utilizando transformadas de grafos adaptativas por región (RA-GFT).  \\
+Sin embargo, ninguna de estas transformadas de grafos --~ni la versión por bloques ni su extensión regional~-- utiliza la señal de atributos para decidir la estructura del propio grafo: la adaptación queda limitada a parámetros fijos o aprendidos de forma agnóstica al contenido. Es en esa brecha donde se ubican los métodos paramétricos y adaptativos que se revisan más adelante, y que motivan directamente la propuesta de este trabajo.\\
+Además, este trabajo no desconoce la existencia de modelos de aprendizaje profundo para el aprendizaje de transformadas y el entrenamiento de encoders. Es por esto, que se describen los principales enfoques de este tipo y su posicionamiento frente a este trabajo.\\
+Finalmente, a través de esta revisión exhaustiva del estado del arte se busca identificar las principales oportunidades que la avanzada de investigación en esta área no está considerando y donde nuestra propuesta puede ser un aporte para el desarrollo de estos algoritmos. 
 
-
-
-INTRO
-
-
-% 2. Estándares de Compresión para Point Clouds
-%    2.1. MPEG G-PCC (incluye octree como subsección técnica)
-%    2.2. MPEG V-PCC
-%    2.3. Otros estándares (Draco, JPEG Pleno)
+% ============================================================
 \section{Estándares de Compresión para Nubes de Puntos}
-    El desarrollo de estándares de compresión para nubes de puntos ha tomado relevancia debido al gran interés de empresas móviles y  diversos inversores dedicados a la adquisición de datos en formato de nubes de puntos. Ahora bien, existen diversos contextos de implementación para este tipo de datos, donde cada uno propone un desafío diferente. Estos están separados en tres categorías: 1. nubes de puntos estáticas; 2. nubes de puntos dinámicas que varían en el tiempo; y 3. nubes de puntos adquiridas dinámicamente. \cite{emerging_mpeg} 
-    \\
-    Además para la evaluación existen tres tipos de modelos de testeo para las distintas categorías L-PCC, S-PCC y V-PCC. Donde el primero son datos LiDAR que se caracterizan por su adquisición dinámica y muestreo irregular, el segundo son superficies con alto muestreo aproximando una superficie 3D, y finalmente videos que corresponden a información dinámica.
-    \subsection{MPEG G-PCC}
-        Esta codificación es la combinación de las estrategias para afrontar L-PCC y S-PCC para la compresión de geometría (Geometry Based Point Cloud Compression). Esta mixtura de ambos algoritmos se conforma por la codificación por octree de L-PCC y la voxelización con la determinación de bloques de S-PCC. Además utilizando Region Adaptive Hierarchical Transform, se comprimen los atributos a través de transformadas espaciales jerárquicas y codificación entrópica.
-        \subsubsection{Codificación por Octree}
-            La codificación por octree es una técnica jerárquica para representar objetos espaciales que aprovecha la coherencia espacial presente en la mayoría de las nubes de puntos y objetos tridimensionales \cite{meagher1982geometric,loop2016microsoft}. Esta técnica organiza la información en una estructura arbórea en la que cada nodo representa un cubo disjunto en el espacio, cuyo tamaño decrece exponencialmente a medida que se desciende por los niveles del árbol. De esta forma, cada nodo corresponde a una región del universo y se le asigna una propiedad que describe dicha región.\\
+% ============================================================
 
-            Si un nodo describe completamente su región —por ejemplo, si el cubo está completamente vacío o completamente ocupado— se considera un nodo terminal o hoja. En caso contrario, existe una ambigüedad que se resuelve dividiendo la región en ocho subregiones o octantes, que corresponden a los nodos hijos del nodo padre. Esta subdivisión recursiva permite representar objetos con un grado de detalle variable, adaptando la precisión espacial a la complejidad local de la nube de puntos \cite{meagher1982geometric}.\\
-            
+    El desarrollo de estándares de compresión para nubes de puntos ha tomado relevancia
+    debido al gran interés de empresas móviles y diversos inversores dedicados a la
+    adquisición de datos en formato de nubes de puntos. Ahora bien, existen diversos
+    contextos de implementación para este tipo de datos, donde cada uno propone un desafío
+    diferente. Estos están separados en tres categorías: 1.~nubes de puntos estáticas;
+    2.~nubes de puntos dinámicas que varían en el tiempo; y 3.~nubes de puntos adquiridas
+    dinámicamente. \cite{graziosi2020overview}\\
+    Además para la evaluación existen tres tipos de modelos de testeo para las distintas
+    categorías L-PCC, S-PCC y V-PCC. Donde el primero son datos LiDAR que se caracterizan
+    por su adquisición dinámica y muestreo irregular, el segundo son superficies con alto
+    muestreo aproximando una superficie 3D, y finalmente videos que corresponden a
+    información dinámica.
+
+    \subsection{MPEG G-PCC}
+        Esta codificación es la combinación de las estrategias para afrontar L-PCC y
+        S-PCC para la compresión de geometría (Geometry Based Point Cloud Compression, ISO/IEC 23090-9~\cite{iso2023gpcc}).
+        Esta mixtura de ambos algoritmos se conforma por la codificación por octree de
+        L-PCC y la voxelización con la determinación de bloques de S-PCC. Además
+        utilizando Region Adaptive Hierarchical Transform \cite{dequeiroz2016raht}, se comprimen los atributos a
+        través de transformadas espaciales jerárquicas y codificación entrópica.
+
+        \subsubsection{Codificación por Octree}
+            La codificación por octree es una técnica jerárquica para representar objetos
+            espaciales que aprovecha la coherencia espacial presente en la mayoría de las
+            nubes de puntos y objetos tridimensionales \cite{meagher1982geometric,loop2016microsoft}.
+            Esta técnica organiza la información en una estructura arbórea en la que cada
+            nodo representa un cubo disjunto en el espacio, cuyo tamaño decrece
+            exponencialmente a medida que se desciende por los niveles del árbol.\\
+
+            Si un nodo describe completamente su región se considera un nodo terminal o
+            hoja. En caso contrario, la ambigüedad se resuelve dividiendo la región en
+            ocho subregiones o octantes, que corresponden a los nodos hijos del nodo
+            padre. Esta subdivisión recursiva permite representar objetos con un grado
+            de detalle variable \cite{meagher1982geometric}.\\
+
             \begin{figure}
                 \centering
                 \includegraphics[width=0.5\linewidth]{img/estado_del_arte/octree.png}
                 \caption{Representación simple del formato de la codificación por Octree}
                 \label{fig:octree}
             \end{figure}
-            
-            Una ventaja esencial de esta estructura es que utiliza una única forma primitiva, el cubo, lo que simplifica tanto el almacenamiento como las operaciones sobre los datos. Además, al representar el objeto a múltiples niveles de resolución, el octree permite gestionar la memoria de manera eficiente, almacenando los detalles más finos sólo cuando es necesario y manteniendo un nivel más grueso cuando el detalle no es crítico. Esto facilita también realizar operaciones espaciales como la detección de colisiones, la visualización con ocultación y operaciones booleanas de forma eficiente, ya que el recorrido jerárquico permite acceder a las regiones del espacio de manera ordenada, evitando búsquedas exhaustivas \cite{meagher1982geometric}.\\
-            
-            Asimismo, la estructura jerárquica del octree permite que muchas operaciones puedan ser detenidas en niveles superiores cuando la precisión requerida se ha alcanzado, lo que reduce significativamente el costo computacional. Por otro lado, la naturaleza dividida del árbol, donde cada nodo genera hasta ocho subcálculos independientes, hace que el procesamiento pueda ser paralelizado fácilmente, mejorando la velocidad en sistemas con múltiples procesadores.\\
-            
-            En cuanto a la representación, cada nodo en el octree está identificado por una dirección única que indica su posición espacial relativa al nodo raíz y su nivel dentro de la jerarquía. Las propiedades asignadas a los nodos pueden ir desde una simple clasificación en estados como vacío, parcialmente lleno o completamente lleno, hasta incluir atributos complejos como tipo de material, color o densidad, ampliando así la riqueza de la representación \cite{loop2016microsoft}.\\
-            
-            Aunque la codificación por octree puede requerir un mayor consumo de memoria, generalmente proporcional al área superficial del objeto representado, su capacidad para modelar la estructura espacial de la nube de puntos de manera compacta y adaptativa la convierte en una herramienta esencial para la compresión y manipulación eficiente de datos tridimensionales \cite{meagher1982geometric}. Así, el codificado por octree abre la posibilidad de aprovechar la correlación espacial inherente a las nubes de puntos, permitiendo una representación estructuralmente coherente y eficiente que facilita tanto el almacenamiento como el procesamiento posterior \cite{loop2016microsoft}.
+
+            La naturaleza dividida del árbol hace que el procesamiento pueda ser
+            paralelizado fácilmente, mejorando la velocidad en sistemas con múltiples
+            procesadores \cite{meagher1982geometric,loop2016microsoft}.
+
+        \subsubsection{Region Adaptive Hierarchical Transform (RAHT)}
+        % [PLACEHOLDER] RAHT — BASELINE PRINCIPAL EN G-PCC PARA ATRIBUTOS.
+        % Qué cubrir:
+        %  - Idea: aplica transformadas tipo Haar de forma jerárquica en el octree
+        %    (de arriba a abajo), adaptando la transformada a la región ocupada
+        %  - Proceso: para cada par padre-hijo, aplica una transformada 2×2 que produce
+        %    un coeficiente DC (promedio ponderado por ocupancia) y un AC (diferencia)
+        %  - Los coeficientes AC se cuantizan y codifican; el DC sigue bajando en la jerarquía
+        %  - Ventaja: muy bajo overhead (no transmite parámetros del grafo), baja complejidad
+        %  - Limitación clave: NO usa la señal de atributos para construir la transformada;
+        %    usa solo la geometría (densidad de puntos en el octree)
+        %  - Referencia OBLIGATORIA: de Queiroz & Chou, "Compression of 3D Point Clouds
+        %    Using a Region-Adaptive Hierarchical Transform", IEEE Trans. Image Process. 2016.
+	Este es el algoritmo base para G-PCC utilizando la información geométrica ya codificada a través del método Octree anteriormente descrito, la transformada jerárquica ocupa el color de nodos en un nivel más bajo para predecir el color de los nodos en el siguiente nivel. A través de esta metodología simple, logra un algoritmo que escala de forma lineal con una complejidad de $O(N)$.
+
+	Concretamente, para cada par padre-hijo del octree se aplica una transformada tipo Haar $2\times 2$ ponderada por ocupancia, que produce un coeficiente de continua (DC, el promedio) y uno de detalle (AC, la diferencia); solo los coeficientes AC se cuantizan y codifican, mientras que el DC continúa propagándose hacia el siguiente nivel de la jerarquía. Al no requerir la transmisión de ningún parámetro adicional del grafo, RAHT logra una sobrecarga de señalización prácticamente nula y una complejidad baja, lo que explica su adopción como transformada base en G-PCC \cite{dequeiroz2016raht}. Su limitación central, sin embargo, es que la transformada se construye enteramente a partir de la ocupancia geométrica del octree: en ningún momento observa la señal de atributos (el color) para decidir su estructura, lo que deja sin explotar la correlación direccional de los gradientes de color al interior de cada bloque -- precisamente la brecha que las transformadas adaptativas revisadas en la Sección~\ref{sec:pcac_geometric} y siguientes, y en última instancia la propuesta de este trabajo, buscan cerrar.
+
+	% [FIGURA PENDIENTE: diagrama de la transformada Haar jerárquica RAHT mostrando el
+	% promediado DC/diferencia AC entre un nodo padre y sus hijos ocupados en 2-3 niveles
+	% del octree -- ver Fig. 1 o 2 del paper original de de Queiroz & Chou (2016) como referencia.]
+
     \subsection{MPEG V-PCC}
-        En este caso, este estandar es el utilizado para videos y busca explotar la correlación entres cada nube de puntos. A diferencia del anterior, usa herramientas auxiliares para generar muestras 2D que puedan analizarse a través de algoritmos clásicos de compresión de video. Al generar de forma estratégica un conjunto de imágenes se puede almacenar la geometría y textura de la nube de puntos.
-    \subsection{JPEG Pleno}
-    \subsection{Draco}
+        En este caso, este estándar (ISO/IEC 23090-5~\cite{iso2023vpcc}) busca explotar la correlación entre nubes de puntos
+        en el tiempo. A diferencia del anterior, usa herramientas auxiliares para generar
+        muestras 2D que puedan analizarse a través de algoritmos clásicos de compresión
+        de video.
 
-% 3. Métodos de Compresión de Atributos
-%    3.1. Transformadas en el contexto de G-PCC
-%    3.2. Graph Transform (tu sección actual)
-%    3.3. Transformadas Paramétricas (LST-ICE)
+        Concretamente, la nube de puntos se proyecta sobre un conjunto de parches 2D
+        mediante mapas de ocupancia (\textit{occupancy maps}), que junto con la geometría
+        y la textura empaquetada de dichos parches (\textit{patch packing}) conforman un
+        atlas de video convencional codificable directamente con codecs estándar como HEVC
+        o VVC \cite{graziosi2020overview}. Esta reutilización de codecs de video maduros es
+        la principal ventaja de V-PCC, pero también su limitación: el esquema asume
+        superficies densas y razonablemente continuas (cuerpos humanos, objetos sólidos)
+        para que la proyección a parches 2D sea eficiente, y degrada significativamente
+        sobre nubes esparsas o con muestreo irregular como las adquisiciones LiDAR. Por
+        esta razón V-PCC no constituye un competidor directo del esquema propuesto en este
+        trabajo: ambos abordan casos de uso distintos -- secuencias densas orientadas a
+        video en el primer caso, compresión por frame agnóstica a la densidad de muestreo
+        en el segundo -- y comparten únicamente el objetivo general de comprimir atributos
+        de color.
 
-\section{Métodos de Copmresión de Atributos}
+        % [FIGURA PENDIENTE: diagrama de pipeline V-PCC -- nube 3D -> mapas de ocupancia
+        % + parches de geometría/textura 2D (patch packing) -> atlas de video -> HEVC/VVC.
+        % Ver Fig. 2 de Graziosi et al. (2020) como referencia.]
+
+        % [PLACEHOLDER] Completar V-PCC:
+        %  - Proceso: proyección de la nube a mapas de ocupancia (occupancy map),
+        %    geometría y textura 2D (atlas de parches / patch packing)
+        %  - Cómo se codifican esos mapas con HEVC o VVC
+        %  - Limitaciones: solo funciona bien con superficies densas y continuas
+        %    (cuerpos humanos, objetos sólidos). No sirve para LiDAR esparso.
+        %  - Por qué NO es el competidor directo aquí: distinto caso de uso
+        %  - Referencia: ISO/IEC 23090-5; Graziosi et al. (2020) "An Overview of
+        %    Ongoing Point Cloud Compression Standardization Activities", APSIPA Trans.
+
+
+% ============================================================
+\section{Métodos de Compresión de Atributos}
+% ============================================================
+
     \subsection{Transformadas en el contexto de G-PCC}
-    \subsection{Graph Transform}\label{sec:pcac_geometric}
-        La compresión de atributos de nubes de puntos mediante transformada de grafos es una técnica avanzada que explota la estructura irregular de los datos tridimensionales \cite{zhang2014point,pavez2020region}. A diferencia de los métodos clásicos que utilizan DCT o \textit{wavelets}, la transformada de grafos permite modelar relaciones entre puntos a través de un grafo, donde los nodos representan puntos y las aristas modelan su proximidad o conectividad.\\
 
-        La transformada de Fourier sobre grafos (GFT) permite descomponer los atributos, como el color o la reflectancia, en una base adaptada a la estructura del grafo, capturando mejor la correlación espacial entre puntos \cite{ortega2022gsp}. De esta forma, la energía de los atributos tiende a concentrarse en unos pocos coeficientes de baja frecuencia, lo que permite una compresión más efectiva.\\
-        
-        Considerando que la información geométrica ya ha sido codificada mediante métodos como los mencionados anteriormente en la sección de codificación por octree, se asume que la información estructural ya la posee el decodificador y por tanto la compresión de los atributos puede utilizar esta información sin necesitar agregar instrucciones mayores respecto a la información estructural \cite{loop2016microsoft}.\\
-        
-        Luego, este método construye un grafo basándose en distancias discretas de puntos voxelizados donde las conexiones existirán siempre que dicha distancia no supere cierto umbral. Estos pesos o valores de arista son inversamente proporcionales y tienen la diagonal cúbica como límite describiéndose de la siguiente manera:
-        
+        % [PLACEHOLDER] Cubrir los dos enfoques principales dentro de G-PCC para atributos:
+        %  (a) RAHT — referencia cruzada a \ref{} dentro de G-PCC
+        %  (b) Lifting / Predicting Transform por Nivel de Detalle (LOD):
+        %      - Organiza puntos en niveles de detalle progresivos (de grueso a fino)
+        %      - Aplica predicción entre niveles y lifting wavelet entre vecinos
+        %      - Referencia: Chou, Tam & Cohen (2020), "3D Point Cloud Attribute
+        %        Compression Using Sparse Representation and Level-of-Detail"
+        %  Comparar brevemente: complejidad, ganancia RD, overhead de señalización
+        % [NOTA: no se pudo verificar la referencia "Chou, Tam & Cohen (2020)" propuesta
+        %  arriba -- no aparece en búsquedas directas por ese título/autoría. Se cita en su
+        %  lugar el overview general de G-PCC, que sí cubre esta transformada; si tenías un
+        %  paper específico en mente, dime cuál y lo corrijo.]
+        Además de RAHT (Sección~\ref{sec:pcac_geometric}), G-PCC define un segundo enfoque
+        para la compresión de atributos dentro de la categoría 3 (nubes densas): la
+        transformada de Predicción/\textit{Lifting} por Nivel de Detalle (LOD)
+        \cite{graziosi2020overview}. En este esquema los puntos se organizan en niveles de
+        detalle progresivos, de grueso a fino, típicamente mediante un muestreo por
+        distancia sobre la geometría ya decodificada. Entre niveles consecutivos se aplica
+        una predicción del atributo basada en los vecinos más cercanos ya reconstruidos del
+        nivel anterior, y un paso adicional de \textit{lifting} (actualización tipo
+        \textit{wavelet}) sobre los residuos de predicción explota la correlación local
+        entre puntos vecinos dentro del mismo nivel. Frente a RAHT, este enfoque suele
+        alcanzar una mejor relación tasa-distorsión a costa de mayor complejidad
+        computacional (el cálculo de vecinos más cercanos por nivel es más costoso que el
+        recorrido directo del octree), mientras que el overhead de señalización de ambos
+        se mantiene bajo, ya que ninguno transmite parámetros explícitos de un grafo o
+        transformada aprendida -- a diferencia de los métodos paramétricos y adaptativos
+        que se revisan en la Sección~\ref{sec:pcac_geometric} y siguientes.
+
+    \subsection{Graph Transform}\label{sec:pcac_geometric}
+        La compresión de atributos de nubes de puntos mediante transformada de grafos es
+        una técnica avanzada que explota la estructura irregular de los datos
+        tridimensionales \cite{zhang2014point,pavez2020region}. A diferencia de los
+        métodos clásicos que utilizan DCT o \textit{wavelets}, la transformada de grafos
+        permite modelar relaciones entre puntos a través de un grafo, donde los nodos
+        representan puntos y las aristas modelan su proximidad o conectividad.\\
+
+        La transformada de Fourier sobre grafos (GFT) permite descomponer los atributos
+        en una base adaptada a la estructura del grafo, capturando mejor la correlación
+        espacial entre puntos \cite{ortega2022gsp}. De esta forma, la energía de los
+        atributos tiende a concentrarse en unos pocos coeficientes de baja frecuencia.\\
+
+        Este método construye un grafo basándose en distancias discretas de puntos
+        voxelizados donde las conexiones existirán siempre que dicha distancia no supere
+        cierto umbral. Los pesos de arista son inversamente proporcionales a la distancia:
+
         \begin{equation}
             w_1 = 1, \quad w_2 = \frac{1}{\sqrt{2}}, \quad w_3 = \frac{1}{\sqrt{3}}
         \end{equation}
-        
-        Lo que describirá una matriz de adyacencia simétrica de la forma:
-        \[
-        A = 
-        \begin{bmatrix}
-        0   & w_3 & w_2 & 0   & 0   & 0 \\
-        w_3 & 0   & w_1 & w_3 & 0   & 0 \\
-        w_2 & w_1 & 0   & w_2 & 0   & 0 \\
-        0   & w_3 & w_2 & 0   & w_1 & w_2 \\
-        0   & 0   & 0   & w_1 & 0   & w_1 \\
-        0   & 0   & 0   & w_2 & w_1 & 0
-        \end{bmatrix}
-        \tag{5}
-        \]
-        
-        Ocupando esta construcción de grafo, se procede a hacer el proceso de transformada gráfica descrita en el marco teórico \cite{ortega2022gsp}. Este entregará un laplaciano que se asegura es una matriz semidefinida positiva. Luego, entendiendo que la transformada gráfica contiene solo información disponible en el decodificador, el mensaje se convierte en la codificación de los coeficientes de las bases posterior a su cuantificación.\\
-        
-        Al ser este un enfoque nuevo para su época, la comparación se hace respecto a la DCT de una dimensión para el encadenamiento de todos los bloques. Sean el nivel 5 bloques de 16x16x16, el nivel 6 bloques de 8x8x8, el nivel 7 bloques de 4x4x4 y el nivel 8 bloques de 2x2x2, se muestran los siguientes resultados en la siguiente figura:
-        
+
         \begin{figure}
             \centering
             \includegraphics[width=0.5\linewidth]{img/estado_del_arte/block_GFT.png}
-            \caption{Rendimiento de compresión (en dB) frente a la tasa de bits (en bpv) para el codificador propuesto utilizando una Transformada de Grafos y DCT para los niveles de octree 5, 6, 7 y 8 (correspondientes a tamaños de cubo de 16, 8, 4 y 2, respectivamente) \cite{zhang2014point}}
+            \caption{Rendimiento de compresión (en dB) frente a la tasa de bits (en bpv)
+            para el codificador propuesto utilizando una Transformada de Grafos y DCT para
+            los niveles de octree 5, 6, 7 y 8 \cite{zhang2014point}}
             \label{fig:block_gft}
         \end{figure}
-        
-        Los datos utilizados provienen de nubes de puntos 3D generadas en tiempo real
-        
-    \subsection{Transformadas paramétricas}
 
-% 4. Enfoques de Deep Learning
+        % [PLACEHOLDER] Agregar referencia y descripción de:
+        % Pavez et al. (2020), "Region Adaptive Graph Fourier Transform for 3-D Point Clouds"
+        % IEEE Trans. Signal Process.
+        % Es la extensión más directa de zhang2014point hacia múltiples bloques y regiones,
+        % y la referencia más cercana al trabajo propuesto ANTES de la contribución de esta tesis.
+
+        La Transformada de Fourier sobre Grafos Adaptativa por Región (RA-GFT)
+        \cite{pavez2020region} extiende directamente este esquema de bloque único hacia una
+        estructura multiresolución, combinando transformadas de bloque localizadas
+        espacialmente sobre una familia de particiones anidadas organizadas como un árbol.
+        En cada nivel de resolución los atributos se procesan en clústeres mediante
+        transformadas de bloque que producen un único coeficiente de aproximación (DC) y
+        varios coeficientes de detalle (AC); el coeficiente DC se promueve hacia el
+        siguiente nivel (de menor resolución), repitiendo el proceso hasta alcanzar la
+        raíz del árbol. Dado que los clústeres pueden tener un número distinto de puntos,
+        cada transformada de bloque incorpora la importancia relativa de cada coeficiente
+        mediante un Laplaciano de grafo normalizado por $\mathbf{Q}$, cuyos autovectores se
+        emplean como la transformada del bloque. Según sus autores, RA-GFT supera a RAHT en
+        hasta 2.5~dB con una sobrecarga de complejidad reducida, constituyendo la
+        referencia más cercana al trabajo propuesto en esta tesis \emph{antes} de
+        incorporar la adaptación dependiente de la señal de color que se describe en los
+        capítulos siguientes.
+
+    \subsection{Transformadas Paramétricas y Adaptativas}
+
+        % [PLACEHOLDER -- gemelo de marco_teorico.tex ítem 7] Falta cobertura teórica de
+        % estadística direccional/esférica: clustering sobre $\mathbb{S}^2$, similitud coseno,
+        % simetría antipodal -- el mecanismo real de entrenamiento del libro de códigos
+        % (k-means esférico, metodologia.tex Sección "Entrenamiento del Libro de Códigos").
+        % Precedente natural aquí: Dhillon & Modha (2001), "Concept Decompositions for Large
+        % Sparse Text Data Using Clustering" (introduce k-means esférico) -- verifiqué que esta
+        % cita NO está en library.bib ni en este capítulo todavía; solo aparece en la lista de
+        % referencias separada de docs/report/main_es.tex (no integrada a la tesis). Sería una
+        % cita nueva a agregar, no una ya existente -- corrijo aquí una suposición mía anterior
+        % equivocada. Encaja mejor en este capítulo que en marco_teórico porque es una técnica
+        % específica con precedente puntual, no teoría fundacional de GSP.
+
+        % [PLACEHOLDER] Cubrir trabajos que ADAPTAN la GFT usando la señal de atributos.
+        % Narrativa sugerida:
+        %
+        % 1. Pavez & Ortega (2017): "Generalized Laplacian Eigenmaps"
+        %    - Aprende grafos que maximizan compacidad espectral desde datos de entrenamiento
+        %    - Diferencia clave: aprende el grafo completo, no solo self-loops;
+        %      y no está orientado a PCC sino a procesamiento de señales generales
+        %
+        % 2. LST-ICE (Pavez et al.) — referencia cruzada a \ref{sec: lst_ice}
+        %    - Motivación directa del self-loop para adaptación de la GFT
+        %
+        % 3. [Si existe] paper que aplique codebooks de grafos para PCC.
+        %    Si no existe → eso es precisamente la brecha que este trabajo llena.
+        %
+        % Culminar con: "ninguno de estos trabajos combina codebook offline 3D, adaptación
+        % por señal de color, y overhead de señalización controlado con RDO para PCC."
+        % [NOTA: no se pudo verificar un paper de Pavez & Ortega (2017) titulado
+        %  "Generalized Laplacian Eigenmaps" -- no aparece en búsquedas directas bajo ese
+        %  título ni autoría. Sí existe, de los mismos autores y año, un trabajo directamente
+        %  relacionado en el mismo problema (aprender grafos desde datos bajo restricciones
+        %  Laplacianas): Egilmez, Pavez & Ortega (2017), "Graph Learning From Data Under
+        %  Laplacian and Structural Constraints", IEEE JSTSP. Se usa esa referencia abajo;
+        %  si tenías un paper distinto en mente, dime cuál y lo corrijo.]
+        Un segundo grupo de trabajos, distinto de RA-GFT, aborda la adaptación de la GFT
+        aprendiendo la estructura completa del grafo -- no solo pesos de self-loop -- a
+        partir de datos de entrenamiento. Egilmez, Pavez y Ortega \cite{egilmez2017graphlearning}
+        formulan este problema como una estimación de la matriz de precisión bajo
+        restricciones Laplacianas y estructurales, maximizando la compacidad espectral de la
+        representación resultante. La diferencia clave frente a la propuesta de este trabajo
+        es doble: primero, ese enfoque aprende el grafo completo (todas las aristas y pesos)
+        en lugar de restringir la adaptación a un conjunto acotado de parámetros de
+        self-loop; segundo, su motivación es general al procesamiento de señales sobre
+        grafos, sin orientarse específicamente a la compresión de nubes de puntos ni a la
+        señalización eficiente de la decisión de modo por bloque.
+
+        La motivación directa del self-loop como mecanismo de adaptación proviene de
+        LST-ICE (Sección~\ref{sec: lst_ice}), donde se demuestra que modificar la diagonal
+        del Laplaciano en los extremos de un grafo de línea permite generar toda una familia
+        de transformadas paramétricas conocidas variando solo dos escalares. Sin embargo,
+        hasta donde se pudo determinar en esta revisión, ningún trabajo de la literatura
+        extiende esa idea hacia un \emph{codebook offline de direcciones 3D sobre
+        $\mathbb{S}^2$}, entrenado para clasificar bloques según la orientación de su
+        gradiente de color y generalizable entre frames y secuencias de la misma escena.
+        Esa es precisamente la brecha que este trabajo aborda: ningún método revisado
+        combina (a) un codebook offline de grafos direccionales en 3D, (b) adaptación
+        guiada directamente por la señal de color, y (c) sobrecarga de señalización
+        acotada y controlada explícitamente mediante optimización RDO.
+
+
+% ============================================================
 \section{Enfoques de Deep Learning}
+% ============================================================
 
-% 5. Codificadores de Entropía (RL-GR que ya tienes)
+Los enfoques de deep learning presentes en la literatura se enfocan en auto-encoders convolucionales tridimensionales. Esto se compone de un encoder de capas convolucionales que luego cuantizan el espacio latente a través de una función de cuantización pre-definida. Esto incluye a todos los puntos de la nube en simultáneo y se generan sistemas de \textit{padding} para poder aplicar transformadas convolucionales con grillas fijas. \\
+    Para el entrenamiento de estas redes se declara la función de pérdida básicamente como el costo lagrangiano que pondera la tasa y distorsión de la nube descomprimida respecto a la original, implementando ruido uniforme o gaussiano para hacer dicha función diferenciable durante la optimización. Posteriormente, para la etapa de inferencia y evaluación se emplea la cuantización discreta, retornando al régimen estricto de codificación entrópica. \\
+    Aun cuando la literatura reporta altas capacidades de representación, estos algoritmos presentan limitaciones inherentes: la opacidad de los espacios latentes no deterministas dificulta su optimización analítica, y la sobrecarga computacional que imponen sobre millones de puntos restringe severamente su viabilidad en sistemas embebidos o con restricciones de latencia en tiempo real. \\
+    En compresión geométrica, Quach et al. (2019) \cite{quach2019learning} fueron pioneros en este paradigma mediante auto-encoders convolucionales 3D sobre volúmenes voxelizados. En el plano de atributos, Sheng et al. (2021) \cite{sheng2021deeppcac} introdujeron Deep-PCAC, el primer marco \textit{end-to-end} orientado a color que explota correlaciones espaciales mediante convoluciones de punto de segundo orden directamente en el dominio continuo. De manera paralela, Fang et al. (2022) presentaron 3DAC \cite{fang2022_3dac}, que convierte los atributos a coeficientes de transformada y aplica un modelo profundo de entropía condicionado tanto en la información del propio transformado como en atributos ya codificados previamente, demostrando el potencial de la modelación de entropía aprendida para este dominio. \\
+    Frente a dichos esquemas de aprendizaje profundo, este trabajo fundamenta su elección en un enfoque determinista por motivos de interpretabilidad, eficiencia y compatibilidad práctica:
+    \begin{itemize}
+        \item \textbf{Interpretabilidad físico-geométrica:} A diferencia de las transformadas de caja negra latentes, cada modo de descomposición posee un significado algebraico concreto, guiado directamente por la orientación local del gradiente del canal de luminancia $Y$.
+        \item \textbf{Invertibilidad exacta:} La ortogonalidad del diseño matricial asegura una reconstrucción analítica cerrada, eliminando las derivas de aproximación y distorsiones espurias propias de las transformadas de síntesis neuronales.
+        \item \textbf{Compatibilidad conceptual con el pipeline MPEG G-PCC:} El algoritmo ocupa el mismo lugar que el bloque de transformada de atributos (e.g., RAHT) y no requiere información adicional de geometría, aunque su integración en la implementación de referencia TMC13 queda fuera del alcance de este trabajo; el decodificador se ejecuta en arquitecturas estándar de CPU sin dependencias de entornos como CUDA o PyTorch.
+        \item \textbf{Sobrecarga de señalización mínima:} Frente a los millones de parámetros que requiere distribuir un modelo de red neuronal, la señalización lateral de esta propuesta se acota a transmitir un único índice de modo (entre $K$ posibles) por bloque padre, codificado aritméticamente y con un costo medido inferior al $1.1\%$ del flujo de bits (Capítulo de Resultados).
+    \end{itemize}
+    Aunque se asume que los modelos de aprendizaje profundo ofrecen un techo teórico de correlación superior en escenas no lineales de alta complejidad, la predictibilidad computacional, la ausencia de artefactos fuera de distribución y la cota estricta de complejidad hacen del enfoque determinista una alternativa superior para aplicaciones de ingeniería e interoperabilidad industrial.
+
+% ============================================================
 \section{Run Length Golomb-Rice Entropy Coder}\label{sec: rlgr}
+% ============================================================
 
-El codificador de entropía Run Length Golomb-Rice (RL-GR) es un método efectivo y de baja complejidad para la compresión sin pérdida de secuencias binarias con estructuras de tipo \textit{run-length}, es decir, secuencias con repeticiones consecutivas del mismo símbolo \cite{malvar2006adaptive,sayood2006introduction}. Combinando codificación por longitud de carrera (Run Length) con codificación Golomb-Rice, este método permite representar eficientemente tanto secuencias de ceros prolongadas como valores pequeños comunes en señales residuales.
+El codificador de entropía Run Length Golomb-Rice (RL-GR) es un método efectivo y de
+baja complejidad para la compresión sin pérdida de secuencias binarias con estructuras de
+tipo \textit{run-length} \cite{malvar2006adaptive,sayood2006introduction}. Combinando
+codificación por longitud de carrera (Run Length) con codificación Golomb-Rice, este
+método permite representar eficientemente tanto secuencias de ceros prolongadas como
+valores pequeños comunes en señales residuales.
 
-La codificación Golomb-Rice es un caso particular de codificación de Golomb donde el parámetro divisor es una potencia de dos, lo que permite una implementación computacionalmente eficiente \cite{malvar2006adaptive}. Este codificador es ampliamente utilizado en estándares de compresión como MPEG y JPEG-LS \cite{jpeg1992}, debido a su equilibrio entre rendimiento y simplicidad. En el contexto de nubes de puntos, RL-GR se emplea para comprimir mapas de ocupación, residuos de predicción o secuencias binarias derivadas del escaneo espacial jerárquico, donde los datos presentan redundancia local y patrones repetitivos.
+La codificación Golomb-Rice es un caso particular de codificación de Golomb donde el
+parámetro divisor es una potencia de dos, lo que permite una implementación eficiente
+\cite{malvar2006adaptive}. Este codificador es ampliamente utilizado en estándares de
+compresión como MPEG y JPEG-LS~\cite{weinberger2000locoi}, debido a su equilibrio entre rendimiento
+y simplicidad.
 
-% 6. Análisis Comparativo y Justificación Metodológica
-% 7. Brechas y Oportunidades de Investigación
+En nuestro contexto, de la misma forma que las transformadas de Fourier clásicas, la transformada gráfica de fourier es naturalmente sparse. De esta forma, los coeficientes expresan la energía que se concentra en cada coeficiente y la cuantización escalar generará un conjunto dominado principalmente por ceros para altas frecuencias. Es en este contexto que el codificador entrópico RL-GR es un estandar para la compresión basa de GFTs.
 
-\section{\textit{Learning separable transforms by inverse covariance estimation}} \label{sec: lst_ice}
+% [PLACEHOLDER] Ampliar la conexión entre RL-GR y la distribución post-cuantización
+% de los coeficientes GFT en el contexto de este trabajo:
+%  - ¿Por qué la esparsidad del coeficiente cuantizado (muchos ceros) favorece RL-GR?
+%  - Mencionar CABAC como alternativa más costosa computacionalmente (pero más eficiente)
+%  - Si tienes mediciones del overhead CABAC vs. RL-GR → referencia cruzada a resultados
 
-Este trabajo presenta un enfoque para diseñar transformadas adaptativas que se ajusten automáticamente a las características específicas de los datos de entrada. La idea principal es que en lugar de usar transformadas fijas como DCT o DST, se pueden crear transformadas que cambien según las propiedades estadísticas de la señal a procesar.\\
+Esta esparsidad post-cuantización es precisamente lo que RL-GR está diseñado para explotar:
+al alternar automáticamente entre un modo de longitud de carrera (para las corridas
+extensas de coeficientes en cero de las bandas de alta frecuencia) y un modo Golomb-Rice
+(para los valores pequeños y ocasionales que sí sobreviven a la cuantización), el
+codificador se adapta localmente a la distribución sin requerir un modelo estadístico
+explícito ni transmitir parámetros adicionales -- una propiedad especialmente conveniente
+dado que la distribución de energía espectral varía por bloque según su modo direccional
+asignado. Como alternativa, un codificador aritmético contextual de orden superior como
+CABAC~\cite{marpe2003cabac} puede lograr una compresión marginalmente mejor al modelar explícitamente las
+probabilidades condicionales entre símbolos consecutivos, pero a un costo computacional y
+de implementación considerablemente mayor. En este trabajo, CABAC se reserva para la
+señalización de los índices de modo por bloque padre -- una secuencia corta y con fuerte
+correlación espacial, donde ese costo adicional se justifica -- mientras que RL-GR
+codifica los coeficientes espectrales cuantizados en sí. La comparación física medida
+entre ambos esquemas de sobrecarga se reporta en el Capítulo de Resultados.
 
-El aporte más relevante son las Transformadas Trigonométricas Discretas Paramétricas (p-DTTs), que se basan en la representación de la señal como un grafo de línea. Un grafo de línea es simplemente una cadena de nodos conectados secuencialmente, donde cada nodo representa un píxel o muestra de la señal. La innovación clave consiste en agregar conexiones adicionales llamadas \textit{self-loops} en los extremos de esta cadena, lo que modifica las propiedades de la transformada resultante.\\
 
-Matemáticamente, las p-DTTs se definen mediante dos parámetros $(\alpha, \beta)$ que controlan el peso de estos \textit{self-loops} en el primer y último nodo del grafo respectivamente. Cuando $\alpha = \beta = 0$, se obtiene la transformada DCT-2 clásica. Variando estos parámetros se pueden generar otras transformadas conocidas como DST-4 o DST-7, pero también crear nuevas transformadas adaptadas a características específicas del contenido modificando el laplaciano.\\
+% ============================================================
+\section{\textit{Learning Separable Transforms by Inverse Covariance Estimation}}
+\label{sec: lst_ice}
+% ============================================================
+
+Este trabajo presenta un enfoque para diseñar transformadas adaptativas que se ajusten
+automáticamente a las características específicas de los datos de entrada. La idea
+principal es que en lugar de usar transformadas fijas como DCT o DST, se pueden crear
+transformadas que cambien según las propiedades estadísticas de la señal a procesar.\\
+
+El aporte más relevante son las Transformadas Trigonométricas Discretas Paramétricas
+(p-DTTs), que se basan en la representación de la señal como un grafo de línea. La
+innovación clave consiste en agregar conexiones adicionales llamadas \textit{self-loops}
+en los extremos de esta cadena, lo que modifica las propiedades de la transformada
+resultante.\\
+
+Matemáticamente, las p-DTTs se definen mediante dos parámetros $(\alpha, \beta)$ que
+controlan el peso de estos \textit{self-loops} en el primer y último nodo del grafo
+respectivamente. Cuando $\alpha = \beta = 0$, se obtiene la transformada DCT-2 clásica.
+Variando estos parámetros se pueden generar otras transformadas conocidas como DST-4 o
+DST-7, pero también crear nuevas transformadas adaptadas a características específicas
+del contenido modificando el laplaciano:\\
 
 \begin{equation}
     L(\alpha, \beta) = \text{diag}(\alpha, 0, \ldots, 0, \beta) + L_{DCT}
@@ -130,7 +365,8 @@ Matemáticamente, las p-DTTs se definen mediante dos parámetros $(\alpha, \beta
 \end{equation}
 
 
-Ocupando esta metodología se pueden replicar un conjunto preciso de transformadas paramétricas demostrando la capacidad de adaptar dinámicamente las transformadas gráficas. Aplicando distintos valores, se pueden obtener según la dinámica de la señal a procesar un conjunto de señales, según la siguiente tabla:
+Ocupando esta metodología se pueden replicar un conjunto preciso de transformadas
+paramétricas, según la siguiente tabla:
 
 \begin{table}[H]
     \centering
@@ -146,6 +382,127 @@ Ocupando esta metodología se pueden replicar un conjunto preciso de transformad
     \end{tabular}
 \end{table}
 
-La relevancia de este enfoque para nubes de puntos radica en que demuestra cómo la modificación estructural de un grafo mediante \textit{self-loops} puede mejorar significativamente el rendimiento de las transformadas. Mientras que las p-DTTs operan sobre grafos de línea simples para señales 2D, el principio subyacente de adaptar la estructura del grafo según las características locales de la señal puede extenderse a grafos 3D más complejos para el procesamiento de atributos de color en nubes de puntos.
+La relevancia de este enfoque para nubes de puntos radica en que demuestra cómo la
+modificación estructural de un grafo mediante \textit{self-loops} puede mejorar
+significativamente el rendimiento de las transformadas. Mientras que las p-DTTs operan
+sobre grafos de línea simples para señales 2D, el principio subyacente de adaptar la
+estructura del grafo según las características locales de la señal puede extenderse a
+grafos 3D más complejos para el procesamiento de atributos de color en nubes de puntos.
 
 
+% ============================================================
+\section{Análisis Comparativo y Posicionamiento del Trabajo}
+% ============================================================
+
+    % [PLACEHOLDER] Esta sección es clave para la defensa. Debe incluir:
+    %
+    % 1. Tabla resumen comparativa de los métodos del estado del arte:
+    %
+    %  \begin{table}[H]
+    %    \caption{Comparativa de métodos de compresión de atributos para PCC}
+    %    \begin{tabular}{l|ccccc}
+    %      Método        & Adapta señal & Codebook offline & Overhead señaliz. & Compatible G-PCC \\
+    %      RAHT          & No           & No               & Ninguno           & Sí (estándar)    \\
+    %      GFT bloque    & No           & No               & Ninguno           & Sí               \\
+    %      LST-ICE       & Sí (1D)      & No               & 2 reales          & No (2D)          \\
+    %      DL (Deep-PCAC)& Sí           & Sí (pesos red)   & Alto (MB)         & No               \\
+    %      PCADC (este)  & Sí (3D color)& Sí (offline)     & K índices (bajo)  & Sí               \\
+    %    \end{tabular}
+    %  \end{table}
+    %
+    % 2. Párrafo que sintetiza la brecha y cómo este trabajo la cierra de forma única:
+    %    "Ningún método en la literatura combina (a) adaptación 3D por señal de color,
+    %    (b) codebook offline generalizable entre frames y secuencias, y (c) overhead
+    %    controlado con RDO explícito dentro de un pipeline compatible con G-PCC."
+    %
+    % 3. Justificación de elección de RL-GR + CABAC frente a ANS / Huffman puro.
+
+    El Cuadro~\ref{tab:comparativo_metodos} sintetiza los métodos revisados en este
+    capítulo frente a cuatro ejes relevantes para el problema abordado: si adaptan la
+    transformada a la señal de atributos (no solo a la geometría), si lo hacen mediante un
+    codebook entrenado fuera de línea, la magnitud de la sobrecarga de señalización que
+    requieren, y su compatibilidad directa con el pipeline estándar G-PCC.
+
+    \begin{table}[H]
+        \centering
+        \caption{Comparativa de métodos de compresión de atributos para PCC revisados en este capítulo.}
+        \label{tab:comparativo_metodos}
+        \small
+        \resizebox{\linewidth}{!}{%
+        \begin{tabular}{lcccc}
+            \toprule
+            Método & Adapta señal & Codebook offline & Overhead señaliz. & Compatible G-PCC \\
+            \midrule
+            RAHT \cite{dequeiroz2016raht}            & No            & No             & Ninguno          & Sí (estándar) \\
+            GFT de bloque \cite{zhang2014point}       & No            & No             & Ninguno          & Sí \\
+            LST-ICE \cite{pavez2017separable}         & Sí (1D)       & No             & 2 reales         & No (dominio 2D) \\
+            DL (Deep-PCAC) \cite{sheng2021deeppcac}   & Sí            & Sí (pesos red) & Alto (MB)        & No \\
+            PCADC (este trabajo)                       & Sí (3D, color) & Sí (offline)   & 1 índice/bloque padre (bajo) & Sí \\
+            \bottomrule
+        \end{tabular}}
+    \end{table}
+
+    Ningún método de la literatura revisada combina simultáneamente las tres propiedades
+    que caracterizan la propuesta de este trabajo: (a) adaptación de la transformada en
+    3D guiada directamente por la señal de color, (b) un codebook entrenado fuera de línea
+    y generalizable entre frames y secuencias de una misma escena, y (c) una sobrecarga de
+    señalización explícitamente acotada y calibrada mediante optimización RDO dentro de un
+    pipeline compatible con G-PCC. Las transformadas de grafo estructurales (RAHT, GFT de
+    bloque) satisfacen (c) trivialmente al no adaptarse en absoluto; LST-ICE satisface (a)
+    de forma parcial pero sobre un dominio 1D ajeno a PCC y sin un codebook offline; y los
+    enfoques de aprendizaje profundo satisfacen (a) plenamente pero al costo de una
+    sobrecarga de señalización varios órdenes de magnitud mayor y de renunciar a la
+    compatibilidad directa con el pipeline estándar.
+
+    Respecto a la codificación entrópica, este trabajo utiliza RL-GR \cite{malvar2006adaptive}
+    para los coeficientes espectrales y CABAC de orden 1 para los índices de modo, en lugar
+    de un codificador ANS (\textit{Asymmetric Numeral Systems}) o Huffman puro. ANS logra
+    tasas cercanas a la entropía con una implementación más simple que la codificación
+    aritmética clásica, pero requiere construir y mantener una tabla de probabilidades
+    -- estática o adaptativa -- cuyo costo de inicialización no se justifica frente a los
+    flujos ya extremadamente esparsos que produce la cuantización de los coeficientes GFT,
+    donde RL-GR alcanza un desempeño cercano al óptimo sin necesidad de transmitir ni
+    estimar dicha tabla \cite{malvar2006adaptive,sayood2006introduction}. Huffman puro, por
+    su parte, es subóptimo frente a distribuciones tan sesgadas: al estar restringido a
+    longitudes de código enteras, no puede aproximar tan ajustadamente la longitud
+    fraccionaria óptima que exige una distribución dominada por un símbolo (cero) con
+    probabilidad muy alta \cite{mackay_nodate}, algo que Golomb-Rice sí logra de forma
+    directa y paramétrica dentro de RL-GR.
+
+
+% ============================================================
+\section{Brechas Identificadas y Oportunidades de Investigación}
+% ============================================================
+
+    % [PLACEHOLDER] Lista concisa (enumerate) de las brechas que este trabajo aborda.
+    % Sugerencia de estructura:
+    %
+    % \begin{enumerate}
+    %   \item La GFT estructural ignora la señal de atributos al construir el grafo,
+    %         limitando la compacidad espectral en bloques con gradientes de color direccionales.
+    %   \item No existe en la literatura un codebook offline de grafos direccionales para PCC
+    %         generalizable entre frames de la misma secuencia.
+    %   \item La generalización temporal del codebook (frame 0 → frames 1..T) no ha sido
+    %         estudiada sistemáticamente en el contexto de PCC con GFT.
+    %   \item El overhead de señalización de decisiones adaptativas por bloque no ha sido
+    %         analizado con RDO explícito en 3D.
+    %   \item La adaptación conjunta de parámetros de self-loop (SLP, SLW) por cluster
+    %         de gradiente de color es una contribución novedosa sin precedente directo.
+    % \end{enumerate}
+
+    A partir de la revisión anterior, se identifican las siguientes brechas concretas que
+    este trabajo aborda:
+    \begin{enumerate}
+        \item La GFT estructural ignora la señal de atributos al construir el grafo,
+              limitando la compacidad espectral en bloques con gradientes de color
+              direccionales.
+        \item No existe en la literatura revisada un codebook offline de grafos
+              direccionales para PCC generalizable entre frames de la misma secuencia.
+        \item La generalización temporal del codebook (frame 0 $\to$ frames $1..T$) no ha
+              sido estudiada sistemáticamente en el contexto de PCC con GFT.
+        \item El overhead de señalización de decisiones adaptativas por bloque no ha sido
+              analizado con RDO explícito en 3D.
+        \item La adaptación conjunta de los parámetros de self-loop ($s_{lp}$, $s_{lw}$)
+              por clúster de gradiente de color es una contribución novedosa sin
+              precedente directo en la literatura revisada.
+    \end{enumerate}
