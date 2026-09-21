@@ -1,7 +1,35 @@
 \chapter{Metodología}
 % La metodología está bien organizada y cubre todo el “pipeline”; sin embargo, mejoraria si (i) abres el capítulo con un breve mapa subcapitulos y sus objetivos, (ii) haces referencias cruzadas explícitas a secciones previas cuando dependes de conceptos (Morton, GFT, pesos del grafo), (iii) refuerzas la consistencia de los terminos y tipográfia (Qset/Qstep, vectores en negrita o con flecha, uso del español en títulos), y (iv) sustituyes (“figura anterior/siguiente”) por referencias numeradas. Con esos ajustes (más la eliminación de repeticiones y pequeños comentarios mencionados posteriormente), el flujo se vuelve más autocontenido y facil de leer para el lector no experto.
 % Compactación de la energía será relevante mencionar en marco teórico
-En esta sección se detalla por completo la metodología del algoritmo propuesto, organizada en distintas secciones fundamentales. Primero, se explica la reconstrucción de la base metodológica trabajada en la sección \ref{sec:pcac_geometric}, lo que incluye la partición de la nube (\ref{sec:pc_partition}) y la construcción del grafo estructural (\ref{sec:structural_graph}). Luego, se detalla la estrategia desarrollada para adaptar los grafos aprovechando la información de luminancia, con el objetivo de generar bases de transformada de grafos (GFT) más informativas (\ref{sec:luminance_clustering}, \ref{sec:attribute_graph}, \ref{sec:method_gft}). Posteriormente, se describe el proceso de codificación utilizando optimización tasa-distorsión para seleccionar por bloque los mejores coeficientes, optimizar el codificador entrópico e incluir el overhead necesario para las instrucciones del método (\ref{sec:rdo_method}, \ref{sec:rlgr_method}, \ref{sec:overhead_method}). Finalmente, se describen los procesos de decodificación y las métricas de rendimiento asociadas (\ref{sec:decode_method}, \ref{sec:metrics_method}).
+
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+% Estilos TikZ compartidos por los tres diagramas de este capítulo (Fig.~\ref{fig:hierarchy_tikz},
+% \ref{fig:training_loop_tikz}, \ref{fig:operational_pipeline_tikz}).
+% Código de color único, por rol de cada etapa:
+%   azul    = depende solo de la geometría (sin pérdida, idéntica en codificador y decodificador)
+%   naranjo = depende de la señal de atributos o de su aproximación
+%   violeta = parámetros entrenados fuera de línea y congelados
+%   rojo    = decisión por bloque (gating, Viterbi, modo M_p)
+%   verde   = codificación entrópica y bitstream
+\tikzset{
+    geo/.style      = {rectangle, rounded corners, draw=blue!60!black, fill=blue!8,
+                        minimum height=0.9cm, minimum width=2.6cm, align=center, font=\small},
+    attr/.style     = {rectangle, rounded corners, draw=orange!70!black, fill=orange!12,
+                        minimum height=0.9cm, minimum width=2.6cm, align=center, font=\small},
+    trained/.style  = {rectangle, rounded corners, draw=violet!60!black, fill=violet!10,
+                        minimum height=0.9cm, minimum width=2.6cm, align=center, font=\small},
+    bits/.style     = {rectangle, rounded corners, draw=teal!70!black, fill=teal!10,
+                        minimum height=0.9cm, minimum width=2.6cm, align=center, font=\small},
+    decbox/.style   = {rectangle, rounded corners, draw=red!60!black, fill=red!6,
+                        minimum height=0.9cm, minimum width=2.6cm, align=center, font=\small},
+    decision/.style = {diamond, draw=red!60!black, fill=red!6, aspect=2.4, align=center,
+                        font=\small, inner sep=1pt},
+    arr/.style      = {-{Latex[length=2mm]}, thick},
+}
+
+En esta sección se detalla por completo la metodología del algoritmo propuesto, organizada en distintas secciones fundamentales. Primero, se explica la reconstrucción de la base metodológica trabajada en la sección \ref{sec:pcac_geometric}, lo que incluye la partición de la nube (\ref{sec:pc_partition}) y la construcción del grafo estructural (\ref{sec:structural_graph}). Luego, se detalla la estrategia desarrollada para adaptar los grafos aprovechando la información de luminancia, con el objetivo de generar bases de transformada de grafos (GFT) más informativas (\ref{sec:luminance_clustering}, \ref{sec:attribute_graph}, \ref{sec:method_gft}).
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+A continuación se describe cómo se entrenan y calibran, fuera de línea, los parámetros numéricos que ese mecanismo utiliza (\ref{sec:training_stage}). Posteriormente, se describe el proceso de codificación utilizando optimización tasa-distorsión para seleccionar por bloque los mejores coeficientes (\ref{sec:rdo_method}), cómo se decide la secuencia final de modos mediante \textit{gating} y un trellis de Viterbi (\ref{sec:mode_selection}), y cómo se optimiza el codificador entrópico incluyendo el overhead necesario para las instrucciones del método (\ref{sec:rlgr_method}, \ref{sec:overhead_method}). Finalmente, se describen los procesos de decodificación, la configuración experimental concreta del benchmark E10 y las métricas de rendimiento asociadas (\ref{sec:decode_method}, \ref{sec:metodologia_e10_extensions}, \ref{sec:metrics_method}).
 
 
 \section{Esquema de compresión} \label{sec:copmresion_scheme}
@@ -22,6 +50,22 @@ En esta sección se detalla por completo la metodología del algoritmo propuesto
         \caption{Esquema algoritmo compresión de atributos}
         \label{fig:compresion_scheme}
     \end{figure}
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    La Figura~\ref{fig:compresion_scheme} agrupa el esquema en tres bloques: la cadena de
+    \emph{codificación} (lectura de la nube, partición en bloques, grafo estructural, grafo de
+    atributos, GFT, cuantización, optimización tasa-distorsión, codificación entrópica RLGR y
+    overhead de decisión); el bloque de \emph{entrenamiento} -- estimación y clusterización de
+    patrones de atributos, optimización tasa-distorsión de sus parámetros y el libro de códigos
+    resultante, que alimenta la construcción del grafo de atributos --; y la cadena de
+    \emph{decodificación} (lectura del overhead, decodificación RLGR, decuantización y GFT
+    inversa). Por legibilidad, el diagrama abstrae tres aspectos que las secciones siguientes y
+    las Figuras~\ref{fig:training_loop_tikz} y \ref{fig:operational_pipeline_tikz} sí detallan:
+    la partición aparece con un único tamaño de bloque, aunque el esquema opera con dos niveles
+    ($B_p$ y $B_c$, Sección~\ref{sec:pc_partition_hierarchy}); la selección de modo por
+    \textit{gating} y trellis de Viterbi (Sección~\ref{sec:mode_selection}) queda contenida
+    dentro de la etapa de optimización tasa-distorsión; y en la rama de decodificación no se
+    dibuja la reconstrucción del grafo de atributos, que el decodificador debe rehacer a partir
+    del modo leído antes de aplicar la GFT inversa (Sección~\ref{sec:decode_method}).
 
 \section{Datos Utilizados}\label{sec:datasets}
 % - Describir el dataset utilizado (nombre, resolución, fuente, etc.)
@@ -144,15 +188,98 @@ En esta sección se detalla por completo la metodología del algoritmo propuesto
 
      Donde los puntos que pertenecerán a cierto bloque siempre y cuando $\Delta_i = 0$ para las distintas comparaciones entre puntos. Esto nos entregará un conjunto de índices, que gracias al orden de Morton, son secuenciales y, por tanto, se representan por su índice inicial y final.\\
 
-     A modo de ejemplo, la siguiente figura muestra el primer bloque de la secuencia \textit{Long Dress} para un tamaño de bloque de dieciséis.
+     A modo de ejemplo, la Figura~\ref{fig:block_example} muestra un bloque de la secuencia \textit{Long Dress} para un tamaño de bloque de dieciséis.
      \begin{figure}
          \centering
          \includegraphics[width=0.8\linewidth]{img/metodología/Bloque_Ejemplo.png}
          \caption{Ejemplo de Bloque ($b=16$)}
-         \label{fig:enter-label}
+         \label{fig:block_example}
      \end{figure}
-    
+
     % DAR UN EJEMPLO??? + Visual
+
+    \subsection{Partición Jerárquica de Dos Niveles}\label{sec:pc_partition_hierarchy}
+        La partición descrita hasta aquí opera sobre un único tamaño de bloque $b$. En la
+        práctica, el esquema completo utiliza \textbf{dos} niveles de partición simultáneos
+        sobre la misma nube: un bloque \textbf{padre} de tamaño $B_p$, sobre el cual se toma y
+        señaliza la decisión de modo, y un bloque \textbf{hijo} de tamaño $B_c \leq B_p$, sobre
+        el cual se construye efectivamente el grafo y se calcula la transformada.
+
+        La razón de esta separación es de costo computacional: la construcción del grafo
+        estructural (Sección~\ref{sec:structural_graph}) es una operación sobre todos los pares
+        de puntos del bloque, de orden $O(N^2)$, y la descomposición en autovalores del
+        Laplaciano resultante es $O(N^3)$. Señalizar y transformar directamente al tamaño del
+        bloque padre sería prohibitivo para bloques grandes; en cambio, señalizar el modo una
+        sola vez por bloque padre (bajo costo, ver Sección~\ref{sec:overhead_method}) y
+        heredarlo hacia sub-bloques hijos más pequeños permite mantener el costo de la
+        transformada acotado sin perder la ventaja de una decisión tomada sobre una región
+        espacial mayor y más informativa.
+
+        El tamaño del bloque padre $B_p$ se fija según la profundidad de vóxel de la secuencia,
+        de forma que ambos casos representan la misma fracción relativa de la caja delimitadora
+        ($B_p / 2^{\text{profundidad}} = 1/32$):
+        \begin{equation}
+            B_p = \begin{cases} 32 & \text{profundidad} = 10 \text{ (8iVFB, MVUB 10-bit)} \\ 16 & \text{profundidad} = 9 \text{ (MVUB 9-bit)} \end{cases}
+        \end{equation}
+        El bloque hijo $B_c$ es un tamaño de potencia de dos menor o igual a $B_p$, barrido
+        experimentalmente. Cada bloque hijo se asocia a exactamente un bloque padre según la
+        coordenada de origen (redondeada a $B_p$) de su primer vóxel; esta asociación
+        padre-hijo se reutiliza tanto para propagar la decisión de modo (ver
+        Sección~\ref{sec:mode_selection}) como para agregar el costo tasa-distorsión de todos
+        los hijos de un mismo padre al evaluar dicho padre. La Figura~\ref{fig:hierarchy_tikz} esquematiza esta relación.
+
+        Cabe destacar que la partición en sí \textbf{no calcula códigos de Morton
+        explícitamente}: asume que los vóxeles ya llegan ordenados según dicho orden espacial
+        (cierto para los formatos PLY de ambas bases de datos, Sección~\ref{sec:datasets}) y
+        únicamente detecta las corridas contiguas de índices que caen en la misma celda de
+        tamaño $b$, según la métrica $\Delta_i$ ya definida. Esta es una dependencia real: si la
+        entrada no estuviera pre-ordenada por Morton, la partición actual no la reordenaría por sí sola.
+
+        \begin{figure}[H]
+        \centering
+        \begin{tikzpicture}[scale=0.9, every node/.style={font=\small}]
+            % bloque padre (corte 2D, geometría: azul) subdividido en hijos, razón B_p/B_c = 4
+            \draw[draw=blue!60!black, very thick, fill=blue!6] (0,0) rectangle (4,4);
+            \foreach \i in {1,2,3} {\draw[blue!50!black, thin] (\i,0)--(\i,4); \draw[blue!50!black, thin] (0,\i)--(4,\i);}
+            % primeros ocho hijos, numerados en orden de Morton
+            \foreach \x/\y in {0/3, 1/3, 0/2, 1/2, 2/3, 3/3, 2/2, 3/2}
+                \fill[blue!22] (\x+0.06,\y+0.06) rectangle (\x+0.94,\y+0.94);
+            % recorrido Morton por los centros de los hijos (debajo de la numeración)
+            \draw[blue!40!black, thick, -{Latex[length=1.5mm]}]
+                (0.5,3.5)--(1.5,3.5)--(0.5,2.5)--(1.5,2.5)--(2.5,3.5)--(3.5,3.5)--(2.5,2.5)--(3.5,2.5);
+            % numeración en la esquina superior izquierda de cada hijo
+            \foreach \x/\y/\n in {0/3/1, 1/3/2, 0/2/3, 1/2/4, 2/3/5, 3/3/6, 2/2/7, 3/2/8}
+                \node[font=\scriptsize\bfseries, anchor=north west, inner sep=1.5pt] at (\x+0.05,\y+0.97) {\n};
+            % dimensiones
+            \draw[{Latex[length=1.5mm]}-{Latex[length=1.5mm]}] (-0.45,0)--(-0.45,4) node[midway,left]{$B_p$};
+            \draw[{Latex[length=1.5mm]}-{Latex[length=1.5mm]}] (0,-0.45)--(1,-0.45) node[midway,below]{$B_c$};
+            % una decisión por padre (rojo), apuntando al borde superior del padre
+            \node[decbox, minimum width=5.4cm, anchor=south] (mode) at (2,4.8)
+                {Bloque padre $p$: un único modo $M_p$,\\decidido y señalizado una sola vez};
+            \draw[arr] (mode.south) -- (2,4);
+            % un hijo concreto (naranjo), apuntando al borde derecho del hijo 8
+            \node[attr, minimum width=4.8cm, anchor=west] (child) at (5.0,2.5)
+                {Bloque hijo (p.\,ej.\ el n.º 8): hereda $M_p$\\y construye su propio grafo y su GFT};
+            \draw[arr] (child.west) -- (4,2.5);
+            \node[anchor=west, align=left, font=\scriptsize] at (5.0,0.9)
+                {celdas sombreadas y flecha azul:\\recorrido de los hijos en orden de Morton};
+        \end{tikzpicture}
+        \caption{Esquema (corte 2D) de la partición jerárquica de dos niveles: un bloque padre
+        de lado $B_p$ contiene $(B_p/B_c)^3$ bloques hijo de lado $B_c$ (aquí razón 4: 16 hijos
+        en el corte, 64 en el volumen). Los hijos se recorren en orden de Morton; el modo $M_p$
+        se decide y señaliza una sola vez por padre (Sección~\ref{sec:mode_selection}) y cada
+        hijo lo hereda al construir su grafo de atributos y su GFT. Código de color, compartido
+        con las Figuras~\ref{fig:training_loop_tikz} y \ref{fig:operational_pipeline_tikz}: azul,
+        etapas que dependen solo de la geometría (sin pérdida); naranjo, etapas que dependen de
+        la señal de atributos o de su aproximación (Sección~\ref{sec:attribute_graph}); violeta,
+        parámetros entrenados una vez y congelados (Sección~\ref{sec:training_stage}); rojo,
+        decisión por bloque padre (Sección~\ref{sec:mode_selection}); verde, codificación
+        entrópica y \textit{bitstream}.}
+        \label{fig:hierarchy_tikz}
+        \end{figure}
+
+	% Nota: Un párrafo gigante sin ninguna ecuación aislada que se comunique con lo expuesto anteriormente. Difícil de digerir y entender. No muy narrativo. Sería sencillo mostrar matemáticamente como se encuentra cuales son los bloques hijos correspondientes a cada bloque padre.
+
 \section{Construcción del Grafo Estructural}\label{sec:structural_graph}
 % - Explicar cómo se conecta cada punto con sus vecinos
 % - Tipo de conectividad usada (k-NN, radio, etc.)
@@ -212,154 +339,117 @@ En esta sección se detalla por completo la metodología del algoritmo propuesto
         \begin{equation}
             \mathbf{q}_3 = \mathbf{q}_1 \times \mathbf{q}_2
         \end{equation}
+
+        Además, dado que \texttt{eigh} no garantiza un signo consistente para $\mathbf{q}_1,
+        \mathbf{q}_2$ entre bloques distintos, se aplica una convención de signo determinista
+        adicional antes de construir $\mathbf{q}_3$: se invierte cada vector propio si su
+        componente de mayor magnitud absoluta es negativa. Esto asegura que bloques con
+        distribuciones espaciales equivalentes obtengan exactamente la misma base, sin
+        depender del signo arbitrario que entrega la descomposición numérica.
         
         Con estas bases canónicas rotamos el bloque en las direcciones especificadas normalizando su orientación.
         \begin{equation}
             V^{r}_i = V^{c}_i \mathcal{}{Q}
         \end{equation}
 
-        En el ejemplo presentado en las secciones anteriores, esto se vería de la siguiente forma:
+        En el ejemplo presentado en las secciones anteriores, esto se vería como en la Figura~\ref{fig:norm_example}:
 
         \begin{figure}
             \centering
             \includegraphics[width=0.85\textwidth]{img/metodología/Norm_Ejemplo.png}
             \caption{Ejemplo de Normalización (b=16)}
-            \label{fig:enter-label}
+            \label{fig:norm_example}
         \end{figure}
 
         
     \subsection{Aproximación lineal}
-        Una vez que cada bloque es comparable entre sí por el paso anterior, el objetivo es encontrar una representación del canal objetivo (luminancia) que pueda aproximar las dinámicas espaciales. Para aquello, se utiliza una aproximación lineal, que mapea las posiciones de los vóxeles con una aproximación de color de la forma:
-        
+        Una vez que cada bloque es comparable entre sí por el paso anterior, el objetivo es encontrar una representación del canal objetivo (luminancia) que pueda aproximar las dinámicas espaciales. Para aquello, se utiliza una aproximación lineal, que mapea las posiciones de los vóxeles con una aproximación de color.
+
+        A diferencia de un ajuste general sobre los tres ejes rotados $(x,y,z)$, el ajuste se
+        restringe deliberadamente al \textbf{plano tangente} definido por $\mathbf{q}_1,
+        \mathbf{q}_2$ (los dos primeros ejes de mayor varianza), excluyendo el eje normal
+        $\mathbf{q}_3$ (menor varianza) del modelo. Esto es porque el objetivo de este ajuste no
+        es reconstruir el color, sino extraer una \emph{dirección de gradiente} 2D coherente
+        sobre la superficie local del bloque; incluir el eje normal permitiría absorber
+        variaciones de profundidad ajenas a esa dirección de superficie. Sea $\mathbf{V}^c$ la
+        matriz de coordenadas centradas del bloque (Sección anterior). El modelo es:
+
         \begin{equation}
-            \hat{y} = f(x,y,z) = \beta^\top \Phi = \beta_0 + \beta_1x + \beta_2y + \beta_3z
+            \hat{y} = f(x',y') = s_1 x' + s_2 y', \qquad [x', y'] = \mathbf{V}^c \cdot [\mathbf{q}_1, \mathbf{q}_2]
         \end{equation}
-        
-        Encontrar esta aproximación se hace a través de una regresión polinomial que minimice el error cuadrático respecto al canal original. Sea $\Phi \in \mathbb{R}^{N \times M}$ la matriz de características que contiene los monomios evaluados en cada posición $(x_i, y_i, z_i)$, y sea $Y \in \mathbb{R}^{N}$ el vector de valores reales del canal de luminancia. Los coeficientes $\beta \in \mathbb{R}^M$ se encuentran resolviendo el siguiente problema de mínimos cuadrados:
-        
+
+        Encontrar esta aproximación se hace a través de una regresión lineal que minimice el error cuadrático respecto al canal original (centrado). Sea $\Phi \in \mathbb{R}^{N \times 2}$ la matriz de características $[x', y']$ evaluada en cada punto, y sea $Y \in \mathbb{R}^{N}$ el vector de valores del canal de luminancia, centrado por su media. Los coeficientes $\mathbf{s} = [s_1, s_2] \in \mathbb{R}^2$ se encuentran resolviendo el siguiente problema de mínimos cuadrados:
+
         \begin{equation}
-            \beta^* = \arg\min_{\beta} \| Y - \Phi \beta \|_2^2
+            \mathbf{s}^* = \arg\min_{\mathbf{s}} \| Y - \Phi \mathbf{s} \|_2^2
         \end{equation}
-        
+
         La solución cerrada de este problema está dada por:
-        
+
         \begin{equation}
-            \beta^* = (\Phi^\top \Phi)^{-1} \Phi^\top Y
+            \mathbf{s}^* = (\Phi^\top \Phi)^{-1} \Phi^\top Y
         \end{equation}
+
+        Sin término constante: al centrar tanto las posiciones como la luminancia antes del
+        ajuste, el término de bias es idénticamente cero y se omite del modelo.
         
-        Donde $\Phi$ incluye un primer término constante (bias) y columnas para cada monomio involucrado según el grado polinomial. En el caso lineal, los términos son: $[1, x, y, z]$.
-        
         
 
         
-    \subsection{Clusterización}
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    Estos coeficientes se resumen en una dirección de gradiente 3D por bloque, que se compara
+    contra un pequeño libro compartido de $K$ direcciones (centroides $\mathbf{c}_j$), entrenado
+    fuera de línea -- qué problema resuelve ese entrenamiento y cómo se aborda se detalla en la
+    Sección~\ref{sec:training_stage}. A continuación, qué hace cada dirección, ya asignada, al
+    grafo y a la transformada.
 
-Finalmente, se tendrá un conjunto de coeficientes para cada bloque que considera una constante y tres valores que ponderan las posiciones espaciales \(x\), \(y\) y \(z\). Como la metodología propuesta se enfoca únicamente en la dinámica de los atributos a través de las posiciones relativas, el término constante \(\beta_0\) no es relevante para este análisis y se omite. De este modo, cada bloque \(i\) está representado por un vector de coeficientes (pendiente):
-
-\[
-\tilde{\beta}_i^\top = 
-\begin{bmatrix}
-\beta_1 & \beta_2 & \beta_3
-\end{bmatrix}
-\in \mathbb{R}^{1 \times 3}
-\]
-
-y el conjunto completo de bloques se organiza en una matriz:
-
-\begin{equation}
-    \tilde{\boldsymbol{\beta}} =
-    \begin{bmatrix}
-        \tilde{\beta}_1^\top \\
-        \tilde{\beta}_2^\top \\
-        \vdots \\
-        \tilde{\beta}_N^\top
-    \end{bmatrix}
-    =
-    \begin{bmatrix}
-        \beta_1^{(1)} & \beta_2^{(1)} & \beta_3^{(1)} \\
-        \beta_1^{(2)} & \beta_2^{(2)} & \beta_3^{(2)} \\
-        \vdots & \vdots & \vdots \\
-        \beta_1^{(N)} & \beta_2^{(N)} & \beta_3^{(N)}
-    \end{bmatrix}
-    \in \mathbb{R}^{N \times 3}
-\end{equation}
-
-donde cada fila corresponde a los coeficientes \((\beta_1, \beta_2, \beta_3)\) asociados a un bloque, en coherencia con la expresión general \(\hat{y} = \beta^\top \Phi\). 
-
-\subsubsection{Estrategia de Entrenamiento y Ejecución}
-
-La metodología opera en dos fases distintas:
-
-\begin{enumerate}
-    \item \textbf{Fase de Entrenamiento (Offline):} Se selecciona un subconjunto representativo de bloques (conjunto de entrenamiento) para ejecutar el algoritmo iterativo de RD-Clustering. El resultado de esta fase es un \textbf{libro de códigos optimizado} $\{\boldsymbol{\theta}_j\}_{j=0}^{K-1}$ que captura las dinámicas de señal predominantes en la nube de puntos.
-    
-    \item \textbf{Fase de Ejecución (Online):} Con el libro de códigos fijo, el resto de los bloques de la nube se codifican en un solo paso (single-pass). Para cada bloque, el sistema simplemente selecciona el cluster $j$ que ofrece el menor costo RD $J_j$, construye el grafo correspondiente y aplica la GFT. Esta separación garantiza que el costo computacional de la optimización evolutiva solo se pague una vez por secuencia.
-\end{enumerate}
-
-La función de costo a minimizar para cada bloque \(i\) al asignarlo al cluster \(j\) es:
-
-\begin{equation}
-    J_j(i) = D_j(i) + \lambda R_j(i)
-\end{equation}
-
-\subsubsection{Optimización Conjunta de Parámetros}
-
-Una innovación fundamental de esta metodología es que el problema de optimización no se limita únicamente a las pendientes de color ($\mathbf{c}_j$), sino que se extiende a los parámetros de construcción del grafo. Cada cluster $j$ está definido por un vector de parámetros de 5 dimensiones:
-
-\begin{equation}
-    \boldsymbol{\theta}_j = [S_{x,j}, S_{y,j}, S_{z,j}, SLW_j, SLP_j]
-\end{equation}
-
-donde $SLW$ es el peso del auto-lazo y $SLP$ es el porcentaje de nodos seleccionados para incluir dicha conexión. Esta optimización conjunta permite que el sistema aprenda no solo la "dirección" del color, sino la topología de grafo más eficiente para compactar dicha señal.
-
-\subsubsection{Algoritmo de Optimización Evolutiva}
-
-El algoritmo procede de manera iterativa mediante los siguientes pasos:
-
-\paragraph{Inicialización:} Se definen \(K\) centroides iniciales. El primer centroide (\(j=0\)) es estructural (\(\mathbf{c}_0 = \mathbf{0}\)). Los restantes \(K-1\) se inicializan mediante k-means sobre las pendientes aproximadas \(\tilde{\boldsymbol{\beta}}\).
-
-\paragraph{Asignación y Refinamiento:} En cada iteración:
-\begin{enumerate}
-    \item \textbf{Paso de Asignación:} Cada bloque se asigna al cluster $j$ que minimiza $J_j(i)$ mediante un esquema de \textit{Simulated Annealing}.
-    \item \textbf{Paso de Optimización:} Se utiliza un algoritmo de \textbf{Evolución Diferencial (Differential Evolution)} para actualizar $\boldsymbol{\theta}_j$ buscando minimizar el costo agregado de los bloques asignados a dicho cluster. Este proceso permite una exploración global del espacio no convexo de los parámetros de auto-lazo.
-\end{enumerate}
-
-\paragraph{Criterios de Parada (Sliding-Window Early Stopping):} Para evitar iteraciones redundantes y asegurar la estabilidad, se implementa un mecanismo de parada temprana basado en una ventana deslizante de las últimas 3 iteraciones. El sistema se detiene si:
-\begin{itemize}
-    \item \textbf{Convergencia de Costo:} La diferencia relativa máxima del costo RD en la ventana es menor a $10^{-4}$.
-    \item \textbf{Convergencia de Asignación:} El promedio de cambios de etiquetas (distancia Hamming) es inferior al 0.5\% del total de bloques.
-\end{itemize}
-
-\subsubsection{GFT Adaptativa y Construcción de Grafos}
+    \subsection{GFT Adaptativa y Construcción de Grafos}
 
 Cada centroide \(\mathbf{c}_j\) define una transformada de Fourier sobre grafos (GFT) específica:
 
 \begin{itemize}
     \item \textbf{Centroide estructural} (\(\mathbf{c}_0 = \mathbf{0}\)): Corresponde a una GFT basada únicamente en la geometría, donde las aristas del grafo se ponderan según las distancias euclidianas entre puntos.
     
-    \item \textbf{Centroides dinámicos} (\(\mathbf{c}_j, j \geq 1\)): Definen grafos basados en atributos donde la estructura se adapta a la tendencia de la señal representada por la pendiente \(\mathbf{c}_j\). Se añaden auto-bucles (self-loops) a los nodos que actúan como sumideros en el campo de gradiente definido por \(\mathbf{c}_j\), lo cual mejora la compactación de energía en el dominio espectral.
+    \item \textbf{Centroides dinámicos} (\(\mathbf{c}_j, j \geq 1\)): Definen grafos basados en atributos donde la estructura se adapta a la tendencia de la señal representada por la pendiente \(\mathbf{c}_j\). Se añaden auto-bucles (self-loops) a los nodos que actúan como sumideros en el campo de gradiente definido por \(\mathbf{c}_j\), lo cual mejora la compactación de energía en el dominio espectral. Concretamente, ese "campo de gradiente" no es la luminancia real del bloque, sino una señal sintética: la dirección $\mathbf{c}_j$ reproyectada sobre la base tangente propia de \emph{ese} bloque y escalada por la magnitud $g_i$ de su propio ajuste (Sección~\ref{sec:attribute_graph} detalla por qué).
 \end{itemize}
 
 Esta adaptación permite que la GFT capture de manera más eficiente la estructura de correlación presente en bloques con diferentes patrones de variación de luminancia, resultando en una mejor compactación espectral y, consecuentemente, en menores tasas de bits para un nivel de distorsión dado. El detalle respecto a la construcción del grafo basado en atributos se presenta a continuación.
 
 \section{Construcción del Grafo de Atributos}\label{sec:attribute_graph}
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    A continuación se detalla el mecanismo sintético recién mencionado.\\
+
     La modificación del grafo estructural es parte fundamental de este trabajo en tanto es la principal contribución al trabajo realizado por otros autores. Considerando lo mencionado en la sección de procesamiento de señales representadas por grafos \ref{sec: gsp}, la construcción del grafo modifica su representación en el espacio transformado, es en tanto, principal poder generar aprovechar la información de la señal con el propósito alcanzar bases más representativas.\\
 
     Incluir esta información en el caso de estudio, se basa en la idea presentada en la sección \ref{sec: lst_ice} de que las bases transformadas representadas por el grafo se ven afectadas localmente por el posicionamiento de \textit{self-loops}, es decir conexiones cíclicas de un nodo hacia si mismo. En este sentido, se implementan las siguientes estructuras matemáticas para la identificación estratégicas de dinámicas decrecientes de color por sobre la estructura declarada del grafo estructural.
 
     \subsection{Matriz de dinámica de atributos}
-        Con el apropósito de visualizar la dinámica del atributo entre vecinos. La matriz de atributos se define como:
+        Con el apropósito de visualizar la dinámica del atributo entre vecinos. La matriz de atributos se define, idealmente, sobre la luminancia real del bloque:
         \begin{equation}
-            M_{ij} = \frac{W_{ij} \cdot (y_i - y_j)}{255}
+            M_{ij} = W_{ij} \cdot (y_i - y_j)
         \end{equation}
 
         Es importante notar que el peso asociado será no nulo solo si los nodos $v_i,v_j$ están conectados. De manera más formal:
-        
+
         \begin{equation}
             W_{ij} \neq 0, \quad (i,j) \in \mathcal{E}
         \end{equation}
 
         Además la dinámica del color está ponderada por el peso, lo que es una proporcionalidad de la distancia entre dichos vecinos.
+
+        \paragraph{De lo ideal a lo implementado.} La ecuación anterior es la definición
+        conceptual: opera directamente sobre $y_i, y_j$, la luminancia real de cada nodo. Sin
+        embargo, un decodificador no tiene acceso a esa luminancia real -- es precisamente lo
+        que el esquema busca comprimir -- por lo que no puede reconstruir $M$ de esa forma. La
+        implementación resuelve esto sustituyendo $y_i$ por una señal \textbf{sintética},
+        idéntica para codificador y decodificador: la dirección del modo asignado $\mathbf{c}_j$
+        (conocida por ambos, es parte del libro de códigos entrenado fuera de línea),
+        reproyectada sobre la base tangente propia del bloque y escalada según su propia
+        magnitud de gradiente,
+        \begin{equation}
+            y_i \;\leftarrow\; \left(\mathbf{v}_i^{r}\right)^\top \cdot \big(g_i\cdot\hat{\mathbf{c}}_j^{\,(2D\to3D)}\big), \qquad \text{modo } j \geq 1,
+        \end{equation}
+        donde $\mathbf{v}_i^r$ es la posición normalizada del nodo $i$ (Sección~\ref{sec:luminance_clustering}) y $\hat{\mathbf{c}}_j^{\,(2D\to3D)}$ es la dirección del centroide reproyectada sobre el plano tangente de \emph{este} bloque en particular. Para el modo estructural ($j=0$) esta matriz no existe en absoluto: no hay auto-bucles y $C=0$ (Sección~\ref{sec:method_gft}). Esta sustitución es exactamente lo que hace que la selección de auto-bucles sea reconstruible por el decodificador sin conocer el color real -- y, dado que el libro de códigos se entrena para representar las direcciones de gradiente reales observadas en el conjunto de entrenamiento, la aproximación resultante se mantiene cercana al caso ideal que reemplaza.
             
     \subsection{Vector de nodos sumideros}
         Lo siguiente es buscar para cada nodo $i$ el vecino $j$ donde el color decrece de manera más significativa. De otra manera, esto es una manera local de observar la dinámica del color.
@@ -367,27 +457,35 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
             S_j = \left| \left\{ i \mid j = \arg\min_{k} M_{ik}, \; W_{ik} > 0 \right\} \right|
         \end{equation}
 
-        Esto entregará un conteo de cuantos vecinos decrecen en la dirección del nodo. Ahora, con el propósito de poder definir umbrales universales y relevar aquellos sumideros que eventualmente afectaran de manera más representativa a sus vecinos, se normaliza de la siguiente manera:
+        Esto entregará un conteo de cuantos vecinos decrecen en la dirección del nodo. La selección de nodos estratégicos (siguiente subsección) opera directamente sobre el \textbf{orden} de estos conteos -- se seleccionan los nodos con mayor $S_i$, no aquellos por sobre un valor absoluto -- por lo que no se aplica ninguna normalización explícita de $\mathbf{S}$ antes de ese paso: cualquier transformación monótona de $S_i$ produciría el mismo ordenamiento y, por tanto, la misma selección final.
 
-        \begin{equation}
-            S_i \leftarrow \frac{S_i - \min(\mathbf{S})}{\max(\mathbf{S}) - \min(\mathbf{S})}
-        \end{equation}
-        
     \subsection{Selección de \textit{self-loops}}
-        
-        Finalmente la selección de los nodos estratégicos se realiza a través de un umbral estático por sobre todos los bloques evaluado en el vector de sumidero. El objetivo será privilegiar la implementación de \textit{self-loop} en aquellos puntos que presentan una influencia mayor en el decaimiento del atributo. Para ello, se utiliza un umbral $\tau \in [0,1]$ determinado por análisis de sensibilidad, que representa la relevancia suficiente para que un nodo incluya un \textit{self-loop}. 
+
+        % [NOTA: versión anterior de esta subsección definía la selección mediante un umbral
+        %  fijo S_i >= tau. Esa es la semántica ANTERIOR de s_lp, explícitamente reemplazada en
+        %  el código (queda comentada ahí mismo como alternativa descartada). La semántica
+        %  actual selecciona una FRACCIÓN de los nodos por ranking, no por umbral -- ver abajo.]
+        Finalmente, la selección de los nodos estratégicos se realiza tomando la
+        \textbf{fracción} $s_{lp} \in [0,1]$ de nodos con mayor valor en el vector de sumidero
+        $\mathbf{S}$, no un umbral absoluto sobre $S_i$. Sea $\pi$ la permutación que ordena los
+        nodos de mayor a menor $S_i$:
 
         \begin{equation}
-            \mathcal{S} = \left\{ i \in \{1,\dots,N\} \mid S_i \geq \tau \right\}
+            \mathcal{S} = \left\{ \pi(1), \pi(2), \dots, \pi(\lfloor s_{lp} \cdot N \rfloor) \right\}
         \end{equation}
 
-        Sobre este conjunto $\mathcal{S}$, se agregan conexiones representadas en la diagonal de la matriz de adyacencia con un valor fijo $w_{sl}$ que se ve de la siguiente manera:
+        Sobre este conjunto $\mathcal{S}$, se agregan conexiones representadas en la diagonal de la matriz de adyacencia con un valor fijo $s_{lw}$ que se ve de la siguiente manera:
 
         \begin{equation}
-            W_{ii} \leftarrow w_{\text{sl}}, \quad \forall i \in \mathcal{S}
+            W_{ii} \leftarrow s_{\text{lw}}, \quad \forall i \in \mathcal{S}
         \end{equation}
 
-        Tanto el umbral $\tau$ como el peso $w_{\text{sl}}$ se encuentran mediante análisis de sensibilidad sobre un conjunto de entrenamiento pequeño de cada secuencia.
+        A diferencia de $\tau$ (un umbral, sensible a la escala absoluta de $\mathbf{S}$),
+        $s_{lp}$ como fracción es directamente interpretable y comparable entre bloques de
+        distinto tamaño. Tanto $s_{lp}$ como $s_{lw}$ \textbf{no} se determinan por un análisis
+        de sensibilidad genérico, sino mediante la calibración RDO de dos etapas descrita en la
+        Sección~\ref{sec:adapter_rdo_real} -- un valor distinto de $(s_{lp}, s_{lw})$ por modo
+        $j$ y paso de cuantización $Q$, no un único par global.
 % - Describir cómo se modifica el grafo estructural para incluir la señal
 % - Introducción de self-loops u otros ajustes
 % - Intuición detrás de adaptar la estructura según la señal
@@ -449,15 +547,200 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
         \hat{\tilde{x}}_1 = \tilde{\phi}_1^T x = \frac{\sum_{j=1}^{N} (d_j + w^j_{sl})^{-1} x_j}{\sqrt{\sum_{j=1}^{N} (d_j + w^j_{sl})^{-2}}}
     \end{equation}
     
-    Este comportamiento permite una representación más adaptativa donde la importancia de cada nodo en la componente de "promedio" puede ser controlada mediante los pesos de self-loops $w^j_{sl}$. 
+    Este comportamiento permite una representación más adaptativa donde la importancia de cada nodo en la componente de "promedio" puede ser controlada mediante los pesos de self-loops $w^j_{sl}$.
 % - Detallar la GFT usada
 % - Cómo se obtienen y seleccionan las bases
 % - Rol del clustering en la selección de la base para cada bloque
 
+\section{Etapa de Entrenamiento (Offline)}\label{sec:training_stage}
+
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    El mecanismo descrito en las dos secciones anteriores -- el grafo de atributos y la GFT que
+    de él resulta -- depende de un puñado de números: la dirección de cada modo y el
+    $(s_{lp}, s_{lw})$ de sus auto-bucles. Esta sección explica cómo se eligen esos números, en
+    dos fases distintas:
+
+    \begin{enumerate}
+        \item \textbf{Fase de Entrenamiento (Offline, un solo frame):} Sobre el primer frame de la
+        secuencia únicamente, se entrena (a) el libro de códigos de direcciones y (b) los
+        parámetros de auto-bucle por modo, mediante los dos procedimientos desacoplados descritos
+        abajo. El resultado se congela y se reutiliza sin cambios para el resto de la secuencia
+        (Sección~\ref{sec:metodologia_e10_extensions}).
+        \item \textbf{Fase de Ejecución:} Con el libro de códigos y los parámetros fijos, cada
+        bloque restante se asigna al modo $j$ (incluyendo el modo estructural $j=0$) que minimiza
+        el costo tasa-distorsión $J_j$ (Sección~\ref{sec:rdo_method}), evaluado a nivel de bloque
+        padre y resuelto mediante el trellis de Viterbi con barrera de \textit{gating}
+        (Sección~\ref{sec:mode_selection}).
+    \end{enumerate}
+
+    \begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[node distance=0.4cm and 1.3cm]
+        % columna 1: direcciones del libro de códigos
+        \node[geo,     minimum width=4.6cm]                (f0)   {\textit{Frame} $t=0$\\(único \textit{frame} de entrenamiento)};
+        \node[attr,    minimum width=4.6cm, below=of f0]   (tang) {Ajuste tangente por bloque padre\\$\rightarrow$ dirección $\hat{\mathbf g}_i$ y magnitud $g_i$};
+        \node[attr,    minimum width=4.6cm, below=of tang] (filt) {Filtro: se retiene el $50\%$\\de bloques con mayor $g_i$};
+        \node[trained, minimum width=4.6cm, below=of filt] (km)   {K-means esférico sobre $\mathbb S^2$\\(se itera hasta asignación estable)};
+        \node[trained, minimum width=4.6cm, below=of km]   (cent) {Centroides $\{\mathbf c_j\}_{j=1}^{K-1}$};
+        % columna 2: auto-lazos por modo
+        \node[attr,    minimum width=4.6cm, right=of cent] (samp) {Por modo $j$ y paso $Q$: muestra de\\$\leq 30$ bloques más cercanos a $\mathbf c_j$};
+        \node[trained, minimum width=4.6cm, below=of samp] (grid) {Malla gruesa $3\times3$\\en $(s_{lp}, s_{lw})$, costo RD agregado};
+        \node[trained, minimum width=4.6cm, below=of grid] (gold) {Sección áurea solo en $s_{lw}$\\(4 iteraciones, $s_{lp}$ fijo)};
+        \node[trained, minimum width=4.6cm, below=of gold] (adap) {$(s_{lp,j}, s_{lw,j})$ por modo y $Q$};
+        \node[bits,    minimum width=4.6cm, below=of adap] (frz)  {\textbf{Congelado}: reutilizado sin cambios\\en $t=1,\dots,T$};
+        % títulos de etapa
+        \node[above=0.15cm of f0,   font=\small\bfseries] {Etapa 1: direcciones (Sección~\ref{sec:codebook_training_real})};
+        \node[above=0.15cm of samp, font=\small\bfseries] {Etapa 2: auto-lazos (Sección~\ref{sec:adapter_rdo_real})};
+        % flujo
+        \draw[arr] (f0)--(tang);   \draw[arr] (tang)--(filt); \draw[arr] (filt)--(km); \draw[arr] (km)--(cent);
+        \draw[arr] (cent)--(samp);
+        \draw[arr] (samp)--(grid); \draw[arr] (grid)--(gold); \draw[arr] (gold)--(adap); \draw[arr] (adap)--(frz);
+        \draw[arr] (cent.south) |- (frz.west);
+    \end{tikzpicture}
+    \caption{Ciclo de entrenamiento (\textit{offline}, un único \textit{frame} por secuencia),
+    en dos etapas desacopladas: primero las direcciones del libro de códigos, después los
+    auto-lazos de cada dirección. Ambos resultados se congelan y se reutilizan para el resto de
+    la secuencia. Colores como en la Figura~\ref{fig:hierarchy_tikz}.}
+    \label{fig:training_loop_tikz}
+    \end{figure}
+
+    \subsection{Clusterización}
+
+Los dos coeficientes del ajuste tangente, $s_1$ y $s_2$, describen la dirección de máxima
+variación de luminancia \emph{dentro} del plano tangente $(\mathbf{q}_1,\mathbf{q}_2)$, pero no
+son directamente comparables entre bloques distintos: cada bloque tiene su propio plano
+tangente, orientado de forma independiente por su propia normalización espacial. Para poder
+agrupar bloques según la dirección de su gradiente de color, primero se debe reconstruir el
+vector 3D correspondiente en el espacio ambiente compartido, embebiendo el par $(s_1,s_2)$ de
+vuelta a través de la base tangente del bloque:
+
+\begin{equation}
+    \mathbf{g}_i = s_1^{(i)}\, \mathbf{q}_1^{(i)} + s_2^{(i)}\, \mathbf{q}_2^{(i)} \in \mathbb{R}^3
+\end{equation}
+
+La \textbf{magnitud} de este vector, $g_i = \|\mathbf{g}_i\|_2$, cuantifica cuán marcado es el
+gradiente de color del bloque (bloques prácticamente planos tendrán $g_i \approx 0$); su
+\textbf{dirección unitaria},
+
+\begin{equation}
+    \hat{\mathbf{g}}_i = \mathbf{g}_i / g_i \in \mathbb{S}^2,
+\end{equation}
+
+es la cantidad que efectivamente se agrupa. Puesto que solo interesa el \emph{eje} de la
+variación de color y no su signo (un gradiente $\hat{\mathbf{g}}$ y su antípoda $-\hat{\mathbf{g}}$
+describen la misma orientación de superficie), la clusterización se realiza mediante
+\textbf{k-means esférico}~\cite{dhillon2001concept} sobre $\mathbb{S}^2$ con similitud coseno \emph{absoluta}
+$|\hat{\mathbf{g}}_i \cdot \mathbf{c}_j|$, de forma que direcciones antipodales queden asignadas
+al mismo clúster. Además, bloques con $g_i$ muy pequeño (superficie prácticamente plana, sin
+dirección de gradiente confiable) se excluyen del \emph{entrenamiento} del libro de códigos —
+aunque no de su uso posterior — reteniendo únicamente aquellos bloques con $g_i$ por sobre un
+percentil de la distribución completa (ver Sección~\ref{sec:codebook_training_real} para el
+valor concreto usado).
+
+    % [NOTA: las tres subsecciones que seguían aquí ("Optimización Conjunta de Parámetros",
+    %  "Algoritmo de Optimización Evolutiva") describían un esquema de RD-Clustering que asigna
+    %  bloques mediante Simulated Annealing y optimiza un vector conjunto de 5 dimensiones
+    %  theta_j=[Sx,Sy,Sz,SLW,SLP] por clúster mediante Evolución Diferencial. Ese código sí existe
+    %  (src/pcadc/rd_cluster/*, ~1200 líneas) pero no tiene ningún importador en los scripts que
+    %  producen los resultados de esta tesis (exp_e9/exp_e10) y sus archivos son ~3 meses
+    %  anteriores a ellos -- es un enfoque previo, abandonado, no el que corre el benchmark E10.
+    %  Se mantiene comentado en vez de borrarse y se reemplaza por el mecanismo real a continuación.]
+
+    \subsection{Entrenamiento del Libro de Códigos: K-means Esférico}\label{sec:codebook_training_real}
+
+El primer centroide ($j=0$) es estructural (sin dirección asociada, corresponde al grafo sin
+self-loops de la Sección~\ref{sec:structural_graph}) y no participa del clustering. Los
+restantes $K-1$ centroides direccionales $\{\mathbf{c}_j\}_{j=1}^{K-1} \subset \mathbb{S}^2$ se
+entrenan mediante k-means esférico (Sección~\ref{sec:pcac_geometric}) sobre las direcciones
+unitarias $\hat{\mathbf{g}}_i$ de los bloques padre, restringido al 50\% de bloques con mayor
+magnitud de gradiente $g_i$ (percentil de la distribución completa) -- excluyendo bloques
+prácticamente planos, cuya dirección estimada es poco confiable. La inicialización toma $K-1$
+direcciones de entrenamiento distintas al azar (semilla fija, reproducible); cada iteración
+reasigna por similitud coseno absoluta $|\hat{\mathbf{g}}_i \cdot \mathbf{c}_j|$ y recalcula cada
+centroide como la media direccional de sus puntos asignados, corrigiendo el signo de cada punto
+respecto al centroide antes de promediar (para que direcciones antipodales no se cancelen). El
+algoritmo converge cuando ninguna asignación cambia respecto a la iteración anterior (con un
+límite máximo de iteraciones como salvaguarda).
+
+    \subsection{Calibración RDO de Parámetros de Auto-bucle}\label{sec:adapter_rdo_real}
+
+Independientemente del paso anterior, para cada modo $j\geq1$ y cada paso de cuantización $Q$ se
+calibran los parámetros de auto-bucle $(s_{lp,j}, s_{lw,j})$ que minimizan el costo
+tasa-distorsión agregado (Sección~\ref{sec:rdo_method}) sobre una muestra de bloques activos
+cercanos al centroide $\mathbf{c}_j$ (bloques padre del conjunto de entrenamiento, ordenados por
+similitud coseno al centroide, hasta un máximo fijo por modo -- ver
+Sección~\ref{sec:metodologia_e10_extensions} para el valor concreto). La búsqueda es en dos
+etapas, \emph{no} conjunta ni evolutiva:
+
+\begin{enumerate}
+    \item \textbf{Malla gruesa:} se evalúa el costo agregado sobre una grilla $3\times3$ de
+    pares $(s_{lp}, s_{lw})$ candidatos, reteniendo el par de menor costo.
+    \item \textbf{Refinamiento por sección áurea~\cite{kiefer1953sequential}, solo sobre $s_{lw}$:} fijando el $s_{lp}$
+    ganador de la malla gruesa, se refina $s_{lw}$ mediante búsqueda por razón áurea dentro de
+    una ventana centrada en el valor ganador, en un número fijo de iteraciones. $s_{lp}$
+    \emph{no} se refina más allá de la malla gruesa.
+\end{enumerate}
+
+A diferencia de una optimización conjunta sobre las 5 dimensiones $(\text{dirección}, s_{lp},
+s_{lw})$, este esquema desacoplado es deliberado: la dirección se fija primero (paso anterior, un
+problema de agrupamiento sobre $\mathbb{S}^2$) y solo después se calibra, para esa dirección ya
+fija, la topología de grafo que mejor la aprovecha -- un problema de optimización continua de
+baja dimensión, mucho más barato que explorar conjuntamente las 5 dimensiones con un método
+evolutivo.
+
+    \subsection{Protocolo de Entrenamiento Único y Reutilización Congelada}
+        Tanto el libro de códigos direccional (Sección~\ref{sec:codebook_training_real}) como
+        los parámetros de auto-bucle por modo (Sección~\ref{sec:adapter_rdo_real}) se entrenan
+        \textbf{una sola vez por secuencia}, usando únicamente el primer \textit{frame}
+        ($t=0$) como conjunto de entrenamiento. Para todos los \textit{frames} subsecuentes
+        ($t=1,\dots,T$) de esa misma secuencia, tanto los centroides direccionales como los
+        pares $(s_{lp,j}, s_{lw,j})$ quedan \textbf{congelados}: no se re-entrenan ni se ajustan
+        \textit{frame} a \textit{frame}. Esto tiene dos consecuencias directas: el costo de
+        entrenamiento (k-means esférico más calibración RDO) se paga una única vez por
+        secuencia, independientemente de su duración; y la validez del método a lo largo del
+        tiempo depende de que un libro de códigos aprendido sobre un único \textit{frame}
+        generalice razonablemente bien al resto de la secuencia -- una hipótesis evaluada
+        empíricamente en el Capítulo de Resultados.
+
 \section{Cuantización}
 
     Hasta ahora, ninguno de los procesos incluye pérdida de información, ya que todos los procesos son invertibles, sin embargo, para el proceso de compresión es importante disminuir la calidad de la información de forma estratégica para disminuir la codificación de datos poco perceptibles.
-    
+
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    Con el libro de códigos y los auto-bucles ya entrenados y congelados
+    (Sección~\ref{sec:training_stage}), el flujo operacional completo de codificación para cada
+    \textit{frame} subsecuente es el que resume la Figura~\ref{fig:operational_pipeline_tikz}: el
+    grafo, la GFT y el costo se construyen y evalúan para \emph{todo} modo candidato antes de
+    decidir; solo entonces \textit{gating} y el trellis de Viterbi seleccionan, de entre esos
+    costos ya calculados, la secuencia final de modos (Sección~\ref{sec:mode_selection}) -- el
+    grafo no vuelve a construirse para el modo ganador.
+
+    \begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[node distance=0.4cm and 1.0cm]
+        \node[geo,  minimum width=7.2cm]                    (p)     {Bloque padre $p$ con sus hijos $B_c$\\(los padres se procesan en orden de Morton)};
+        \node[decision, below=of p]                         (gate)  {$\mathrm{var}(Y_p) < \tau_{\text{gate}}(Q)$?};
+        \node[geo,  minimum width=3.2cm, right=1.0cm of gate] (inact) {Inactivo: $M_p = 0$\\(sin evaluar costos)};
+        \node[attr, minimum width=7.2cm, below=of gate]     (eval)  {Activo: para todo modo $j=0,\dots,K-1$,\\grafo de atributos + GFT + cuantización de cada hijo $\rightarrow J_j(p)$};
+        \node[decbox, minimum width=7.2cm, below=of eval]   (vit)   {Trellis de Viterbi sobre la secuencia de padres activos:\\$\min \sum_p J_{M_p}(p)$ + penalización por cambio de modo};
+        \node[decbox, minimum width=7.2cm, below=of vit]    (mp)    {Modo $M_p$ de cada padre};
+        \node[attr, minimum width=7.2cm, below=of mp]       (inh)   {Cada hijo hereda $M_p$ y conserva sus coeficientes\\cuantizados del modo $M_p$ (ya calculados, sin recomputar)};
+        \node[bits, minimum width=7.2cm, below=of inh]      (ent)   {RLGR (coeficientes) + aritmético de orden 1 (índices $M_p$)\\$\rightarrow$ \textit{bitstream}};
+        \draw[arr] (p)--(gate);
+        \draw[arr] (gate) -- node[right, font=\scriptsize] {no} (eval);
+        \draw[arr] (gate) -- node[above, font=\scriptsize] {sí} (inact);
+        \draw[arr] (eval)--(vit); \draw[arr] (vit)--(mp); \draw[arr] (mp)--(inh); \draw[arr] (inh)--(ent);
+        \draw[arr] (inact.south) |- (mp.east);
+    \end{tikzpicture}
+    \caption{Pipeline operacional para cada \textit{frame} $t\geq1$, con el libro de códigos y
+    los auto-lazos ya congelados. La barrera de \textit{gating} se aplica antes de evaluar
+    ningún costo; para los padres activos el costo se calcula para \emph{todos} los modos
+    candidatos y solo después el trellis de Viterbi elige la secuencia de modos
+    (Sección~\ref{sec:mode_selection}); el grafo no se reconstruye para el modo ganador.
+    Colores como en la Figura~\ref{fig:hierarchy_tikz}.}
+    \label{fig:operational_pipeline_tikz}
+    \end{figure}
+
     \subsection{Cuantización Escalar Uniforme}
     
     Es por lo anterior, que el paso de cuantización implicará pérdidas con enfoque especial en aquellos coeficientes transformados de menor magnitud, es decir, que aportan menos a la señal. La magnitud relativa de cada coeficiente está dada por:
@@ -476,7 +759,7 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
     
     introduciendo un error de cuantización acotado: $|\hat{x} - \hat{x}_{rec}| \leq \frac{q_{step}}{2}$.
     
-    Donde $Q_{set}$ dependerá de las necesidades del experimento, pero principalmente restringe el rango de valores en los cuales se encontrará eventualmente las métricas de tamaño y calidad de la nube de puntos. Generalmente $Q_{step} \subset \{1,2,4,8,16,24,28,32,40,48,56,64\}$ un subconjunto de valores enteros múltiplos de $2$.
+    Donde $Q_{set}$ dependerá de las necesidades del experimento, pero principalmente restringe el rango de valores en los cuales se encontrará eventualmente las métricas de tamaño y calidad de la nube de puntos. A lo largo de las distintas exploraciones de este trabajo se han usado subconjuntos de $\{1,2,4,8,16,24,28,32,40,48,56,64\}$ (valores enteros múltiplos de $2$); el benchmark E10, cuyos resultados se reportan en esta tesis, fija concretamente $Q_{set} = \{24, 32, 48, 64\}$.
     
     \subsection{Efecto Espectral de la Cuantización}
     
@@ -560,7 +843,7 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
             \lambda =r\cdot q²_{step},\quad r\in [0,1]
         \end{equation}
 
-        Donde $r$ es un valor arbitrario que determina la velocidad de crecimiento del cuadrático proporcional al paso de cuantización. Para esta implementación $r=0.85$
+        Donde $r$ es un valor arbitrario que determina la velocidad de crecimiento del cuadrático proporcional al paso de cuantización. Para esta implementación $r=0.8$ (\texttt{lagrange\_proportional} en la configuración del sistema).
         
     \subsection{Estimación de tasa}
        %% NO CONVENCE A NADIE. ¿Por qué este estimador está bien?
@@ -569,10 +852,19 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
        Para realizar lo anterior, se aprovecha que la característica principal de la distribución posterior a la cuantización es la cantidad de valores nulos. Donde por lo descrito respecto al codificador entrópico (\ref{sec: rlgr}) se considera una buena aproximación del aporte a la función objetivo. \\
     
        \begin{equation}
-           r_{ij} = ||\hat{x}||_0
+           r_{ij} = ||\hat{x}||_0 + \alpha_{\text{rlgr}} \cdot T(\hat{x})
        \end{equation}
-    
-       donde $\hat{x}$ representa los coeficientes cuantizados del bloque correspondiente. Esta aproximación está fundamentada en que el codificador RLGR explota eficientemente la esparsidad, codificando secuencias de ceros con muy pocos bits, lo que establece una correlación directa entre la norma $\ell_0$ y la tasa de bits efectiva.\\
+
+       donde $\hat{x}$ representa los coeficientes cuantizados del bloque correspondiente y
+       $T(\hat{x})$ cuenta las transiciones cero$\leftrightarrow$no-cero a lo largo de la
+       secuencia de coeficientes (número de fronteras entre corridas de ceros y valores
+       distintos de cero), con $\alpha_{\text{rlgr}}=0.5$. El término $\|\hat{x}\|_0$ por sí
+       solo aproxima el costo de codificar los valores no nulos, pero RLGR también paga un
+       costo por cada \emph{cambio} de modo (de corrida-de-ceros a valor, y viceversa); el
+       término $T(\hat{x})$ penaliza precisamente eso. Esta aproximación está fundamentada en
+       que el codificador RLGR explota eficientemente la esparsidad, codificando secuencias de
+       ceros con muy pocos bits, lo que establece una correlación directa entre esta cantidad y
+       la tasa de bits efectiva.\\
     
        La implementación considera diferentes modos de procesamiento según la naturaleza de los coeficientes transformados en el espacio YUV. Para el modo que optimiza únicamente sobre el canal de luminancia, se mantienen los canales de crominancia inalterados, mientras que para los modos que procesan conjuntamente los tres canales, la estimación de tasa se adapta considerando la contribución de cada componente de color a la esparsidad total.\\
     
@@ -586,9 +878,9 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
     
        El proceso de optimización evalúa múltiples representaciones candidatas y selecciona aquella que minimiza este costo conjunto, garantizando un balance óptimo entre la calidad de reconstrucción y la eficiencia de compresión para cada bloque de la nube de puntos.
 
-        La implementación define tres modos de operación que determinan cómo se calculan las métricas de distorsión y tasa:
-        
-        \textbf{Modo 0 - Optimización solo en luminancia:}
+        La implementación define tres \textbf{modos de distorsión} -- distintos de los modos direccionales del libro de códigos (Sección~\ref{sec:luminance_clustering}) -- que determinan cómo se calculan las métricas de distorsión y tasa. Los tres están implementados y disponibles en el código, pero \textbf{únicamente el Modo de Distorsión 0 (solo luminancia) es el que se utiliza en los resultados E10 reportados en esta tesis}. Esto no es una simplificación arbitraria: es la práctica estándar en investigación de compresión de imagen y video, fundamentada en que la percepción humana prioriza fuertemente la resolución espacial de la luminancia por sobre la de la crominancia (Sección~\ref{sec:luminance_clustering}, principio ya conocido desde JPEG, \ref{subsubsec: jpeg}) -- de ahí que concentrar la optimización y la tasa de bits en $Y$, dejando $U,V$ para un submuestreo más agresivo, sea la elección esperable y no una limitación de este trabajo. Los Modos de Distorsión 1 y 2 (conjunta e incluso perceptualmente ponderada sobre las tres componentes) permanecen implementados y disponibles para trabajo futuro, pero no se ejercen en el benchmark final.
+
+        \textbf{Modo de Distorsión 0 -- Optimización solo en luminancia:}
         \begin{align}
            d_{ij} &= ||\hat{x}_Y - q^{-1}(q(\hat{x}_Y))||_2 \\
            r_{ij} &= ||\hat{x}_Y^{quant}||_0 \\
@@ -597,7 +889,7 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
         
         donde $\hat{x}_Y$ representa únicamente el canal de luminancia y los canales de crominancia se mantienen inalterados.
         
-        \textbf{Modo 1 - Optimización conjunta sin ponderación:}
+        \textbf{Modo de Distorsión 1 -- Optimización conjunta sin ponderación:}
         \begin{align}
            d_{ij} &= ||\hat{x}_{YUV} - q^{-1}(q(\hat{x}_{YUV}))||_2 \\
            r_{ij} &= \sum_{c=1}^{3} ||\hat{x}_{c}^{quant}||_0 \\
@@ -606,17 +898,66 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
         
         donde $\hat{x}_{YUV}$ incluye los tres canales de color procesados conjuntamente.
         
-        \textbf{Modo 2 - Optimización conjunta con ponderación perceptual:}
+        \textbf{Modo de Distorsión 2 -- Optimización conjunta con ponderación perceptual:}
         \begin{align}
            d_{ij} &= \sum_{c=1}^{3} w_c \cdot ||\hat{x}_c - q^{-1}(q(\hat{x}_c))||_2 \\
            r_{ij} &= \sum_{c=1}^{3} ||\hat{x}_{c}^{quant}||_0 \\
            J_{ij} &= d_{ij} + \lambda \cdot r_{ij}
         \end{align}
         
-        En todos los casos, el multiplicador de Lagrange se define como $\lambda = 0.85 \cdot q_{step}^2$, estableciendo la compensación entre calidad y compresión según el paso de cuantización utilizado.
+        En todos los casos, el multiplicador de Lagrange se define como $\lambda = 0.8 \cdot q_{step}^2$, estableciendo la compensación entre calidad y compresión según el paso de cuantización utilizado.
 % - Qué métricas se utilizan (PSNR, bits por punto, etc.)
 % - Cómo se seleccionan los parámetros para minimizar distorsión a igual tasa
 % - Estrategia general de optimización
+
+\section{Selección de Modo: \textit{Gating} y Trellis de Viterbi}\label{sec:mode_selection}
+
+    Las secciones anteriores definen, para un bloque padre dado, el costo tasa-distorsión $J_j$
+    de cada modo candidato $j \in \{0,\dots,K-1\}$ (agregando el costo de todos sus bloques
+    hijos, Sección~\ref{sec:pc_partition_hierarchy}). Falta especificar cómo se decide, a partir
+    de esos $K$ costos por bloque padre, la secuencia final de modos $\{M_p\}_{p=1}^{N_p}$ para
+    toda la nube. Esta decisión combina dos mecanismos distintos, aplicados en orden.
+
+    \subsection{Barrera de \textit{Gating}}
+        Antes de evaluar el costo RD, cada bloque padre se clasifica como \textbf{activo} o
+        \textbf{inactivo} según la varianza de su luminancia real (sin cuantizar):
+        \begin{equation}
+            \tau_{\text{gate}}(Q) = \alpha_{\text{gate}} \cdot \left(\frac{Q}{32}\right)^2, \qquad \alpha_{\text{gate}} = 100
+        \end{equation}
+        Un bloque con varianza por debajo de $\tau_{\text{gate}}(Q)$ se considera
+        \textbf{inactivo}: se fuerza directamente al modo estructural ($j=0$), asignando un
+        costo infinito a todos los modos $j\geq 1$, sin siquiera evaluar su costo RD real. Esto
+        no es una decisión basada en costo, sino un filtro heurístico previo: bloques
+        prácticamente planos no tienen una dirección de gradiente que valga la pena señalizar,
+        y $\tau_{\text{gate}}$ crece con $Q$ porque a mayor cuantización, mayor es la varianza
+        mínima necesaria para que un coeficiente sobreviva de todas formas. Los bloques
+        \textbf{activos} sí evalúan su costo real en los $K$ modos, \emph{incluyendo} el modo
+        0 -- que puede seguir ganando por costo, distinto del caso anterior donde se fuerza sin
+        evaluar.
+
+    \subsection{Trellis de Viterbi con Penalización de Continuidad}
+        Entre los bloques activos, la secuencia de modos no se decide de forma independiente
+        bloque a bloque: se optimiza conjuntamente sobre el orden espacial (Morton) de los
+        bloques padre mediante un trellis de Viterbi~\cite{viterbi1967error}, penalizando cambios de modo entre bloques vecinos:
+        \begin{equation}
+            \min_{\{M_p\}} \sum_{p=1}^{N_p} J_{M_p}(p) + \gamma(Q) \sum_{p=2}^{N_p} |\mathbf{q}_{3,p} \cdot \mathbf{q}_{3,p-1}| \cdot \mathbb{I}[M_p \neq M_{p-1}]
+        \end{equation}
+        \begin{equation}
+            \gamma(Q) = \gamma_0 \cdot \left(\frac{Q}{24}\right)^2, \qquad \gamma_0 = 0.001
+        \end{equation}
+        donde $\mathbf{q}_{3,p}$ es la normal (tercer eje de la normalización espacial,
+        Sección~\ref{sec:luminance_clustering}) del bloque padre $p$. La penalización solo se
+        aplica cuando el modo efectivamente cambia entre bloques consecutivos, y su magnitud es
+        proporcional a cuán alineadas están las normales de ambos bloques: cambiar de modo entre
+        dos bloques con normales muy distintas (una discontinuidad real de superficie) es
+        barato; cambiar de modo entre dos bloques con normales casi paralelas (se espera que
+        pertenezcan a la misma región suave) es costoso. Este término desincentiva
+        conmutaciones espurias que solo añadirían overhead de señalización sin una razón
+        geométrica real que las justifique.
+
+    Ambos mecanismos operan exclusivamente a nivel del bloque \textbf{padre}; los bloques hijos
+    heredan directamente el modo de su padre según la asociación construida en
+    Sección~\ref{sec:pc_partition_hierarchy} (ver también Sección~\ref{sec:decode_method}).
 
 \section{Codificación Entrópica}\label{sec:rlgr_method}
    Una vez cada decisión haya sido tomada por el optimizador, se obtiene un conjunto de coeficientes por bloque ordenados por variabilidad, es decir, los primeros coeficientes representan aquellas señales de menor variabilidad de base. Por lo descrito respecto al codificador a utilizar (\ref{sec: rlgr}), es de mayor importancia priorizar una distribución de enteros que se acerquen lo más posible a lo esperado por el diseño del codificador.\\
@@ -625,38 +966,33 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
 
 
    \subsection{Ordenamiento de coeficientes}
-   
-   Para optimizar la eficiencia del codificador RLGR, se realiza un reordenamiento que separa los coeficientes según su importancia espectral:
-   
-   \begin{align}
-       \mathbf{M}_{lo} &= \{i : i \in \mathcal{I}_{start}\} \\
-       \mathbf{M}_{hi} &= \{i : i \notin \mathcal{I}_{start}\}
-   \end{align}
-   
-   donde $\mathcal{I}_{start}$ representa el conjunto de índices correspondientes a los coeficientes de baja frecuencia (DC y componentes principales).
-   
-   Los coeficientes se reorganizan como:
-   
-   \begin{equation}
-       \hat{\mathbf{x}}_q^{sorted} = \begin{bmatrix}
-           \hat{\mathbf{x}}_q[\mathbf{M}_{lo}] \\
-           \hat{\mathbf{x}}_q[\mathbf{M}_{hi}]
-       \end{bmatrix}
-   \end{equation}
-   
-   Esta reorganización garantiza que los coeficientes de mayor magnitud se concentren al inicio de la secuencia, seguidos por los coeficientes de menor magnitud, creando una distribución más favorable para la codificación entrópica.
 
-   \subsection{Codificación por canales}
-   
-   El proceso de codificación se ejecuta independientemente para cada canal de color en el espacio YUV:
-   
-   \begin{align}
-       B_Y &= \text{RLGR}(\hat{\mathbf{x}}_{qY}^{sorted}) \\
-       B_U &= \text{RLGR}(\hat{\mathbf{x}}_{qU}^{sorted}) \\
-       B_V &= \text{RLGR}(\hat{\mathbf{x}}_{qV}^{sorted})
-   \end{align}
-   
-   donde $B_Y$, $B_U$, $B_V$ representan los tamaños de \textit{bitstream} resultantes para cada canal.
+   % [NOTA: una versión anterior del encoder (src/pcadc/encoder.py, canal de codificación
+   %  basado en la librería `constriction`, no usado por E9/E10) sí implementaba este
+   %  reordenamiento M_lo/M_hi como un paso explícito y separado. El pipeline que produce los
+   %  resultados de esta tesis no lo re-implementa como paso aparte -- ver por qué abajo.]
+   Para que el codificador RLGR reciba una distribución favorable, es deseable que los
+   coeficientes de mayor magnitud (baja frecuencia) precedan a los de menor magnitud (alta
+   frecuencia, mayoritariamente nulos tras la cuantización). En la implementación actual esto no
+   requiere un reordenamiento explícito adicional: la propia base de la GFT
+   (Sección~\ref{sec:method_gft}) ya entrega los coeficientes ordenados de esta forma por
+   construcción, al obtenerse mediante descomposición espectral del Laplaciano con los
+   autovalores ordenados de menor a mayor ($\lambda_1 \leq \dots \leq \lambda_N$, DC primero).
+   Los coeficientes $\hat{\mathbf{x}}_q$ se entregan al codificador RLGR en ese mismo orden
+   espectral, sin un paso de reordenamiento separado.
+
+   \subsection{Codificación por canal}
+
+   El diseño del codificador soporta codificar los tres canales YUV de forma independiente:
+
+   \begin{equation}
+       B_c = \text{RLGR}(\hat{\mathbf{x}}_{qc}), \qquad c \in \{Y, U, V\}
+   \end{equation}
+
+   Sin embargo, dado que la optimización tasa-distorsión de esta tesis opera en Modo de
+   Distorsión 0 (Sección~\ref{sec:rdo_method}, solo luminancia), en los resultados E10
+   reportados \textbf{únicamente el canal $Y$ se cuantiza, codifica y cuenta en la tasa de bits
+   reportada} -- $B_U, B_V$ no se transmiten a través de este pipeline. La justificación perceptual de esta decisión es la ya dada para el Modo de Distorsión 0 en la Sección~\ref{sec:rdo_method} y no se repite aquí; la expresión anterior describe la capacidad del codificador, no lo efectivamente ejercido en los resultados de esta tesis.
    
    \subsection{Métricas de rendimiento}
    
@@ -686,33 +1022,79 @@ Esta adaptación permite que la GFT capture de manera más eficiente la estructu
 
 \section{\textit{Overhead} de Decisión y Señalización}\label{sec:overhead_method}
 
-El \textit{overhead} corresponde a la porción del flujo de bits reservada para las instrucciones de adaptación. En esta metodología, esto implica transmitir el índice del cluster $j$ seleccionado para cada bloque. 
+El \textit{overhead} corresponde a la porción del flujo de bits reservada para las instrucciones de adaptación. En esta metodología, esto implica transmitir el índice del cluster $j$ seleccionado para cada bloque.
 
-\subsection{Codificación por Entropía de Índices}
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+Vale la pena precisar qué es lo que \textbf{no} forma parte de este overhead: el libro de
+códigos direccional y los pares $(s_{lp,j}, s_{lw,j})$ calibrados en la
+Sección~\ref{sec:training_stage} no se retransmiten por bloque ni por \textit{frame} -- se
+calculan una única vez (Sección~\ref{sec:metodologia_e10_extensions}) y quedan disponibles de
+forma idéntica para el codificador y el decodificador sin señalización adicional. Lo único que
+efectivamente viaja, bloque a bloque, es el índice de modo $j$, a través del mecanismo descrito
+a continuación.
 
-A diferencia de una representación binaria simple de longitud fija, se utiliza la entropía de la distribución de clusters para estimar el costo mínimo de señalización. La entropía del libro de códigos $H$ se define como:
+\subsection{Cota Teórica: Entropía de la Distribución de Modos}
+
+Antes de describir el mecanismo real de codificación, es útil tener una cota inferior teórica
+con la que comparar su desempeño. Si se conociera de antemano la distribución de frecuencias de
+los modos sobre toda la nube, el costo mínimo de señalización (bajo un código de longitud
+variable ideal, sin explotar correlación espacial entre bloques vecinos) estaría dado por la
+entropía de orden 0 de esa distribución:
 
 \begin{equation}
     H = -\sum_{j=0}^{K-1} p_j \log_2(p_j)
 \end{equation}
 
-donde $p_j$ es la probabilidad (frecuencia relativa) de que un bloque sea asignado al cluster $j$. El costo total en bits para señalizar las decisiones de $N_{bloques}$ es:
+donde $p_j$ es la frecuencia relativa de bloques asignados al modo $j$, y el costo total en bits
+para señalizar $N_{bloques}$ decisiones sería $B_{\text{decisión}}^{\text{teórico}} =
+N_{bloques} \cdot H$. Un concepto derivado útil es la \textbf{Capacidad Efectiva} $K_{eff} =
+2^H$: el número de modos que, de estar distribuidos uniformemente, producirían esa misma
+entropía. $K_{eff} \ll K$ indicaría que el sistema converge a una representación más compacta
+que la capacidad nominal del libro de códigos.
 
-\begin{equation}
-    B_{\text{decisión}} = N_{bloques} \cdot H
-\end{equation}
+\subsection{Mecanismo Real: Codificador Aritmético Adaptativo de Orden 1}
 
-\subsection{Capacidad Efectiva del Libro de Códigos}
-
-Un concepto clave para el análisis de eficiencia es la \textbf{Capacidad Efectiva} ($K_{eff}$), calculada como $2^H$. Esta métrica representa el número real de clusters que están contribuyendo significativamente a la compresión. Si $K_{eff} \ll K$, indica que el sistema ha convergido a una representación más compacta que la capacidad física permitida, sugiriendo un potencial para la reducción del overhead mediante la poda de clusters subutilizados.
+El costo real medido y reportado en esta tesis \textbf{no} proviene de la fórmula anterior, sino
+de un codificador aritmético adaptativo de orden 1 (contexto = el modo del bloque padre
+inmediatamente anterior en el recorrido de Morton), con una tabla de frecuencias de transición
+que se actualiza en línea durante la codificación. Al condicionar en el modo anterior, este
+codificador explota directamente la correlación espacial entre bloques padre vecinos (bloques
+contiguos en Morton tienden a compartir modo, Sección~\ref{sec:mode_selection}), logrando en la
+práctica un costo por debajo de la cota de entropía de orden 0 de la subsección anterior. Este
+mecanismo se documenta en el código como un codificador de tipo "CABAC" por su adaptatividad
+contextual, aunque conviene precisar que no es una implementación del CABAC binario estándar de H.264/265~\cite{marpe2003cabac}, sino un codificador aritmético/de rango de múltiples símbolos, de orden 1,
+desarrollado específicamente para este trabajo. La cota $H$/$K_{eff}$ de la subsección anterior
+sigue siendo útil como referencia diagnóstica -- de cuánto mejora la codificación real al
+explotar la correlación espacial que la entropía de orden 0 ignora -- pero no debe confundirse
+con el overhead efectivamente reportado.
     % - Qué metadatos deben ser transmitidos (por ejemplo, elección de base, cluster)
     % - Cómo se codifican esos datos adicionales
     % - Evaluar el impacto del overhead
 
 \section{Etapa de Decodificación}\label{sec:decode_method}
-   Para decodificar, lo primero será leer e interpretar el \textit{overhead} de decisión, donde cada bloque tendrá una representación de color. La pertenencia al bloque es una asociación inmediata, ya que, como se mencionó al inicio de este capítulo, la información espacial de la nube es conocida tanto por el codificador como por el decodificador. 
-   
-   Mediante dicha interpretación de color y la información volumétrica, se puede reconstruir el grafo dependiente de atributos mencionado anteriormente. Ocupando el mismo umbral de la codificación se ubican los \textit{self-loops} lo que deriva en la misma transformada gráfica de Fourier (\textit{GFT}).\\
+   Para decodificar, lo primero será leer e interpretar el \textit{overhead} de decisión
+   (Sección~\ref{sec:overhead_method}), que entrega la secuencia de modos $\{M_p\}$ de los
+   bloques \textbf{padre}. Cada bloque \textbf{hijo} hereda el modo de su padre mediante la
+   misma asociación geométrica construida en la partición
+   (Sección~\ref{sec:pc_partition_hierarchy}): la pertenencia se resuelve directamente de la
+   geometría, conocida por ambos lados, sin señalización adicional.
+
+   Con el modo ya conocido para cada bloque hijo, se reconstruye el grafo dependiente de
+   atributos (Sección~\ref{sec:attribute_graph}) y, con él, la misma transformada gráfica de
+   Fourier usada en la codificación (Sección~\ref{sec:method_gft}). Este paso de reconstrucción del grafo no aparece como caja propia en la rama de decodificación de la Figura~\ref{fig:compresion_scheme}, pero es previo e indispensable a la GFT inversa allí dibujada.
+
+   \paragraph{Qué necesita realmente el decodificador (\textit{zero-oracle}).} Ningún paso de
+   esta reconstrucción requiere la señal de atributos real. Los modos $\{M_p\}$ provienen
+   únicamente del flujo aritmético (Sección~\ref{sec:overhead_method}); la ubicación de los
+   \textit{self-loops} depende solo de la geometría del bloque (base tangente
+   $\mathbf{q}_1,\mathbf{q}_2$, calculable por PCA de las posiciones únicamente) y de la
+   dirección del modo asignado $\mathbf{c}_j$ (conocida, parte del libro de códigos entrenado
+   fuera de línea) -- la magnitud $g_i$ de la Sección~\ref{sec:attribute_graph} escala
+   uniformemente la señal sintética usada para esa selección y, al ser la selección un
+   $\arg\min$ sobre esa señal, no altera cuáles nodos se eligen (invariante a escalas positivas).
+   En consecuencia, el grafo y la base de la transformada quedan completamente determinados por
+   cantidades conocidas por el decodificador, sin ninguna dependencia oculta de la señal de
+   color original.\\
 
    \subsection{Decodificación Entrópica}
    
@@ -777,3 +1159,66 @@ Un concepto clave para el análisis de eficiencia es la \textbf{Capacidad Efecti
    \end{equation}
    
    recuperando así la información en su formato original con la distorsión controlada introducida durante el proceso de cuantización.
+
+
+% ============================================================
+% CONFIGURACIÓN EXPERIMENTAL: BENCHMARK E10
+% ============================================================
+\section{Configuración Experimental: Parámetros del Benchmark E10}
+\label{sec:metodologia_e10_extensions}
+
+    % [NOTA: esta sección reemplaza el stub anterior "Extensiones Metodológicas", que intentaba
+    %  resumir en 4 viñetas la partición jerárquica, el entrenamiento offline y la selección de
+    %  modo por trellis -- mecanismos que ahora están descritos en detalle en sus secciones
+    %  naturales (\ref{sec:pc_partition_hierarchy}, \ref{sec:codebook_training_real},
+    %  \ref{sec:adapter_rdo_real}, \ref{sec:mode_selection}) y ya no necesitan repetirse aquí.
+    %  Lo que queda como genuinamente propio de esta sección de cierre son (a) el protocolo de
+    %  reutilización temporal, que es una propiedad transversal de todo el pipeline, no de una
+    %  etapa particular, y (b) una tabla concreta de referencia con los valores reales usados,
+    %  para no dejarlos dispersos por el capítulo.]
+
+    % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    El protocolo de entrenamiento único y reutilización congelada (una sola vez por secuencia,
+    sobre el primer \textit{frame}) se describe en la Sección~\ref{sec:training_stage}. A
+    continuación, a modo de referencia, la tabla completa de parámetros reales usados.
+
+    \subsection{Tabla de Referencia: Parámetros Reales del Benchmark E10}
+        A modo de referencia única y consolidada, el Cuadro~\ref{tab:e10_params} reúne los
+        valores concretos de cada parámetro introducido a lo largo de este capítulo, tal como
+        se usan efectivamente en el benchmark cuyos resultados se reportan en esta tesis.
+
+        \begin{table}[H]
+            \centering
+            \caption{Parámetros reales del benchmark E10.}
+            \label{tab:e10_params}
+            \small
+            \begin{tabular}{>{\raggedright\arraybackslash}p{7.4cm}l}
+                \toprule
+                Parámetro & Valor \\
+                \midrule
+                Bloque padre $B_p$ (profundidad 10 / 9) & $32$ / $16$ \\
+                Bloque hijo $B_c$ (barrido) & potencias de 2, $\leq B_p$ \\
+                Capacidad del libro de códigos $K$ & $\{4, 8, 16, 24, 30\}$ \\
+                Cobertura de $K=30$ & 13 de 14 secuencias (sin \texttt{sarah10}) \\
+                Paso de cuantización $Q$ & $\{24, 32, 48, 64\}$ \\
+                Pasos $Q$ adicionales (solo a $K=24$) & $\{16, 20, 28, 40\}$ \\
+                Proporcionalidad de Lagrange $r$ & $0.8$ \\
+                Peso de penalización de transición RLGR $\alpha_{\text{rlgr}}$ & $0.5$ \\
+                Escala de barrera de \textit{gating} $\alpha_{\text{gate}}$ & $100$ \\
+                Escala de continuidad del trellis $\gamma_0$ & $0.001$ \\
+                Semilla de k-means esférico & fija (reproducible) \\
+                Iteraciones máximas de k-means esférico & $50$ \\
+                Percentil de filtrado para entrenamiento (por $g_i$) & top $50\%$ \\
+                Malla gruesa RDO, $s_{lp}$ candidatos & $\{0.05, 0.25, 0.60\}$ \\
+                Malla gruesa RDO, $s_{lw}$ candidatos & $\{0.15, 0.35, 0.75\}$ \\
+                Ventana de refinamiento por sección áurea (sobre $s_{lw}$) & $\pm 0.15$, 4 iteraciones \\
+                Máximo de bloques muestreados por modo (calibración RDO) & $30$ \\
+                \textit{Frames} de entrenamiento por secuencia & $1$ (el primero, $t=0$) \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+
+        % [NOTA: K=30 proviene de una corrida de ampliación del codebook posterior a la malla base;
+%  está completa para 13 de las 14 secuencias (falta sarah10) y se reporta con esa salvedad en
+%  las tablas del Capítulo de Resultados.]
+
