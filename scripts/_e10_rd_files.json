@@ -1,0 +1,73 @@
+{
+ "longdress": {
+  "4": "e10_rd_longdress_bc4.png",
+  "8": "e10_rd_longdress_bc8.png",
+  "16": "e10_rd_longdress_bc16.png",
+  "32": "e10_rd_longdress_bc32.png"
+ },
+ "loot": {
+  "4": "e10_rd_loot_bc4.png",
+  "8": "e10_rd_loot_bc8.png",
+  "16": "e10_rd_loot_bc16.png"
+ },
+ "redandblack": {
+  "4": "e10_rd_redandblack_bc4.png",
+  "8": "e10_rd_redandblack_bc8.png",
+  "16": "e10_rd_redandblack_bc16.png"
+ },
+ "soldier": {
+  "4": "e10_rd_soldier_bc4.png",
+  "8": "e10_rd_soldier_bc8.png",
+  "16": "e10_rd_soldier_bc16.png"
+ },
+ "andrew10": {
+  "4": "e10_rd_andrew10_bc4.png",
+  "8": "e10_rd_andrew10_bc8.png",
+  "16": "e10_rd_andrew10_bc16.png"
+ },
+ "david10": {
+  "4": "e10_rd_david10_bc4.png",
+  "8": "e10_rd_david10_bc8.png",
+  "16": "e10_rd_david10_bc16.png"
+ },
+ "phil10": {
+  "4": "e10_rd_phil10_bc4.png",
+  "8": "e10_rd_phil10_bc8.png",
+  "16": "e10_rd_phil10_bc16.png"
+ },
+ "ricardo10": {
+  "4": "e10_rd_ricardo10_bc4.png",
+  "8": "e10_rd_ricardo10_bc8.png",
+  "16": "e10_rd_ricardo10_bc16.png"
+ },
+ "sarah10": {
+  "4": "e10_rd_sarah10_bc4.png",
+  "8": "e10_rd_sarah10_bc8.png",
+  "16": "e10_rd_sarah10_bc16.png"
+ },
+ "andrew9": {
+  "4": "e10_rd_andrew9_bc4.png",
+  "8": "e10_rd_andrew9_bc8.png",
+  "16": "e10_rd_andrew9_bc16.png"
+ },
+ "david9": {
+  "4": "e10_rd_david9_bc4.png",
+  "8": "e10_rd_david9_bc8.png",
+  "16": "e10_rd_david9_bc16.png"
+ },
+ "phil9": {
+  "4": "e10_rd_phil9_bc4.png",
+  "8": "e10_rd_phil9_bc8.png",
+  "16": "e10_rd_phil9_bc16.png"
+ },
+ "ricardo9": {
+  "4": "e10_rd_ricardo9_bc4.png",
+  "8": "e10_rd_ricardo9_bc8.png",
+  "16": "e10_rd_ricardo9_bc16.png"
+ },
+ "sarah9": {
+  "4": "e10_rd_sarah9_bc4.png",
+  "8": "e10_rd_sarah9_bc8.png",
+  "16": "e10_rd_sarah9_bc16.png"
+ }
+}
