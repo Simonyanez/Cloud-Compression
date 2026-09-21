@@ -1,0 +1,103 @@
+{
+ "n_records": 28767,
+ "sequences": {
+  "longdress": {
+   "frames_found": [
+    1,
+    51,
+    101,
+    151,
+    201,
+    251
+   ],
+   "frames_ok": [
+    1,
+    51,
+    101,
+    151,
+    201,
+    251
+   ],
+   "n_parent_blocks_total": 5220
+  },
+  "loot": {
+   "frames_found": [
+    1,
+    51,
+    101,
+    151,
+    201,
+    251
+   ],
+   "frames_ok": [
+    1,
+    51,
+    101,
+    151,
+    201,
+    251
+   ],
+   "n_parent_blocks_total": 5302
+  },
+  "phil9": {
+   "frames_found": [
+    1,
+    51,
+    101,
+    151,
+    201
+   ],
+   "frames_ok": [
+    1,
+    51,
+    101,
+    151,
+    201
+   ],
+   "n_parent_blocks_total": 6742
+  },
+  "ricardo9": {
+   "frames_found": [
+    1,
+    51,
+    101,
+    151,
+    201
+   ],
+   "frames_ok": [
+    1,
+    51,
+    101,
+    151,
+    201
+   ],
+   "n_parent_blocks_total": 3868
+  },
+  "phil10": {
+   "frames_found": [
+    1,
+    51,
+    101,
+    151,
+    201
+   ],
+   "frames_ok": [
+    1,
+    51,
+    101,
+    151,
+    201
+   ],
+   "n_parent_blocks_total": 6842
+  },
+  "ricardo10": {
+   "frames_found": [
+    1
+   ],
+   "frames_ok": [
+    1
+   ],
+   "n_parent_blocks_total": 793
+  }
+ }
+}
