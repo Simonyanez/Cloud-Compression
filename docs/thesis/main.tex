@@ -74,6 +74,10 @@
 % IMPORTACIÓN DEL TEMPLATE
 \input{template}
 
+% DIAGRAMAS TIKZ (metodologia.tex) -- no incluido por el template vendorizado
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc}
+
 % INICIO DE LAS PÁGINAS
 \begin{document}
 
@@ -85,9 +89,9 @@
 
 % RESUMEN O ABSTRACT
 \begin{abstractd}
-Las nubes de puntos 3D son una herramienta fundamental para la representación de entornos complejos en aplicaciones como la realidad aumentada, la telepresencia y la navegación autónoma. Debido al crecimiento exponencial en la adquisición de datos 3D, se ha vuelto crítico desarrollar algoritmos de compresión eficientes, especialmente para los atributos como el color. Si bien el procesamiento de señales sobre grafos (GSP) ha permitido avances en la compresión de estos datos, las transformadas utilizadas suelen depender exclusivamente de la estructura geométrica, sin considerar la información contenida en la propia señal.
+Las nubes de puntos 3D son una herramienta fundamental para la representación de entornos complejos en aplicaciones como la realidad aumentada, la telepresencia y la navegación autónoma. Debido al crecimiento sostenido en la adquisición de datos 3D, se ha vuelto crítico desarrollar algoritmos de compresión eficientes, especialmente para atributos como el color. Si bien el procesamiento de señales sobre grafos (GSP) ha permitido avances en la compresión de estos datos, las transformadas utilizadas suelen depender exclusivamente de la estructura geométrica, sin considerar la información contenida en la propia señal.
 
-Este trabajo propone un enfoque novedoso basado en la construcción de transformadas gráficas adaptativas guiadas por la señal de color, lo cual permite representar de manera más compacta y eficiente la información contenida en bloques locales de la nube. A través de la introducción controlada de self-loops y la selección estratégica de bases, se busca optimizar la relación tasa-distorsión y minimizar el overhead asociado. Los resultados esperados incluyen mejoras cuantitativas y cualitativas frente al estado del arte, así como la implementación de un algoritmo completo y reproducible.
+Este trabajo propone y evalúa PCADC, un esquema de compresión de atributos basado en transformadas gráficas adaptativas guiadas por la señal de color. La dirección del gradiente de luminancia de cada bloque se aproxima mediante un libro de códigos direccional entrenado fuera de línea (k-means esférico sobre $\mathbb{S}^2$); cada dirección define un grafo con auto-lazos (\textit{self-loops}) calibrados por optimización tasa-distorsión, y el modo de cada bloque padre se selecciona mediante una barrera de \textit{gating} y un trellis de Viterbi, señalizándose con un codificador aritmético de orden 1. Evaluado con codificación real sobre 14 secuencias de las bases 8iVFB y MVUB, el método reduce el BD-Rate en $-2.18\%$ en promedio (entre $-1.39\%$ y $-3.91\%$ según la secuencia) frente a la misma transformada gráfica puramente estructural, sin ningún punto de operación desfavorable y con un overhead de señalización que nunca supera el $1.09\%$ del flujo de bits. Las ganancias son mayores en las secuencias de profundidad 9 y a menor paso de cuantización, y un análisis de oráculo acota el techo alcanzable por el mecanismo de auto-lazos en $-17.31\%$. La comparación contra códecs de referencia externos (RAHT/G-PCC) queda como trabajo futuro; la implementación completa se entrega como código abierto y reproducible.
     
 \end{abstractd}
 
@@ -117,6 +121,7 @@ Este trabajo propone un enfoque novedoso basado en la construcción de transform
 \input{estado_del_arte}
 \input{metodologia}
 \input{resultados}
+\input{conclusiones}
 %
 \bibliography{library}
 % FIN DEL DOCUMENTO

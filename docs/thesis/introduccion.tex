@@ -29,7 +29,7 @@ Esta investigación busca abordar esa brecha mediante el diseño de transformada
 \textbf{Objetivo general:}
 
 \begin{itemize}
-    \item \textit{Desarrollar un algoritmo de compresión para los atributos de nubes de puntos dependientes de la señal, adaptativo y superior al estado del arte de manera cuantitativa y cualitativa.}
+    \item \textit{Desarrollar un algoritmo determinístico de compresión para atributos de nubes de puntos, dependiente de la señal y superior a su versión puramente volumétrica.}
 \end{itemize}
 
 \textbf{Objetivos específicos:}
@@ -39,20 +39,20 @@ Esta investigación busca abordar esa brecha mediante el diseño de transformada
     \item \textit{Estudiar y proponer herramientas matemáticas para la representación de la dinámica de los atributos de color.}
     \item \textit{Observar, analizar e implementar experimentos sobre el efecto de los self-loops en la construcción de bases.\scite{pavez2017separable}}
     \item \textit{Plantear y visualizar la ganancia en tasa-distorsión de la implementación estratégica de self-loops mediante estrategias de optimización por bloques.}
-    \item \textit{Estudiar la distribución de las decisiones y el overhead de las instrucciones de las transformadas alcanzadas.}
-    \item \textit{Plantear un algoritmo final de compresión cuya ganancia sea demostrable y competitiva frente al estado del arte.}
+    \item \textit{Estudiar y optimizar la información necesaria para la decodificación de las decisiones adaptativas}
+    \item \textit{Plantear un algoritmo final de compresión, con codificación entrópica y señalización reales, cuya ganancia sea demostrable y consistente frente a su versión puramente estructural sobre secuencias reales.}
 \end{itemize}
 
 \section{Metodología general}
 
-Para abordar este problema, se propone un enfoque basado en el diseño de transformadas adaptativas a nivel de bloques, cuya construcción se guía por la distribución del color en cada segmento. A partir de reglas heurísticas y métricas de tasa-distorsión, se evaluarán variantes estructurales que permitan identificar bases eficientes para la compresión. Los experimentos incluirán comparaciones con métodos gráficos tradicionales, utilizando métricas estándar de compresión y calidad visual. Se realizarán validaciones cuantitativas (PSNR, bitrate) y cualitativas (análisis perceptual) en conjuntos de datos sintéticos y reales.
+Para abordar este problema, se desarrolla un enfoque basado en el diseño de transformadas adaptativas a nivel de bloques, cuya construcción se guía por la distribución del color en cada segmento. A partir de un libro de códigos direccional entrenado fuera de línea y de métricas de tasa-distorsión, se evalúan variantes estructurales del grafo (con y sin auto-lazos) que permiten identificar bases eficientes para la compresión. Los experimentos comparan el método contra la transformada gráfica de bloque independiente de la señal~\cite{zhang2014point}, utilizando métricas estándar de compresión y calidad (BPV, PSNR$_Y$ y BD-Rate), sobre 14 secuencias reales de las bases de datos 8iVFB y MVUB. Esta validación cuantitativa se complementa con un análisis de límites teóricos mediante oráculos, que acota la ganancia alcanzable por el mecanismo, y con una inspección cualitativa de las reconstrucciones decodificadas.
 
-\section{Contribuciones esperadas}
+\section{Contribuciones}
 
 \begin{itemize}
     \item \textit{Propuesta de un esquema de compresión adaptativo que explota la dinámica local del espacio de color.}
     \item \textit{Desarrollo de nuevas variantes de transformadas gráficas construidas a partir de la señal, no sólo de la estructura.}
     \item \textit{Estudio sistemático del efecto de self-loops en la compacidad de la representación espectral.}
-    \item \textit{Implementación de un algoritmo completo de compresión de atributos, con mejoras comprobables frente a métodos existentes.}
+    \item \textit{Implementación de un algoritmo completo de compresión de atributos, con mejoras comprobables frente a la transformada gráfica puramente estructural y con un costo de señalización acotado.}
     \item \textit{Generación de código abierto con documentación técnica para su reproducción y uso en futuras investigaciones.}
 \end{itemize}
