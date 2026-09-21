@@ -1,0 +1,868 @@
+#!/usr/bin/env python3
+"""
+=============================================================================
+PCADC EXPERIMENT E8: Decoupled Frontiers
+=============================================================================
+
+Hypotheses under evaluation:
+  1. Continuity Penalty Ablation: Since macro parent signaling (B_p=32) accounts
+     for < 0.4% of total bitrate (< 400 bytes), penalizing mode transitions via
+     Viterbi gamma forces suboptimal transform selection. Testing gamma in {0.0, 0.001, 0.005}.
+  2. Capacity Expansion: Testing higher angular resolution codebooks K in {16, 24, 32}
+     where additional Markov overhead (~100 bytes) is dwarfed by sharper GFT alignment.
+  3. Continuous Coarse-to-Fine Optimization: Continuous Golden-Section / Nelder-Mead
+     adapter search on (s_lp, s_lw) to find the true spectral energy minimum.
+  4. End-to-end real physical bitstream verification via compiled PyRLGR and
+     Order-1 Markov context arithmetic payload accounting.
+"""
+
+import os
+os.environ["SCIPY_OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"]       = "1"
+os.environ["MKL_NUM_THREADS"]            = "1"
+os.environ["OMP_NUM_THREADS"]            = "1"
+
+import sys
+import time
+import math
+import zlib
+import sqlite3
+import logging
+import argparse
+import datetime
+import numpy as np
+from pathlib import Path
+from joblib import Parallel, delayed
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "src"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT))
+
+from pcadc.pointcloud import PointCloud, MortonBlockPartition
+from pcadc.blocks import Block
+from pcadc.graph import StructuralGraph, AttributeGraph
+from pcadc.transforms import GFTStrategyWraper
+from pcadc.decider import Decider
+from pcadc.color import Colourist, Approximator
+from pcadc.parameters import load_experiment_config
+
+try:
+    import rlgr
+    PYRLGR_AVAILABLE = True
+except ImportError:
+    PYRLGR_AVAILABLE = False
+
+
+# ---------------------------------------------------------------------------
+# Logging & Database Initialization
+# ---------------------------------------------------------------------------
+
+def log(msg):
+    now = datetime.datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {msg}", flush=True)
+
+
+def section(title):
+    log(f"\n{'=' * 95}")
+    log(f"  {title}")
+    log(f"{'=' * 95}")
+
+
+def init_db(db_path, overwrite=False):
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    if overwrite:
+        c.execute("DROP TABLE IF EXISTS benchmark_runs")
+        c.execute("DROP TABLE IF EXISTS mode_adapters")
+        c.execute("DROP TABLE IF EXISTS parent_block_telemetry")
+        c.execute("DROP TABLE IF EXISTS cluster_centroids")
+        log(f"[DB] Cleared existing tables in {db_path} (overwrite=True)")
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS benchmark_runs (
+            run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            child_b INTEGER,
+            K INTEGER,
+            q_step INTEGER,
+            gamma REAL,
+            alpha REAL,
+            tau_gate REAL,
+            n_parent_blocks INTEGER,
+            n_child_blocks INTEGER,
+            total_voxels INTEGER,
+            n_active_parents INTEGER,
+            n_gated_parents INTEGER,
+            gated_parent_pct REAL,
+            active_gft_coverage_pct REAL,
+            trellis_mode_switches INTEGER,
+            unique_modes_selected INTEGER,
+            baseline_real_bytes INTEGER,
+            pcadc_real_tr_bytes INTEGER,
+            pcadc_real_oh_bytes INTEGER,
+            pcadc_real_net_bytes INTEGER,
+            baseline_real_bpv REAL,
+            pcadc_real_transform_bpv REAL,
+            pcadc_real_oh_bpv REAL,
+            pcadc_real_net_bpv REAL,
+            real_delta_bpv REAL,
+            real_delta_pct REAL,
+            real_oh_savings_ratio REAL,
+            psnr_db REAL,
+            markov_entropy_bps REAL,
+            runtime_seconds REAL,
+            UNIQUE(child_b, K, q_step, gamma, alpha)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS mode_adapters (
+            child_b INTEGER,
+            q_step INTEGER,
+            K INTEGER,
+            mode_idx INTEGER,
+            s_lp REAL,
+            s_lw REAL,
+            PRIMARY KEY (child_b, q_step, K, mode_idx)
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS cluster_centroids (
+            K INTEGER,
+            mode_idx INTEGER,
+            cx REAL,
+            cy REAL,
+            cz REAL,
+            PRIMARY KEY (K, mode_idx)
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def get_completed_runs(db_path):
+    if not os.path.exists(db_path):
+        return set()
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    try:
+        c.execute("SELECT child_b, K, q_step, gamma, alpha FROM benchmark_runs")
+        rows = c.fetchall()
+        completed = {(r[0], r[1], r[2], r[3], r[4]) for r in rows}
+    except sqlite3.OperationalError:
+        completed = set()
+    conn.close()
+    return completed
+
+
+# ---------------------------------------------------------------------------
+# Rate-Distortion Decider (Professor's Exact Formulation)
+# ---------------------------------------------------------------------------
+
+class RLGRDecider(Decider):
+    """
+    Decider using the professor's exact Rate-Distortion optimization:
+      J_block = (lambda_mult * Rate) + ||c - c_quant||_2
+    where lambda_mult = lagrange_proportional * (Q^2),
+    and Rate = L0_nonzeros + alpha_rlgr * run_transitions.
+    """
+    def __init__(self, mode="0", lagrange_proportional=0.05, alpha_rlgr=0.5):
+        super().__init__(mode, lagrange_proportional)
+        self.alpha_rlgr = alpha_rlgr
+
+    def _zeroNorm(self, Coeffs_quant: np.ndarray) -> float:
+        if self.mode in ["1", "2"]:
+            base = int(np.count_nonzero(Coeffs_quant, axis=1).sum())
+            flat = Coeffs_quant.ravel(order="C")
+        else:
+            base = int(np.count_nonzero(Coeffs_quant, axis=0).sum())
+            flat = Coeffs_quant[:, 0].ravel() if Coeffs_quant.ndim > 1 else Coeffs_quant.ravel()
+        nz_mask = (flat != 0).astype(np.int8)
+        n_transitions = int(np.count_nonzero(np.diff(nz_mask))) if len(nz_mask) > 1 else 0
+        return base + self.alpha_rlgr * n_transitions
+
+
+# ---------------------------------------------------------------------------
+# Geometry & Spherical Training Functions
+# ---------------------------------------------------------------------------
+
+def fast_lstsq_2d(X, Y):
+    x0, x1 = X[:, 0], X[:, 1]
+    s00 = np.dot(x0, x0) + 1e-10
+    s01 = np.dot(x0, x1)
+    s11 = np.dot(x1, x1) + 1e-10
+    det = s00 * s11 - s01 * s01
+    if abs(det) < 1e-12:
+        return np.zeros(2)
+    sy0 = np.dot(x0, Y)
+    sy1 = np.dot(x1, Y)
+    return np.array([(s11 * sy0 - s01 * sy1) / det,
+                     (s00 * sy1 - s01 * sy0) / det])
+
+
+def extract_block_tangent(b, pc_V, pc_A):
+    b.init_data(pc_V, pc_A)
+    V = b.Vblock
+    A = b.Ablock
+    nv = len(V)
+    if nv < 4:
+        b.clear_data()
+        return {
+            "v1": np.array([1.0, 0.0, 0.0]),
+            "v2": np.array([0.0, 1.0, 0.0]),
+            "v3": np.array([0.0, 0.0, 1.0]),
+            "g_raw": 0.0,
+            "g_norm": np.array([0.0, 0.0, 1.0])
+        }
+
+    V_c = V - np.mean(V, axis=0)
+    cov = (V_c.T @ V_c) / nv
+    w, v = np.linalg.eigh(cov)
+    order = np.argsort(w)[::-1]
+    v1, v2, v3 = v[:, order[0]], v[:, order[1]], v[:, order[2]]
+
+    X = np.column_stack([V_c @ v1, V_c @ v2])
+    Y = A[:, 0] - np.mean(A[:, 0])
+    s2d = fast_lstsq_2d(X, Y)
+    g = s2d[0] * v1 + s2d[1] * v2
+    rn = float(np.linalg.norm(g))
+    g_norm = g / rn if rn > 1e-8 else np.array([0.0, 0.0, 1.0])
+    b.clear_data()
+
+    return {
+        "v1": v1, "v2": v2, "v3": v3,
+        "g_raw": rn, "g_norm": g_norm
+    }
+
+
+def build_parent_child_map(blocks_p, blocks_c, pc_V, bsize_p=32):
+    parent_key_map = {}
+    for pi, pb in enumerate(blocks_p):
+        first_vox = pc_V[pb.metadata.start]
+        key = tuple((np.floor(first_vox / bsize_p) * bsize_p).astype(int))
+        parent_key_map[key] = pi
+
+    parent_to_children = {pi: [] for pi in range(len(blocks_p))}
+    for ci, cb in enumerate(blocks_c):
+        first_vox = pc_V[cb.metadata.start]
+        key = tuple((np.floor(first_vox / bsize_p) * bsize_p).astype(int))
+        pi = parent_key_map.get(key)
+        if pi is not None:
+            parent_to_children[pi].append(ci)
+    return parent_to_children
+
+
+def spherical_kmeans(directions, K, max_iter=30, seed=42):
+    np.random.seed(seed)
+    if len(directions) < K:
+        extra = K - len(directions)
+        rand = np.random.randn(extra, 3)
+        rand /= np.linalg.norm(rand, axis=1, keepdims=True)
+        directions = np.vstack([directions, rand])
+
+    idx = np.random.choice(len(directions), K, replace=False)
+    centroids = directions[idx].copy()
+    labels = np.zeros(len(directions), dtype=int)
+
+    for _ in range(max_iter):
+        prev = labels.copy()
+        sims = np.abs(directions @ centroids.T)
+        labels = np.argmax(sims, axis=1)
+        if np.all(labels == prev):
+            break
+        for k in range(K):
+            m = directions[labels == k]
+            if len(m) == 0:
+                continue
+            sg = np.zeros(3)
+            mu = centroids[k]
+            for i in range(len(m)):
+                sg += np.sign(np.dot(m[i], mu)) * m[i]
+            n = np.linalg.norm(sg)
+            if n > 1e-8:
+                centroids[k] = sg / n
+    return centroids, labels
+
+
+def project_slope(centroid_3d, v1, v2, unc):
+    s2d = np.array([float(np.dot(centroid_3d, v1)), float(np.dot(centroid_3d, v2))])
+    norm_s = np.linalg.norm(s2d)
+    if norm_s > 1e-8:
+        s2d = (s2d / norm_s) * unc
+    else:
+        s2d = np.array([unc, 0.0])
+    return s2d[0] * v1 + s2d[1] * v2
+
+
+# ---------------------------------------------------------------------------
+# Continuous Coarse-to-Fine Adapter Optimization
+# ---------------------------------------------------------------------------
+
+def _eval_single_pair(p, w, sample_blocks, centroid_k, k, dm, lag, q):
+    logging.disable(logging.CRITICAL)
+    dec = RLGRDecider(dm, lag, alpha_rlgr=0.5)
+    dec._set_vars(q)
+    gft = GFTStrategyWraper()
+    app = Approximator()
+    costs = []
+
+    for Vb, Ab, meta, v1, v2, unc in sample_blocks:
+        s3d = project_slope(centroid_k, v1, v2, unc)
+        sgp = StructuralGraph(meta)
+        sgp.set_data(Vb)
+        ag = AttributeGraph(sgp, s3d, k, p, w)
+        Vr = app._spatial_norm(Vb)
+        Aa = Ab.copy()
+        Aa[:, 0] = Vr @ s3d.T
+        ag.set_data(Vb, Aa)
+        b_tmp = Block(meta)
+        b_tmp.Vblock = Vb
+        b_tmp.Ablock = Ab
+        try:
+            _, coeffs = gft(b_tmp, ag)
+            c, _, _ = dec._RDcost(coeffs)
+            costs.append(c)
+        except Exception:
+            costs.append(1e18)
+    return float(sum(costs))
+
+
+def continuous_adapter_optimization(sample_blocks, centroid_k, k, dm, lag, q):
+    """
+    Two-stage continuous optimization:
+      1. Coarse 2D lattice evaluation (3x3).
+      2. Continuous Golden-Section / Coordinate Descent on (s_lp, s_lw).
+    """
+    if len(sample_blocks) == 0:
+        return 0.25, 0.80
+
+    # Stage 1: Coarse Grid
+    coarse_p = [0.05, 0.25, 0.60]
+    coarse_w = [0.15, 0.35, 0.75]
+    
+    best_p, best_w, best_cost = 0.25, 0.35, 1e18
+    for p in coarse_p:
+        for w in coarse_w:
+            c_val = _eval_single_pair(p, w, sample_blocks, centroid_k, k, dm, lag, q)
+            if c_val < best_cost:
+                best_cost = c_val
+                best_p = p
+                best_w = w
+
+    # Stage 2: Continuous Golden-Section Fine Refinement on s_lw
+    # Fix p, refine w on interval [max(0.05, best_w - 0.15), min(1.0, best_w + 0.15)]
+    w_low = max(0.05, best_w - 0.15)
+    w_high = min(1.0, best_w + 0.15)
+    
+    inv_phi = (math.sqrt(5) - 1) / 2  # ~0.618
+    w1 = w_high - inv_phi * (w_high - w_low)
+    w2 = w_low + inv_phi * (w_high - w_low)
+    
+    c1 = _eval_single_pair(best_p, w1, sample_blocks, centroid_k, k, dm, lag, q)
+    c2 = _eval_single_pair(best_p, w2, sample_blocks, centroid_k, k, dm, lag, q)
+    
+    for _ in range(4):  # 4 iterations narrows interval to ~8% width
+        if c1 < c2:
+            w_high = w2
+            w2 = w1
+            c2 = c1
+            w1 = w_high - inv_phi * (w_high - w_low)
+            c1 = _eval_single_pair(best_p, w1, sample_blocks, centroid_k, k, dm, lag, q)
+        else:
+            w_low = w1
+            w1 = w2
+            c1 = c2
+            w2 = w_low + inv_phi * (w_high - w_low)
+            c2 = _eval_single_pair(best_p, w2, sample_blocks, centroid_k, k, dm, lag, q)
+
+    opt_w = (w_low + w_high) / 2.0
+    return float(np.clip(best_p, 0.01, 1.0)), float(np.clip(opt_w, 0.05, 1.0))
+
+
+def _worker_adapter_optimization(k, sample_blocks, centroid_dir, dm, lag, q):
+    p_opt, w_opt = continuous_adapter_optimization(sample_blocks, centroid_dir, k, dm, lag, q)
+    return k, (p_opt, w_opt)
+
+
+# ---------------------------------------------------------------------------
+# Parallel Child GFT Worker
+# ---------------------------------------------------------------------------
+
+def _worker_block_coeffs(ci, Vb, Ab, meta, v1, v2, unc, centroids, slp, slw, K):
+    logging.disable(logging.CRITICAL)
+    gft = GFTStrategyWraper()
+    app = Approximator()
+    coeffs_map = {}
+
+    b_tmp = Block(meta)
+    b_tmp.Vblock = Vb
+    b_tmp.Ablock = Ab
+
+    # Mode 0: Structural Baseline Graph
+    sg0 = StructuralGraph(meta)
+    sg0.set_data(Vb)
+    try:
+        _, c0 = gft(b_tmp, sg0)
+        coeffs_map[0] = c0
+    except Exception:
+        coeffs_map[0] = None
+
+    # Directional Graph Modes k >= 1
+    for k in range(1, K):
+        c_k = centroids[k - 1]
+        p_k = slp[k]
+        w_k = slw[k]
+        s3d = project_slope(c_k, v1, v2, unc)
+        sgp = StructuralGraph(meta)
+        sgp.set_data(Vb)
+        ag = AttributeGraph(sgp, s3d, k, p_k, w_k)
+        Vr = app._spatial_norm(Vb)
+        Aa = Ab.copy()
+        Aa[:, 0] = Vr @ s3d.T
+        ag.set_data(Vb, Aa)
+        try:
+            _, ck = gft(b_tmp, ag)
+            coeffs_map[k] = ck
+        except Exception:
+            coeffs_map[k] = None
+
+    return ci, coeffs_map
+
+
+# ---------------------------------------------------------------------------
+# Viterbi Trellis & Markov Entropy
+# ---------------------------------------------------------------------------
+
+def run_viterbi(cost_mat, K, gamma, nw):
+    N = cost_mat.shape[0]
+    if gamma <= 1e-12:
+        # Pure unconstrained greedy RDO selection
+        return np.argmin(cost_mat, axis=1)
+
+    dp = np.zeros((N, K))
+    trace = np.zeros((N, K), dtype=int)
+    dp[0] = cost_mat[0]
+
+    for i in range(1, N):
+        w_i = nw[i]
+        cost_i = cost_mat[i]
+        for k in range(K):
+            pen = np.where(np.arange(K) != k, gamma * w_i, 0.0)
+            tot = dp[i - 1] + pen + cost_i[k]
+            prev_k = int(np.argmin(tot))
+            dp[i, k] = tot[prev_k]
+            trace[i, k] = prev_k
+
+    labels = np.zeros(N, dtype=int)
+    labels[-1] = int(np.argmin(dp[-1]))
+    for i in range(N - 2, -1, -1):
+        labels[i] = trace[i + 1, labels[i + 1]]
+    return labels
+
+
+def compute_markov_entropy(labels, K):
+    N = len(labels)
+    if N <= 1:
+        return 0.0
+    T = np.ones((K, K), dtype=float)  # Laplace prior
+    for i in range(1, N):
+        T[labels[i - 1], labels[i]] += 1.0
+    row_sums = T.sum(axis=1, keepdims=True)
+    P_trans = T / row_sums
+    counts = np.bincount(labels[:-1], minlength=K).astype(float) + 1.0
+    P_prior = counts / counts.sum()
+
+    H_cond = 0.0
+    for p in range(K):
+        for c in range(K):
+            pr = P_trans[p, c]
+            if pr > 1e-12:
+                H_cond -= P_prior[p] * pr * math.log2(pr)
+    return float(H_cond)
+
+
+# ---------------------------------------------------------------------------
+# Physical Bitstream Compression (PyRLGR + Order-1 Context Coder)
+# ---------------------------------------------------------------------------
+
+def compress_coefficients_pyrlgr(quantized_coeffs_list, scratch_dir):
+    if not PYRLGR_AVAILABLE:
+        flat = np.concatenate([c.flatten() for c in quantized_coeffs_list if c is not None])
+        return len(zlib.compress(flat.astype(np.int32).tobytes()))
+
+    os.makedirs(scratch_dir, exist_ok=True)
+    bin_path = os.path.join(scratch_dir, f"rlgr_temp_{os.getpid()}_{time.time_ns()}.bin")
+    if os.path.exists(bin_path):
+        os.remove(bin_path)
+
+    int_stream = []
+    for c in quantized_coeffs_list:
+        if c is not None:
+            int_stream.extend(c.flatten().astype(int).tolist())
+
+    enc = rlgr.file(bin_path, 1)
+    enc.rlgrWrite(int_stream, 0)
+    enc.close()
+
+    total_bytes = os.path.getsize(bin_path)
+    if os.path.exists(bin_path):
+        os.remove(bin_path)
+
+    return total_bytes
+
+
+def compress_mode_signals_order1(active_labels, K):
+    if len(active_labels) <= 1:
+        return 0
+    H_markov = compute_markov_entropy(active_labels, K)
+    total_bits = math.ceil(H_markov * len(active_labels))
+    return math.ceil(total_bits / 8.0)
+
+
+# ---------------------------------------------------------------------------
+# Main Benchmark Suite Execution
+# ---------------------------------------------------------------------------
+
+def run_e8_benchmark(db_path=None, overwrite=False):
+    if db_path is None:
+        db_path = os.path.join(REPO_ROOT, "results", "exp_e8_decoupled_frontiers.db")
+    scratch_dir = os.path.join(REPO_ROOT, "tmp", "e8_scratch")
+
+    log("=" * 95)
+    log("PCADC E8 BENCHMARK: Decoupled Frontiers (Continuity Ablation & Capacity Expansion)")
+    log(f"Database Target: {db_path} | Overwrite: {overwrite} | PyRLGR: {'AVAILABLE' if PYRLGR_AVAILABLE else 'UNAVAILABLE'}")
+    log("=" * 95)
+
+    init_db(db_path, overwrite=overwrite)
+    completed_runs = get_completed_runs(db_path)
+    if completed_runs:
+        log(f"[RESUME] Found {len(completed_runs)} already completed runs in database. They will be skipped.")
+
+    params = load_experiment_config(REPO_ROOT / "config/base_config.yaml")
+    target_pc_path = REPO_ROOT / params.sequential_params.point_cloud_path
+    log(f"Loading point cloud: {target_pc_path}")
+    pc = PointCloud.from_file(target_pc_path, "ply", params.pointcloud)
+    pc.transform_attributes(Colourist()._RGBtoYUV)
+    pc_V = pc.V.copy()
+    pc_A = pc.A.copy()
+    total_vox = len(pc_V)
+    log(f"Loaded point cloud: N_voxels = {total_vox:,}")
+
+    dm = params.sequential_params.decider_mode
+    lag = params.sequential_params.lagrange_proportional
+    dec_master = RLGRDecider(dm, lag, alpha_rlgr=0.5)
+
+    # 1. Morton Block Partition at macro parent level (B_p = 32)
+    t_start_part = time.time()
+    _, blocks_p = MortonBlockPartition().partition(pc, bsize=32)
+    N_p = len(blocks_p)
+    log(f"Partitioned point cloud into {N_p} parent blocks (B_p=32) in {time.time() - t_start_part:.2f}s")
+
+    # Extract macro parent tangent geometry & gradients
+    tangent_p = {}
+    for i, b in enumerate(blocks_p):
+        tangent_p[i] = extract_block_tangent(b, pc_V, pc_A)
+
+    g_raw_p = np.array([tangent_p[i]["g_raw"] for i in range(N_p)])
+    g_norm_p = np.array([tangent_p[i]["g_norm"] for i in range(N_p)])
+    nw_p = np.zeros(N_p)
+    for i in range(1, N_p):
+        nw_p[i] = abs(float(np.dot(tangent_p[i]["v3"], tangent_p[i - 1]["v3"])))
+
+    # Phase 1: Edge Filtering (tau_train = 50%)
+    tau_train_pct = 50.0
+    thresh_50 = float(np.percentile(g_raw_p, tau_train_pct))
+    edge_mask_p = g_raw_p >= thresh_50
+    log(f"Phase 1 Edge Filter (p50): {edge_mask_p.sum()}/{N_p} parent blocks ({100*edge_mask_p.sum()/N_p:.1f}%)")
+
+    # Pre-train Codebooks for K in {32, 24, 16, 12, 8, 4}
+    codebooks = {}
+    conn = sqlite3.connect(db_path)
+    c_db = conn.cursor()
+    for K_val in [32, 24, 16, 12, 8, 4]:
+        centroids, _ = spherical_kmeans(g_norm_p[edge_mask_p], K_val - 1, seed=42)
+        codebooks[K_val] = centroids
+        log(f"  [Codebook K={K_val:>2}] Trained {K_val-1} directional centroids on S^2")
+        for m_idx in range(K_val - 1):
+            c_db.execute("""
+                INSERT OR REPLACE INTO cluster_centroids (K, mode_idx, cx, cy, cz)
+                VALUES (?, ?, ?, ?, ?)
+            """, (K_val, m_idx + 1, centroids[m_idx][0], centroids[m_idx][1], centroids[m_idx][2]))
+    conn.commit()
+    conn.close()
+
+    # 2. Benchmark Matrix:
+    # Scale B=32: Sweep K in {32, 24, 16}, gamma in {0.0, 0.001, 0.005} across Q in {24, 32, 48, 64}
+    # Scale B=16: Sweep K in {24, 16, 12}, gamma in {0.0, 0.001, 0.005} across Q in {24, 32, 48, 64}
+    experiments = [
+        (32, 32), (32, 24), (32, 16),
+        (16, 24), (16, 16), (16, 12)
+    ]
+    Q_steps = [24, 32, 48, 64]
+    gammas = [0.0, 0.001, 0.005]
+    alpha = 100.0  # Optimal gating scale from E7
+
+    total_runs = len(experiments) * len(Q_steps) * len(gammas)
+    run_idx = 0
+    log(f"\nStarting E8 Benchmark Suite across {total_runs} operating points...\n")
+
+    for B_c, K_locked in experiments:
+        section(f"CONFIG: Subblock Scale B_c = {B_c} | Capacity K = {K_locked}")
+        centroids_3d = codebooks[K_locked]
+
+        # Partition child subblocks
+        t_cpart = time.time()
+        _, blocks_c = MortonBlockPartition().partition(pc, bsize=B_c)
+        N_c = len(blocks_c)
+        log(f"Partitioned {N_c} child blocks (B_c={B_c}) in {time.time() - t_cpart:.2f}s")
+
+        # Map parent block to children
+        parent_to_children = build_parent_child_map(blocks_p, blocks_c, pc_V, 32)
+        child_to_parent = {}
+        for pi, c_list in parent_to_children.items():
+            for ci in c_list:
+                child_to_parent[ci] = pi
+
+        # Extract child geometry
+        t_child_geom = time.time()
+        child_tangents = [extract_block_tangent(b, pc_V, pc_A) for b in blocks_c]
+        log(f"Extracted geometry for {N_c} child blocks in {time.time() - t_child_geom:.2f}s")
+
+        for Q in Q_steps:
+            all_gammas_done = all((B_c, K_locked, Q, g, alpha) in completed_runs for g in gammas)
+            if all_gammas_done:
+                log(f"[SKIP] (B_c={B_c}, K={K_locked}, Q={Q}) All gamma runs already completed.")
+                run_idx += len(gammas)
+                continue
+
+            t_q_start = time.time()
+            dec_master._set_vars(Q)
+
+            # Causal Reconstructed Attributes A_hat for Gating
+            A_hat_Y = np.round(pc_A[:, 0] / Q) * Q
+            parent_variances = np.array([
+                float(np.var(A_hat_Y[b.metadata.start:b.metadata.end]))
+                if b.metadata.end > b.metadata.start else 0.0
+                for b in blocks_p
+            ])
+
+            # Phase 2: Continuous Golden-Section Adapter Optimization
+            t_grid_start = time.time()
+            log(f"\n  >> [B_c={B_c:>2}, Q={Q:>2}, K={K_locked:>2}] Phase 2: Continuous adapter search...")
+
+            grad_thresh_c = float(np.percentile([t["g_raw"] for t in child_tangents], 50.0))
+            active_parents = np.where(parent_variances >= 50.0)[0]
+            sims = np.abs(g_norm_p @ centroids_3d.T)
+            voronoi_parents = np.argmax(sims, axis=1)
+
+            slp = np.concatenate([[0.0], np.full(K_locked - 1, 0.25)])
+            slw = np.concatenate([[1.0], np.full(K_locked - 1, 0.35)])
+
+            # Build sample blocks pool for each mode k in [1, K_locked-1]
+            mode_tasks = []
+            for k in range(1, K_locked):
+                c_idx = k - 1
+                k_parent_blocks = active_parents[voronoi_parents[active_parents] == c_idx]
+                if len(k_parent_blocks) < 3:
+                    top_idx = np.argsort(sims[:, c_idx])[::-1][:min(30, len(active_parents))]
+                    k_parent_blocks = active_parents[top_idx]
+
+                sample_blocks = []
+                for pi in k_parent_blocks:
+                    for ci in parent_to_children.get(pi, []):
+                        if child_tangents[ci]["g_raw"] >= grad_thresh_c:
+                            b = blocks_c[ci]
+                            b.init_data(pc_V, pc_A)
+                            sample_blocks.append((
+                                b.Vblock.copy(), b.Ablock.copy(), b.metadata,
+                                child_tangents[ci]["v1"], child_tangents[ci]["v2"],
+                                child_tangents[ci]["g_raw"]
+                            ))
+                            b.clear_data()
+                            if len(sample_blocks) >= 30:
+                                break
+                    if len(sample_blocks) >= 30:
+                        break
+
+                mode_tasks.append((k, sample_blocks, centroids_3d[c_idx], dm, lag, Q))
+
+            # Run continuous adapter optimization in parallel across all CPU cores
+            adapter_results = Parallel(n_jobs=-1, backend="loky")(
+                delayed(_worker_adapter_optimization)(*task)
+                for task in mode_tasks
+            )
+
+            conn = sqlite3.connect(db_path)
+            c_db = conn.cursor()
+            for k, (p_opt, w_opt) in adapter_results:
+                slp[k] = p_opt
+                slw[k] = w_opt
+                c_db.execute("""
+                    INSERT OR REPLACE INTO mode_adapters (child_b, q_step, K, mode_idx, s_lp, s_lw)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (B_c, Q, K_locked, k, p_opt, w_opt))
+            conn.commit()
+            conn.close()
+            log(f"  Learned continuous adapters for {K_locked-1} directional modes in parallel ({time.time() - t_grid_start:.2f}s)")
+
+            # Compute Child Raw Transform Coefficients in Parallel
+            t_coeff_start = time.time()
+            log(f"  Computing child GFT coefficients across {N_c} sub-blocks...")
+            child_data = []
+            for ci, b in enumerate(blocks_c):
+                b.init_data(pc_V, pc_A)
+                child_data.append((b.Vblock.copy(), b.Ablock.copy()))
+                b.clear_data()
+
+            coeff_results = Parallel(n_jobs=-1, backend="loky")(
+                delayed(_worker_block_coeffs)(
+                    ci, child_data[ci][0], child_data[ci][1], blocks_c[ci].metadata,
+                    child_tangents[ci]["v1"], child_tangents[ci]["v2"],
+                    child_tangents[ci]["g_raw"], centroids_3d, slp, slw, K_locked
+                )
+                for ci in range(N_c)
+            )
+            coeff_results.sort(key=lambda x: x[0])
+            log(f"  Solved GFT for all child blocks in {time.time() - t_coeff_start:.2f}s")
+
+            # Parent Cost & Rate Matrix Aggregation
+            parent_cost_mat = np.zeros((N_p, K_locked))
+            child_coeffs_dict = {ci: coeff_results[ci][1] for ci in range(N_c)}
+
+            for pi in range(N_p):
+                c_indices = parent_to_children.get(pi, [])
+                for k in range(K_locked):
+                    c_sum = 0.0
+                    for ci in c_indices:
+                        cs = child_coeffs_dict[ci].get(k)
+                        cost_val, _, _ = dec_master._RDcost(cs)
+                        c_sum += cost_val
+                    parent_cost_mat[pi, k] = c_sum
+
+            # Real Baseline Bitstream (Luminance Channel)
+            base_quant_coeffs = [
+                np.round(np.abs(child_coeffs_dict[ci][0][:, 0:1]) / Q) if child_coeffs_dict[ci][0] is not None else None
+                for ci in range(N_c)
+            ]
+            base_real_bytes = compress_coefficients_pyrlgr(base_quant_coeffs, scratch_dir)
+            base_real_bpv = (base_real_bytes * 8.0) / total_vox
+
+            # Evaluate Gamma Continuity Sweeps
+            for gamma_val in gammas:
+                run_idx += 1
+                t_run_start = time.time()
+
+                if (B_c, K_locked, Q, gamma_val, alpha) in completed_runs:
+                    continue
+
+                # Dynamic Gating Rule
+                tau_gate = alpha * ((Q / 32.0) ** 2)
+                active_mask = parent_variances >= tau_gate
+                n_active = int(active_mask.sum())
+                n_gated = N_p - n_active
+                gated_pct = 100.0 * n_gated / N_p
+                gft_cov_pct = 100.0 * n_active / N_p
+
+                gated_cost = parent_cost_mat.copy()
+                for pi in range(N_p):
+                    if not active_mask[pi]:
+                        gated_cost[pi, 1:] = 1e18
+
+                # Viterbi Trellis Optimization with Scaled Gamma
+                gamma_q = gamma_val * ((Q / 24.0) ** 2)
+                mode_sequence = run_viterbi(gated_cost, K_locked, gamma_q, nw_p)
+
+                # Mode statistics
+                n_switches = int(np.sum(mode_sequence[1:] != mode_sequence[:-1]))
+                n_unique_modes = len(np.unique(mode_sequence))
+
+                # Real Physical Bitstream Accounting
+                selected_quant_coeffs = []
+                pcadc_qerror = 0.0
+                for ci in range(N_c):
+                    pi = child_to_parent.get(ci, 0)
+                    sel_k = mode_sequence[pi]
+                    cs = child_coeffs_dict[ci].get(sel_k)
+                    if cs is not None:
+                        q_c = np.round(np.abs(cs[:, 0:1]) / Q)
+                        selected_quant_coeffs.append(q_c)
+                        pcadc_qerror += np.sum((np.abs(cs[:, 0]) - q_c[:, 0] * Q) ** 2)
+                    else:
+                        selected_quant_coeffs.append(None)
+
+                real_tr_bytes = compress_coefficients_pyrlgr(selected_quant_coeffs, scratch_dir)
+                real_tr_bpv = (real_tr_bytes * 8.0) / total_vox
+
+                if n_active > 0:
+                    act_labels = np.array([mode_sequence[pi] for pi in range(N_p) if active_mask[pi]])
+                    H_markov = compute_markov_entropy(act_labels, K_locked)
+                    real_oh_bytes = compress_mode_signals_order1(act_labels, K_locked)
+                    real_oh_bpv = (real_oh_bytes * 8.0) / total_vox
+                else:
+                    H_markov, real_oh_bytes, real_oh_bpv = 0.0, 0, 0.0
+
+                real_net_bytes = real_tr_bytes + real_oh_bytes
+                real_net_bpv = real_tr_bpv + real_oh_bpv
+                delta_real_bpv = real_net_bpv - base_real_bpv
+                delta_real_pct = (delta_real_bpv / (base_real_bpv + 1e-12)) * 100.0
+
+                pcadc_mse = pcadc_qerror / total_vox
+                pcadc_psnr = 10.0 * math.log10((255.0 ** 2) / (pcadc_mse + 1e-12))
+
+                # Overhead to Savings Ratio
+                transform_savings = max(0.0, base_real_bpv - real_tr_bpv)
+                real_oh_sav_ratio = real_oh_bpv / transform_savings if transform_savings > 1e-8 else 99.0
+
+                run_duration = time.time() - t_run_start
+                status_flag = "GAIN" if delta_real_bpv < 0 else "LOSS"
+
+                log(f"  [{run_idx:02d}/{total_runs}] B={B_c:>2}, Q={Q:>2}, K={K_locked:>2}, γ={gamma_val:.3f} | "
+                    f"BaseReal={base_real_bpv:.5f} | NetReal={real_net_bpv:.5f} | "
+                    f"ΔReal={delta_real_bpv*1000:>+7.3f} mBPV ({delta_real_pct:>+6.2f}%) | "
+                    f"OH:Sav={real_oh_sav_ratio:.3f} | Sw={n_switches:>3} | "
+                    f"[{status_flag}] ({run_duration:.1f}s)")
+
+                # Save Run Telemetry to Database
+                conn = sqlite3.connect(db_path)
+                c_db = conn.cursor()
+                c_db.execute("""
+                    INSERT OR REPLACE INTO benchmark_runs (
+                        timestamp, child_b, K, q_step, gamma, alpha, tau_gate,
+                        n_parent_blocks, n_child_blocks, total_voxels,
+                        n_active_parents, n_gated_parents, gated_parent_pct, active_gft_coverage_pct,
+                        trellis_mode_switches, unique_modes_selected,
+                        baseline_real_bytes, pcadc_real_tr_bytes, pcadc_real_oh_bytes, pcadc_real_net_bytes,
+                        baseline_real_bpv, pcadc_real_transform_bpv, pcadc_real_oh_bpv,
+                        pcadc_real_net_bpv, real_delta_bpv, real_delta_pct, real_oh_savings_ratio,
+                        psnr_db, markov_entropy_bps, runtime_seconds
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    datetime.datetime.now().isoformat(), B_c, K_locked, Q, gamma_val, alpha, tau_gate,
+                    N_p, N_c, total_vox,
+                    n_active, n_gated, gated_pct, gft_cov_pct,
+                    n_switches, n_unique_modes,
+                    base_real_bytes, real_tr_bytes, real_oh_bytes, real_net_bytes,
+                    base_real_bpv, real_tr_bpv, real_oh_bpv,
+                    real_net_bpv, delta_real_bpv, delta_real_pct, real_oh_sav_ratio,
+                    pcadc_psnr, H_markov, run_duration
+                ))
+                conn.commit()
+                conn.close()
+
+    log("\n" + "=" * 95)
+    log(f"PCADC E8 BENCHMARK COMPLETE. All telemetry saved to: {db_path}")
+    log("=" * 95)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="PCADC E8: Decoupled Frontiers")
+    parser.add_argument("--db-path", type=str, default=None, help="Target SQLite DB path")
+    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing DB")
+    args = parser.parse_args()
+
+    run_e8_benchmark(db_path=args.db_path, overwrite=args.overwrite)
