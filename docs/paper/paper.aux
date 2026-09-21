@@ -1,0 +1,62 @@
+\relax 
+\citation{zhang2014point}
+\citation{pavez2020region}
+\citation{dequeiroz2016raht}
+\citation{graziosi2020overview}
+\citation{zhang2014point}
+\citation{pavez2020region}
+\citation{dequeiroz2016raht}
+\citation{graziosi2020overview}
+\citation{egilmez2017graphlearning}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{1}\protected@file@percent }
+\citation{quach2019learning,sheng2021deeppcac,fang2022_3dac}
+\citation{dequeiroz2016raht}
+\citation{zhang2014point}
+\citation{sheng2021deeppcac}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Attribute-compression methods compared on four axes.\relax }}{2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:related}{{I}{2}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Method}{2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Pipeline Overview}{2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Directional Codebook and Self-Loop Graphs}{2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Two-level hierarchical partition (2D cross-section): a parent block of side $B_p$ contains $(B_p/B_c)^3$ children of side $B_c$ (ratio 4 shown: 16 children in this slice). Children are traversed in Morton order (blue path/numbering); the mode $M_p$ is decided and signaled once per parent and inherited by every child. Colors as in Fig.\nobreakspace  {}3\hbox {}.\relax }}{2}\protected@file@percent }
+\newlabel{fig:hierarchy}{{1}{2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Offline Training and RDO Calibration}{2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Mode Selection: Gating and Viterbi}{2}\protected@file@percent }
+\newlabel{sec:mode-selection}{{\mbox  {III-D}}{2}}
+\citation{bjontegaard2001calculation}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces PCADC pipeline overview. Blue: geometry-only, lossless stages. Orange: stages that depend on the attribute signal or its approximation. Violet: parameters trained once offline and frozen. Red: per-block decision. Teal: entropy coding and bitstream. Same color code as Figs.\nobreakspace  {}1\hbox {}--3\hbox {}.\relax }}{3}\protected@file@percent }
+\newlabel{fig:pipeline}{{2}{3}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Operational pipeline for each frame $t\geq 1$, with codebook and self-loops already frozen. Gating is applied before any cost is evaluated; for active parents the cost is computed for \emph  {every} candidate mode, and only then does the Viterbi trellis choose the mode sequence -- the graph is never reconstructed for the winning mode. Colors as in Fig.\nobreakspace  {}1\hbox {}.\relax }}{3}\protected@file@percent }
+\newlabel{fig:operational}{{3}{3}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Experimental Setup}{3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces RD curves for the same subject (\textit  {phil}) at $B_c=16$: depth 9 (left) vs.\ depth 10 (right), across trained codebook sizes $K$. The gap over the structural baseline (dashed black) is wider at depth 9 -- the density/depth asymmetry discussed in Sec.\nobreakspace  {}VI\hbox {}.\relax }}{4}\protected@file@percent }
+\newlabel{fig:rd}{{4}{4}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Results}{4}\protected@file@percent }
+\newlabel{sec:results}{{V}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Rate-Distortion Curves}{4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}BD-Rate Summary}{4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Signaling Overhead and Its Driver}{4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces BD-Rate / BD-PSNR at best $B_c$, $K{=}24$ (mean$\pm $std over evaluation frames). Boldface: best overall result.\relax }}{4}\protected@file@percent }
+\newlabel{tab:bdrate}{{II}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Oracle Ceiling}{4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Discussion}{4}\protected@file@percent }
+\newlabel{sec:discussion}{{VI}{4}}
+\bibcite{zhang2014point}{1}
+\bibcite{pavez2020region}{2}
+\bibcite{dequeiroz2016raht}{3}
+\bibcite{graziosi2020overview}{4}
+\bibcite{egilmez2017graphlearning}{5}
+\bibcite{quach2019learning}{6}
+\bibcite{sheng2021deeppcac}{7}
+\bibcite{fang2022_3dac}{8}
+\bibcite{bjontegaard2001calculation}{9}
+\bibcite{dhillon2001concept}{10}
+\bibcite{viterbi1967error}{11}
+\bibcite{marpe2003cabac}{12}
+\bibcite{ortega1998rate}{13}
+\bibcite{ortega2022gsp}{14}
+\bibcite{loop2016microsoft}{15}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Conclusion}{5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{5}\protected@file@percent }
