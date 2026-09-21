@@ -1,8 +1,24 @@
-\babel@toc {spanish}{}\relax 
+\babel@toc {spanish}{}
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {3.1}{\ignorespaces Relación entre parámetros $\alpha $ y $\beta $ con las transformadas seleccionadas}}{22}{table.caption.15}%
+\contentsline {table}{\numberline {3.1}{\ignorespaces Relación entre parámetros $\alpha $ y $\beta $ con las transformadas seleccionadas\relax }}{26}{table.caption.14}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Comparativa de métodos de compresión de atributos para PCC revisados en este capítulo.\relax }}{26}{table.caption.15}%
 \addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Parámetros reales del benchmark E10.\relax }}{56}{table.caption.28}%
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {5.1}{\ignorespaces Comparativa de Métricas Bjontegaard: Absolute Oracle vs. Linear Oracle}}{45}{table.caption.27}%
+\contentsline {table}{\numberline {5.1}{\ignorespaces Comparativa de Métricas Bjontegaard frente al baseline estructural. Ambos oráculos con bits RLGR reales, sin overhead de señalización (metodología en la Sección~\ref {sec:oracle_real_rd}).\relax }}{58}{table.caption.30}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces BD-Rate y BD-PSNR multi-\textit {frame} a razón $B_p/B_c=1$, $K=24$ (media $\pm $ std entre \textit {frames}). Razón 1: el bloque hijo \emph {es} el bloque padre -- solo posible en depth-9 ($B_p=16$, $B_c=16$); depth-10/8iVFB ($B_p=32$) no tiene un $B_c$ que dé razón 1.\relax }}{69}{table.caption.35}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces BD-Rate y BD-PSNR multi-\textit {frame} a razón $B_p/B_c=2$, $K=24$. $B_c=16$ para 8iVFB/depth-10 ($B_p=32$), $B_c=8$ para depth-9 ($B_p=16$).\relax }}{70}{table.caption.36}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces BD-Rate y BD-PSNR multi-\textit {frame} a razón $B_p/B_c=4$, $K=24$. $B_c=8$ para 8iVFB/depth-10, $B_c=4$ para depth-9.\relax }}{70}{table.caption.37}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces BD-Rate y BD-PSNR multi-\textit {frame} a razón $B_p/B_c=8$, $K=24$, $B_c=4$. Solo 8iVFB/depth-10 ($B_p=32$) alcanza esta razón; depth-9 ($B_p=16$) no tiene un $B_c$ válido que la produzca.\relax }}{71}{table.caption.38}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces BD-Rate multi-\textit {frame} ``clásica'' a $B_c=4$, todos los $K$ evaluados (media $\pm $ std entre \textit {frames}; $\dagger $: sin cobertura multi-\textit {frame} suficiente en esa celda, valor de un único \textit {frame}, \texttt {frame\_idx}=1). \texttt {sarah10} no tiene $K=30$.\relax }}{72}{table.caption.39}%
+\contentsline {table}{\numberline {5.7}{\ignorespaces BD-Rate multi-\textit {frame} ``clásica'' a $B_c=8$, todos los $K$ evaluados. Misma convención de $\dagger $ y celdas vacías que la Tabla~\ref {tab:e10_bd_classic_bc4}.\relax }}{72}{table.caption.40}%
+\contentsline {table}{\numberline {5.8}{\ignorespaces BD-Rate multi-\textit {frame} ``clásica'' a $B_c=16$, todos los $K$ evaluados. Misma convención de $\dagger $ y celdas vacías que la Tabla~\ref {tab:e10_bd_classic_bc4}.\relax }}{73}{table.caption.41}%
+\contentsline {table}{\numberline {5.9}{\ignorespaces BD-Rate ($K=24$, frame\_idx=1) para los 5 sujetos con ambas profundidades, comparados a razón padre:hijo equivalente ($B_p/B_c$) en vez de a igual $B_c$ nominal.\relax }}{76}{table.caption.44}%
+\contentsline {table}{\numberline {5.10}{\ignorespaces Similitud coseno entre cada centroide $K=4$ y su vecino más cercano en el libro de códigos $K=24$ de la misma secuencia (peor y mejor caso de los 3 centroides direccionales de $K=4$).\relax }}{79}{table.caption.47}%
+\contentsline {table}{\numberline {5.11}{\ignorespaces Convergencia del k-means esférico y resumen de la búsqueda de adaptador, las 14 secuencias, $K=24$. Las 23 direcciones convergen en el 100\% de los casos (estabilidad exacta de asignación). \textbf {Negrita}: extremos de cada columna.\relax }}{82}{table.caption.50}%
+\contentsline {table}{\numberline {5.12}{\ignorespaces Entropía del índice de modo (bits/bloque, corrección Miller--Madow), información mutua entre bloques adyacentes, razón entre el overhead CABAC real y el piso teórico de orden 1, y fracción de la entropía total explicada por el estado de gating, todas sobre el subconjunto de bloques activos ($B_c=16$ o $B_c=8$ según corresponda, $K=24$, $Q=24$, frame\_idx=1).\relax }}{86}{table.caption.55}%
+\contentsline {table}{\numberline {5.13}{\ignorespaces Tiempo de codificación por \textit {frame} (s), $B_p=32$ (8iVFB + MVUB depth-10 combinadas), por $(B_c, K)$.\relax }}{91}{table.caption.65}%
+\contentsline {table}{\numberline {5.14}{\ignorespaces Tiempo de codificación por \textit {frame} (s), $B_p=16$ (MVUB depth-9), por $(B_c, K)$.\relax }}{92}{table.caption.66}%
+\addvspace {10\p@ }

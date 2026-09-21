@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tesis LaTeX - Vista en Vivo</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
+        #header { height: 40px; background: #1a252f; color: #ecf0f1; display: flex; align-items: center; justify-content: space-between; padding: 0 15px; }
+        #status { font-size: 14px; color: #2ecc71; font-weight: bold; }
+        #frame { width: 100%; height: calc(100% - 40px); border: none; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <span>📄 Tesis: Compresión de Nubes de Puntos</span>
+        <span id="status">● Sincronizado en vivo</span>
+    </div>
+    <iframe id="frame" src="/main.pdf#view=FitH"></iframe>
+
+    <script>
+        let lastModified = null;
+        const frame = document.getElementById('frame');
+        const status = document.getElementById('status');
+
+        async function checkUpdate() {
+            try {
+                const res = await fetch('/main.pdf', { method: 'HEAD', cache: 'no-cache' });
+                const cur = res.headers.get('Last-Modified') || res.headers.get('ETag');
+                if (lastModified && cur && cur !== lastModified) {
+                    status.style.color = '#f39c12';
+                    status.innerText = '⚡ Actualizando PDF...';
+                    frame.src = '/main.pdf?t=' + Date.now() + '#view=FitH';
+                    setTimeout(() => {
+                        status.style.color = '#2ecc71';
+                        status.innerText = '● Sincronizado (' + new Date().toLocaleTimeString() + ')';
+                    }, 800);
+                }
+                lastModified = cur;
+            } catch (e) {}
+        }
+        setInterval(checkUpdate, 1500);
+    </script>
+</body>
+</html>

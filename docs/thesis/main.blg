@@ -1,4 +1,4 @@
-This is BibTeX, Version 0.99d (TeX Live 2023/Debian)
+This is BibTeX, Version 0.99d (TeX Live 2019/Debian)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: natnumurl.bst
@@ -10,51 +10,48 @@ Warning--string name "sep" is undefined
 Warning--string name "mar" is undefined
 --line 101 of file library.bib
 Warning--string name "oct" is undefined
---line 129 of file library.bib
+--line 132 of file library.bib
 Warning--string name "jun" is undefined
---line 143 of file library.bib
-Warning--I didn't find a database entry for "emerging_mpeg"
-Warning--vacio journal en mackay_nodate
-Warning--vacio year en mackay_nodate
-You've used 15 entries,
+--line 146 of file library.bib
+You've used 31 entries,
             1986 wiz_defined-function locations,
-            545 strings with 6156 characters,
-and the built_in function-call counts, 3611 in all, are:
-= -- 357
-> -- 112
-< -- 0
-+ -- 45
-- -- 30
-* -- 273
-:= -- 487
-add.period$ -- 22
-call.type$ -- 15
-change.case$ -- 14
+            655 strings with 9583 characters,
+and the built_in function-call counts, 8969 in all, are:
+= -- 938
+> -- 261
+< -- 1
++ -- 102
+- -- 71
+* -- 697
+:= -- 1175
+add.period$ -- 39
+call.type$ -- 31
+change.case$ -- 29
 chr.to.int$ -- 0
-cite$ -- 17
-duplicate$ -- 171
-empty$ -- 395
-format.name$ -- 30
-if$ -- 884
+cite$ -- 31
+duplicate$ -- 426
+empty$ -- 899
+format.name$ -- 71
+if$ -- 2202
 int.to.chr$ -- 0
-int.to.str$ -- 15
-missing$ -- 13
-newline$ -- 88
-num.names$ -- 15
-pop$ -- 72
+int.to.str$ -- 31
+missing$ -- 27
+newline$ -- 169
+num.names$ -- 33
+pop$ -- 114
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 102
+skip$ -- 308
 stack$ -- 0
-substring$ -- 171
-swap$ -- 52
-text.length$ -- 0
+substring$ -- 635
+swap$ -- 179
+text.length$ -- 1
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
-warning$ -- 2
-while$ -- 33
-width$ -- 17
-write$ -- 178
-(There were 8 warnings)
+warning$ -- 0
+while$ -- 88
+width$ -- 33
+write$ -- 377
+(There were 5 warnings)
