@@ -1,7 +1,7 @@
 # Ignore pyenv local version file
 .python-version
 *__pycache__
-.pyc
+*.pyc
 
 # Ignore
 # Ignore local virtual environment
@@ -17,5 +17,11 @@ results/
 
 # Ignore logs folder
 logs/
+
+# Ignore large/regenerable experiment artifacts
+res/frames/
+scripts/_qualitative_cache/
+experiments/*.log
+experiments/*.db
 
 
