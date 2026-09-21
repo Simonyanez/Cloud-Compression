@@ -3,7 +3,10 @@ from .transforms import CoeffsContainer
 from .graph import GraphMetadata
 from .clusterer import Codebook
 from dataclasses import dataclass
-from line_profiler import profile
+try:
+    profile
+except NameError:
+    def profile(f): return f  # no-op outside kernprof
 import numpy as np
 import logging
 import os

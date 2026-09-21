@@ -2,7 +2,10 @@
 from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
-from line_profiler import profile
+try:
+    profile
+except NameError:
+    def profile(f): return f  # no-op outside kernprof
 # from graph.create import *
 from .graph import *
 from .blocks import *
