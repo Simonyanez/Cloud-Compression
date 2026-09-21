@@ -1,0 +1,100 @@
+\chapter{Conclusiones}
+\label{sec:conclusiones}
+
+Esta tesis partió de una hipótesis concreta: que la propia señal de color de una nube de puntos
+contiene información suficiente para construir transformadas gráficas más compactas que las que
+se obtienen de la geometría sola, y que esa información puede aprovecharse sin que el costo de
+comunicarla al decodificador anule la ganancia. El objetivo general fue, en consecuencia,
+desarrollar un algoritmo determinístico de compresión de atributos, dependiente de la señal y
+superior a su versión puramente volumétrica. Ese objetivo se cumple en su sentido estricto.
+PCADC -- un libro de códigos direccional entrenado fuera de línea mediante k-means esférico
+sobre $\mathbb{S}^2$, auto-lazos calibrados por optimización tasa-distorsión, selección de modo
+por bloque padre mediante \textit{gating} y trellis de Viterbi, y señalización real del índice
+de modo -- reduce el BD-Rate en $-2.18\%$ promedio sobre las 14 secuencias evaluadas (rango
+$-1.39\%$ a $-3.91\%$ según la secuencia, Sección~\ref{sec:e10_bd_summary}) frente a la misma
+transformada gráfica sin auto-lazos, sin ningún punto de operación en que sea peor que ella, y
+con un costo de señalización que nunca supera el $1.09\%$ del flujo de bits. Es un algoritmo
+determinístico, exactamente invertible, cuyo decodificador reconstruye grafo y transformada sin
+acceso a la señal de color. Toda la evidencia es una comparación contra la propia línea base
+estructural, no contra un códec de referencia externo; la ganancia demostrada es la del
+mecanismo de adaptación por señal, y esa es la afirmación que este trabajo sostiene.
+
+Los análisis del Capítulo de Resultados permiten caracterizar esa ganancia más allá del
+promedio. En primer lugar, depende de la densidad de puntos y no de la etiqueta de profundidad:
+las secuencias de profundidad 9 ganan sistemáticamente más ($-2.98\%$) que las de profundidad
+10 ($-1.74\%$), la asimetría persiste al comparar a razón padre:hijo equivalente
+(Sección~\ref{sec:e10_scale_ratio}), y el tamaño de la nube predice el desempeño mejor que la
+profundidad nominal (Sección~\ref{sec:e10_driver_corr}). En segundo lugar, la ganancia crece
+con la capacidad $K$ del libro de códigos en promedio y sin saturar hasta $K=24$, pero no de
+forma uniforme: cerca de la mitad de las secuencias alcanza su óptimo en $K=24$ y no en $K=30$,
+y una capacidad mayor amplifica la dispersión entre \textit{frames}
+(Sección~\ref{sec:e10_k_sweep}). En tercer lugar, el overhead de señalización, además de
+acotado, es informativo: es el correlato más fuerte de la ganancia ($r=-0.88$), de modo que las
+secuencias que más gastan en señalizar son las que más ganan, y su comportamiento frente al
+paso de cuantización se explica directamente por la barrera de \textit{gating}
+(Sección~\ref{sec:mode_selection}). Por último, el entrenamiento se comporta como se esperaba:
+el k-means esférico converge en todos los casos, las direcciones dominantes son estables entre
+capacidades, y la calibración de auto-lazos extrae ganancia adicional con un número fijo y
+pequeño de evaluaciones (Sección~\ref{sec:e10_codebook_dirs}). La inspección cualitativa es
+coherente con lo anterior: no hay artefactos visibles y el error se redistribuye sobre la
+superficie según la orientación del gradiente local, más que reducirse uniformemente
+(Sección~\ref{sec:e10_qualitative}).
+
+La observación más importante del trabajo concierne al compromiso entre adaptación y
+señalización, y explica la distancia entre el techo teórico y el sistema real. Los oráculos de
+la Sección~\ref{sec:oracle_upper_bounds} muestran que el mecanismo de auto-lazos es más
+poderoso mientras más fina es la partición: hasta $-17.31\%$ en bloques de lado 4, con
+conocimiento perfecto de la señal y sin señalizar nada. El sistema completo obtiene su mejor
+desempeño en el régimen opuesto, con bloques hijo de lado 16, y en bloques de lado 4 apenas
+supera la línea base. La razón no es que la adaptación deje de funcionar en bloques pequeños,
+sino que una única decisión por bloque padre -- necesaria para acotar la señalización -- se
+hereda a hijos cada vez más lejanos de la escala en que se tomó. El método captura hoy una
+fracción del techo porque paga la señalización con resolución de decisión, y esa distancia
+entre el nivel en que se decide y el nivel en que se transforma es su principal limitante y,
+al mismo tiempo, el lugar donde queda la ganancia por encontrar. Dentro de ese compromiso,
+varias decisiones de diseño quedan respaldadas por los datos: el \textit{gating} previo por
+varianza reduce la señalización sin afectar la ganancia entre secuencias; la continuidad
+espacial de los modos, explotada por el trellis y por el contexto del codificador de índices,
+es una redundancia real; y la asimetría con que se calibran los auto-lazos -- una malla gruesa
+para la fracción de nodos, un refinamiento fino solo para el peso -- coincide con la
+distribución bimodal de los parámetros óptimos observada en los oráculos.
+
+En lo metodológico, tres decisiones resultaron determinantes. La primera fue desacoplar el
+entrenamiento: la aproximación inicial, una optimización evolutiva conjunta de dirección y
+auto-lazos en cinco dimensiones, se reemplazó por un esquema en dos etapas
+(Sección~\ref{sec:training_stage}) que es más simple, mucho más barato y, sobre todo,
+evaluable a la escala de 14 secuencias, algo que la optimización conjunta nunca alcanzó; la
+complejidad adicional no era necesaria para este problema. La segunda fue medir siempre con
+codificación entrópica real, incluyendo el overhead, y sobre la curva tasa-distorsión completa
+en vez de en un punto: solo así se distingue una ganancia de BD-Rate consistente de una
+diferencia de PSNR que, a paso de cuantización fijo, es una fracción de decibel. La tercera fue
+acotar antes de construir: los oráculos establecieron que existía ganancia que perseguir y
+revelaron que una aproximación plana de la luminancia guía mejor al grafo que la luminancia
+misma, lo que orientó todo el diseño del libro de códigos direccional.
+
+Las limitaciones que corresponde reconocer son las que se derivan de las decisiones de diseño.
+La decisión de modo se toma una vez por bloque padre y se hereda a todos sus hijos, y el tamaño
+del padre queda fijado por la profundidad de la secuencia; esa elección acota la señalización
+al costo ya descrito. El libro de códigos se entrena sobre un único \textit{frame} y por
+secuencia, y su capacidad es discreta ($K\leq30$), con la fracción de auto-lazos restringida a
+tres valores; se gana simplicidad y reproducibilidad a cambio de una aproximación de la
+dirección de gradiente que deja ganancia sobre la mesa. Solo se codifica el canal de luminancia,
+una práctica estándar que aquí deja fuera de la evaluación a la crominancia. Y la calibración
+de los auto-lazos es costosa en secuencias densas -- entre 5.5 y 50 horas por secuencia en
+profundidad 10, frente a menos de 30 minutos en profundidad 9
+(Sección~\ref{sec:e10_multiframe_compute}) --, un costo que se paga una sola vez pero que
+condiciona la escala a la que el método puede evaluarse.
+
+Esas mismas limitaciones señalan dónde el método aún tiene que encontrar su mejor desempeño. La
+línea más prometedora es una señalización multirresolución, en la que solo los hijos que lo
+justifiquen por costo reciban un modo propio, acercando el nivel de decisión al nivel de
+transformada con el margen de overhead disponible; le siguen aislar cuánto de la ganancia
+proviene de la diversidad direccional frente al auto-lazo en sí, situar el resultado en una
+escala externa mediante un códec de referencia, y verificar la generalización del libro de
+códigos sobre secuencias completas y entre secuencias del mismo sujeto. La hipótesis inicial se
+sostiene: la señal de color puede guiar la estructura del grafo con un costo de señalización
+despreciable y producir una ganancia consistente sobre la transformada puramente estructural.
+La contribución de esta tesis no está en la magnitud de esa ganancia, que es modesta frente al
+techo que los oráculos demuestran alcanzable, sino en haber construido y medido un mecanismo
+interpretable que convierte información de la señal en compresión, y en haber identificado con
+precisión dónde se pierde el resto.
