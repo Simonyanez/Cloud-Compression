@@ -94,44 +94,46 @@ def init_db(db_path: Path):
 # LOCAL TANGENT GEOMETRY EXTRACTOR
 # ===========================================================================
 
+def _worker_pca_tangent(block_id, V):
+    v1 = np.array([1.0, 0.0, 0.0])
+    v2 = np.array([0.0, 1.0, 0.0])
+    v3 = np.array([0.0, 0.0, 1.0])
+    V_centered = np.zeros_like(V)
+    
+    if V.shape[0] >= 4:
+        V_centered = V - np.mean(V, axis=0)
+        cov = np.dot(V_centered.T, V_centered) / (V.shape[0] - 1)
+        try:
+            eigenvalues, eigenvectors = np.linalg.eigh(cov)
+            v1 = eigenvectors[:, 2]
+            v2 = eigenvectors[:, 1]
+            v3 = eigenvectors[:, 0]
+        except np.linalg.LinAlgError:
+            pass
+            
+    X_tangent = np.column_stack((V_centered @ v1, V_centered @ v2))
+    return {
+        "block_id": block_id,
+        "v1": v1,
+        "v2": v2,
+        "v3": v3,
+        "X_tangent": X_tangent
+    }
+
+
 def extract_block_tangent_planes(blocks: List, pc_V: np.ndarray, pc_A: np.ndarray) -> List[dict]:
     print("\n[Tangent] Pre-computing local coordinate tangent planes (PCA)...")
-    tangent_data = []
-    for block in tqdm(blocks, desc="PCA Tangent Vectors"):
+    tasks = []
+    for block in blocks:
         block.init_data(pc_V, pc_A)
-        V = block.Vblock
-        
-        # Default fallback
-        v1 = np.array([1.0, 0.0, 0.0])
-        v2 = np.array([0.0, 1.0, 0.0])
-        v3 = np.array([0.0, 0.0, 1.0])
-        V_centered = np.zeros_like(V)
-        
-        if V.shape[0] >= 4:
-            V_centered = V - np.mean(V, axis=0)
-            cov = np.dot(V_centered.T, V_centered) / (V.shape[0] - 1)
-            try:
-                eigenvalues, eigenvectors = np.linalg.eigh(cov)
-                # Sort descending: largest spread is v1 (eigenvectors[:, 2]), second largest is v2 (eigenvectors[:, 1])
-                v1 = eigenvectors[:, 2]
-                v2 = eigenvectors[:, 1]
-                v3 = eigenvectors[:, 0]
-            except np.linalg.LinAlgError:
-                pass
-                
-        # Project 3D centered coordinates onto tangent plane -> shape (N, 2)
-        X_tangent = np.column_stack((V_centered @ v1, V_centered @ v2))
-        
-        tangent_data.append({
-            "block_id": block.block_id,
-            "v1": v1,
-            "v2": v2,
-            "v3": v3,
-            "X_tangent": X_tangent
-        })
+        tasks.append((block.block_id, block.Vblock.copy()))
         block.clear_data()
         
+    tangent_data = Parallel(n_jobs=-1, backend="loky")(
+        delayed(_worker_pca_tangent)(*t) for t in tqdm(tasks, desc="PCA Tangent Tasks")
+    )
     return tangent_data
+
 
 
 # ===========================================================================

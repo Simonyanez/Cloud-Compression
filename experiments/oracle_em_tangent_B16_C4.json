@@ -3,7 +3,7 @@
     "block_size": 16,
     "clusters": 4,
     "q_step": 24,
-    "gamma": 4000.0,
+    "gamma": 1000.0,
     "max_iters": 10,
     "freeze_slopes": false,
     "gamma_warmup": 3,
@@ -15,29 +15,29 @@
       0.0
     ],
     [
-      0.9733093458423832,
-      -0.7663350348013929
+      1.2719186350813585,
+      -0.44677834648390335
     ],
     [
-      -1.2586945803767224,
-      0.6471735663709965
+      -1.045494325094495,
+      0.9173973529562042
     ],
     [
-      -0.3812030384886618,
-      -1.3754663111974297
+      -0.4688984767511154,
+      -1.2427201501693963
     ]
   ],
   "final_slp": [
     0.0,
-    0.33999999999999997,
+    0.5666666666666667,
     0.5533333333333333,
     0.5533333333333333
   ],
   "final_slw": [
     1.0,
-    0.1,
     0.325,
-    0.55
+    0.55,
+    0.325
   ],
   "iterations": [
     {
@@ -49,66 +49,66 @@
     },
     {
       "iteration": 2,
-      "rate_reduction_pct": 3.0810194972115545,
-      "entropy_markov": 1.4528699795395137,
-      "overhead_bpv_markov": 0.006602048688658978,
-      "net_bpv_markov": -0.0020421398327858777
+      "rate_reduction_pct": 2.7308776640863917,
+      "entropy_markov": 1.3835391802625414,
+      "overhead_bpv_markov": 0.006286999634788866,
+      "net_bpv_markov": -0.0022453006919410066
     },
     {
       "iteration": 3,
-      "rate_reduction_pct": 3.0955406599766615,
-      "entropy_markov": 1.4778599486515291,
-      "overhead_bpv_markov": 0.006715606677418511,
-      "net_bpv_markov": -0.0021342065006530516
+      "rate_reduction_pct": 3.9443277521347033,
+      "entropy_markov": 1.7197146153049485,
+      "overhead_bpv_markov": 0.007814628824831417,
+      "net_bpv_markov": -0.0019770237516720567
     },
     {
       "iteration": 4,
-      "rate_reduction_pct": 3.003472064182156,
-      "entropy_markov": 1.4610643912931995,
-      "overhead_bpv_markov": 0.006639285266009073,
-      "net_bpv_markov": -0.0021941466110194825
+      "rate_reduction_pct": 3.9959118296705265,
+      "entropy_markov": 1.6546842899757648,
+      "overhead_bpv_markov": 0.007519121738781858,
+      "net_bpv_markov": -0.0016051722308694791
     },
     {
       "iteration": 5,
-      "rate_reduction_pct": 4.285777396976889,
-      "entropy_markov": 1.8838677587499997,
-      "overhead_bpv_markov": 0.008560564153307365,
-      "net_bpv_markov": -0.0022176136057815692
+      "rate_reduction_pct": 4.2497150621441655,
+      "entropy_markov": 1.7126107557031747,
+      "overhead_bpv_markov": 0.007782347872214327,
+      "net_bpv_markov": -0.0014927695802409626
     },
     {
       "iteration": 6,
-      "rate_reduction_pct": 4.252560420846634,
-      "entropy_markov": 1.880148581596785,
-      "overhead_bpv_markov": 0.00854366368114326,
-      "net_bpv_markov": -0.0022498742582902423
+      "rate_reduction_pct": 4.249620183069981,
+      "entropy_markov": 1.703207283143357,
+      "overhead_bpv_markov": 0.007739617149880823,
+      "net_bpv_markov": -0.001450179278937252
     },
     {
       "iteration": 7,
-      "rate_reduction_pct": 4.2455833095876,
-      "entropy_markov": 1.876699686083489,
-      "overhead_bpv_markov": 0.008527991407353079,
-      "net_bpv_markov": -0.002244528109163431
+      "rate_reduction_pct": 3.968803432267977,
+      "entropy_markov": 1.5827634959344583,
+      "overhead_bpv_markov": 0.007192303378794673,
+      "net_bpv_markov": -0.0013184742990380678
     },
     {
       "iteration": 8,
-      "rate_reduction_pct": 4.257060297415662,
-      "entropy_markov": 1.8766420922918539,
-      "overhead_bpv_markov": 0.008527729692938234,
-      "net_bpv_markov": -0.0022272804527630544
+      "rate_reduction_pct": 3.9583045563895145,
+      "entropy_markov": 1.5543965462920089,
+      "overhead_bpv_markov": 0.007063399908198118,
+      "net_bpv_markov": -0.0012051091647416372
     },
     {
       "iteration": 9,
-      "rate_reduction_pct": 4.228700214068543,
-      "entropy_markov": 1.8768718612051258,
-      "overhead_bpv_markov": 0.008528773795696172,
-      "net_bpv_markov": -0.002270297478874728
+      "rate_reduction_pct": 3.873063671244376,
+      "entropy_markov": 1.5336055655318699,
+      "overhead_bpv_markov": 0.00696892272221695,
+      "net_bpv_markov": -0.0012367884887752745
     },
     {
       "iteration": 10,
-      "rate_reduction_pct": 1.46514353668385,
-      "entropy_markov": 0.40827925025366313,
-      "overhead_bpv_markov": 0.0018552792243654167,
-      "net_bpv_markov": 0.000313133209926681
+      "rate_reduction_pct": 3.5596676565603995,
+      "entropy_markov": 1.432383170973019,
+      "overhead_bpv_markov": 0.006508953704568178,
+      "net_bpv_markov": -0.0012406455728587867
     }
   ]
 }
