@@ -1,7 +1,7 @@
-
 \chapter{Resultados}
 
-\section{Análisis de Límites Teóricos (Oracle Upper Bounds)}
+\section{Análisis de Límites Teóricos}
+\label{sec:oracle_upper_bounds}
 
 Para evaluar el potencial máximo de la estrategia de adaptación híbrida y establecer un techo teórico de desempeño, se diseñaron dos experimentos de búsqueda exhaustiva.
 
@@ -9,226 +9,1366 @@ La metodología consiste en procesar la nube de puntos completa, bloque por bloq
 
 \begin{itemize}
     \item \textbf{Espacio de búsqueda:} Se evaluaron porcentajes de selección de nodos $p \in [0.01, 1.00]$ con incrementos de $0.02$, y pesos de auto-lazo $w \in [0.2, 10.2]$ con incrementos de $0.2$.
-    \item \textbf{Absolute Oracle:} Utiliza la señal de luminancia original (ground truth) para calcular el vector de importancia de los nodos y guiar la inserción de auto-lazos. Representa el límite superior si el sistema tuviera conocimiento perfecto de la señal antes de la transformada.
-    \item \textbf{Linear Oracle:} Utiliza una aproximación lineal (ajuste de plano por mínimos cuadrados) de la luminancia. Este experimento busca determinar si una representación simplificada y robusta de la señal conserva la efectividad del método con datos reales.
+    \item \textbf{Oráculo Absoluto:} Utiliza la señal de luminancia original para calcular el vector de importancia de los nodos y guiar la inserción de auto-lazos. Representa el límite superior si el sistema tuviera conocimiento perfecto de la señal antes de la transformada.
+    \item \textbf{Oráculo Lineal:} Utiliza una aproximación lineal (ajuste de plano por mínimos cuadrados) de la luminancia. Este experimento busca determinar si una representación simplificada y robusta de la señal conserva la efectividad del método con datos reales.
 \end{itemize}
 
-Para cada bloque y cada paso de cuantización ($Q=\{24, 32, 48, 64\}$), el decisor RDO selecciona la combinación $(p, w)$ que minimiza el costo $J = R + \lambda D$. Los resultados agregados permiten cuantificar la eficiencia máxima alcanzable mediante métricas Bjontegaard.
+Para cada bloque y cada paso de cuantización ($Q=\{24, 32, 48, 64\}$), el decisor RDO selecciona la combinación $(p, w)$ que minimiza el costo $J = R + \lambda D$. Los resultados agregados permiten cuantificar la eficiencia máxima alcanzable mediante métricas Bjøntegaard~\cite{bjontegaard2001calculation}.
 
-\subsection{Métricas Bjontegaard y Eficiencia RD}
+\subsection{Curvas Tasa-Distorsión y Métricas Bjontegaard}
+\label{sec:oracle_real_rd}
 
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+% Para \textbf{ambos} oráculos se recomputaron los coeficientes GFT reales tanto en la
+% configuración $(p^*, w^*)$ que cada búsqueda ya eligió como en el baseline estructural puro
+% ($p=0$, sin auto-lazos), reutilizando el mismo código de construcción de grafo que produjo
+% \texttt{best\_p}/\texttt{best\_w} en cada base de datos (sin repetir ninguna de las dos búsquedas
+% en sí) -- los dos oráculos comparten exactamente el mismo mecanismo de auto-lazos y solo difieren
+% en qué señal guía la \emph{selección} de nodos (Absolute: la luminancia real; Linear: el plano
+% ajustado), así que extender la metodología de uno al otro fue una sustitución directa, no una
+% reimplementación. Ambas configuraciones se codificaron con el mismo codificador RLGR real usado
+% en el resto de esta tesis (Sección~\ref{sec:rlgr_method}) -- deliberadamente \textbf{sin overhead
+% de señalización}: al ser un límite ideal, se asume que el decodificador ya conoce $(p,w)$ de cada
+% bloque, de modo que el único costo medido es el de codificar los coeficientes en sí. El baseline
+% estructural ($p=0$) no depende de qué oráculo lo generó -- se confirmó que es numéricamente
+% idéntico en ambas corridas -- por lo que se grafica una sola vez por tamaño de bloque. Esto
+% permite calcular BD-Rate/BD-PSNR con la misma implementación de Bjontegaard usada en el resto del
+% documento.
+Las siguientes curvas son los resultados de la metodología para ambas configuraciones usando codificación real de los coeficientes transformados. En esta iteración no consideramos el eventual overhead de señalización ya que como se mencionó anteriormente, esto es solo para analizar los límites teóricos de nuestra metodología si tuviera conocimiento absoluto de las dinámicas de color.
 
-La Tabla \ref{tab:oracle_comparison} presenta las métricas BD-Rate y BD-PSNR de ambos oráculos comparadas con el método básico estructural. 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\linewidth]{img/resultados/oracle_real_rd.png}
+    \caption{Curvas tasa-distorsión reales, un panel por tamaño de bloque: Linear Oracle (rojo) y
+    Oráculo Absoluto (azul) vs.\ el baseline estructural real (gris, punteado) -- idéntico para
+    ambos oráculos --, todos codificados con RLGR real sin overhead de señalización.}
+    \label{fig:oracle_real_rd}
+\end{figure}
 
-\begin{table}[ht]
+La siguiente tabla presenta las métricas BD-Rate y BD-PSNR de ambos oráculos
+frente al baseline estructural, ambas columnas con bits RLGR reales (sin overhead de
+señalización; metodología en la Sección~\ref{sec:oracle_real_rd} más abajo).
+
+\begin{table}[H]
 \centering
-\caption{Comparativa de Métricas Bjontegaard: Absolute Oracle vs. Linear Oracle}
+\caption{Comparativa de Métricas Bjontegaard frente al baseline estructural. Ambos oráculos con
+bits RLGR reales, sin overhead de señalización (metodología en la Sección~\ref{sec:oracle_real_rd}).}
 \begin{tabular}{|c|c|c|c|}
 \hline
-\textbf{Tamaño de Bloque} & \textbf{Métrica} & \textbf{Absolute Oracle} & \textbf{Linear Oracle} \\
+\textbf{Tamaño de Bloque} & \textbf{Métrica} & \textbf{Oráculo Absoluto} & \textbf{Oráculo Lineal} \\
 \hline
-\multirow{2}{*}{4} & BD-Rate (\%) & -16.00\% & -19.20\% \\
-                   & BD-PSNR (dB) & 1.44 & 1.80 \\
+\multirow{2}{*}{4} & BD-Rate (\%) & -14.34\% & -17.31\% \\
+                   & BD-PSNR (dB) & 1.201 & 1.502 \\
 \hline
-\multirow{2}{*}{8} & BD-Rate (\%) & -17.69\% & -23.57\% \\
-                   & BD-PSNR (dB) & 0.95 & 1.31 \\
+\multirow{2}{*}{8} & BD-Rate (\%) & -2.75\% & -6.75\% \\
+                   & BD-PSNR (dB) & 0.123 & 0.310 \\
 \hline
-\multirow{2}{*}{16} & BD-Rate (\%) & -9.22\% & -14.71\% \\
-                    & BD-PSNR (dB) & 0.42 & 0.68 \\
+\multirow{2}{*}{16} & BD-Rate (\%) & +0.26\% & -2.60\% \\
+                    & BD-PSNR (dB) & -0.012 & 0.109 \\
 \hline
 \end{tabular}
 \label{tab:oracle_comparison}
 \end{table}
+% La Figura~\ref{fig:oracle_real_rd} y la Tabla~\ref{tab:oracle_comparison} muestran el mismo
+% patrón para ambos oráculos: el BD-Rate cae de $B_c=4$ a $B_c=8$ a $B_c=16$. La brecha entre
+% oráculo y baseline es grande y visualmente evidente en $B_c=4$ (separación horizontal amplia
+% entre curvas sólidas y la punteada) y casi imperceptible en $B_c=16$ (las tres curvas
+% prácticamente se superponen) -- tan imperceptible que, para el Oráculo Absoluto, la curva pasa a
+% estar \emph{por sobre} la del baseline en algunos tramos, el origen geométrico directo de su
+% BD-Rate positivo. La explicación más plausible, consistente con el mecanismo de RLGR
+% (Sección~\ref{sec:rlgr_method}): un codificador adaptativo explota tanto la magnitud de los
+% coeficientes como el contexto entre bloques consecutivos, no solo cuántos son distintos de cero.
+% Es razonable que a $B_c=4$ -- con $55{,}426$ bloques, muchos más símbolos por flujo -- el
+% auto-lazo de cualquiera de los dos oráculos le dé al codificador adaptativo más oportunidad de
+% explotar redundancia entre bloques consecutivos que a $B_c=16$ (solo $3{,}480$ bloques).
+% Confirmar esto con precisión (separar el efecto de magnitud del efecto de contexto entre bloques)
+% queda como análisis adicional; lo que sí queda establecido aquí, con evidencia directa y para
+% ambos oráculos, es que la ganancia real del mecanismo de auto-lazos depende fuertemente del
+% tamaño de bloque, y que en el régimen de bloques grandes ($B_c=16$) puede llegar a no haber
+% ganancia neta alguna.
+% \subsection{Métricas Bjontegaard y Eficiencia RD}
 
-\subsection{Interpretación de Resultados}
-
-Un hallazgo fundamental de estos experimentos es que el \textbf{Linear Oracle supera consistentemente al Absolute Oracle}, logrando entre un 120\% y un 160\% de la reducción de tasa de bits esperada. Este fenómeno puede explicarse mediante la teoría tasa-distorsión y las métricas de Bjoontgard:
+Un hallazgo fundamental de estos experimentos es que el \textbf{Oráculo Lineal supera
+consistentemente al Oráculo Absoluto} en los tres tamaños de bloque: $-17.31\%$ vs.\ $-14.34\%$ en
+$B_c=4$, $-6.75\%$ vs.\ $-2.75\%$ en $B_c=8$, y $-2.60\%$ vs.\ $+0.26\%$ en $B_c=16$. Este último
+caso es notable por sí solo: el BD-Rate del Oráculo Absoluto en $B_c=16$ es \textbf{positivo} --
+en promedio cuesta más bits que el baseline estructural puro. Este fenómeno puede explicarse
+mediante la teoría tasa-distorsión y las métricas de Bjontegaard:
 
 \begin{itemize}
-    \item \textbf{Efecto de Filtro Paso Bajo:} El Linear Oracle utiliza una superficie plana ajustada, lo que actúa como un filtro paso bajo espacial. Al ignorar el ruido de alta frecuencia y las variaciones locales, la adaptación del grafo se guía por la tendencia global del bloque, lo que resulta en una base GFT más eficiente para compactar la energía de la señal.
+    \item \textbf{Efecto de Filtro Paso Bajo:} El Oráculo Lineal utiliza una superficie plana ajustada, lo que actúa como un filtro paso bajo espacial. Al ignorar el ruido de alta frecuencia y las variaciones locales, la adaptación del grafo se guía por la tendencia global del bloque, lo que resulta en una base GFT más eficiente para compactar la energía de la señal.
     \item \textbf{Efecto de Compacidad de Energía:} Las funciones de base derivadas de la aproximación lineal se alinean mejor con los componentes de baja frecuencia, que contienen la mayor parte de la información visual.
-    \item \textbf{Sensibilidad al Tamaño del Bloque:} Las mayores ganancias se observan en bloques de $8 \times 8$. Para bloques de $16 \times 16$, aunque el Linear Oracle sigue siendo superior, la precisión de la aproximación lineal disminuye para superficies complejas.
+    \item \textbf{Sensibilidad al Tamaño del Bloque:} $B_c=4$ resulta el mejor caso en los dos
+    oráculos, seguido de $B_c=8$ y luego $B_c=16$ -- y en $B_c=16$ el Oráculo Absoluto deja de
+    ganar en absoluto. Esta tendencia muestra que el método es especialmente bueno a mayores niveles de presición, para bloques más pequeños genera bases más informativas y que mejoran la calidad de la imagen.
 \end{itemize}
 
-\begin{figure}[ht]
+Estos resultados son especialmente relevantes para plantear de forma inmediata cierta limitación del algoritmo. Mientras mayor resolución tiene sobre el bloque mayor es su capacidad de compresión y menor es su distorsión de la imagen. Sin embargo, mientras mayor resolución del método más overhead de señalización es necesario para que el proceso sea invertible. Las decisiones se deben señalizar para un gran número de bloques haciendolo en la práctica imposible sin una estrategia de agrupación.
+Es debido a la necesidad de esta estrategia que se hace indispensable observar cuales son los principales parámetros que impactan en esta calidad de decisión. De esa manera podemos entender cuales son las causas y orientar las decisiones de diseño para el algoritmo de producción, que sí debe considerar el costo de señalización del método.
+
+
+\subsection{Análisis de Sensibilidad y Distribución de self-loops}
+\label{sec:oracle_sensitivity}
+
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+La pregunta natural siguiente es \emph{qué} caracteriza a un bloque de buen desempeño. La
+Figura~\ref{fig:oracle_sensitivity} muestra la correlación de Pearson para cuatro medidas reales de
+desempeño por bloque -- bpv, PSNR$_Y$, compactación espectral (energía
+en los 4 primeros coeficientes GFT)
+y esparcidad (fracción de coeficientes distintos de cero) -- contra cuatro características
+candidatas del bloque: desviación estándar real de luminancia ($Y_{std}$), error medio cuadrado de la señal respecto a la aproximación lineal), la cantidad de puntos del bloque (\texttt{point\_count}) y
+ razón entre el menor y el mayor valor propio de la covarianza espacial de los
+puntos -- cuán plana es la \emph{geometría} del parche, independiente de la señal de luminancia (\texttt{planarity}),
+separado por tamaño de bloque, a $Q=32$.
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=1.0\linewidth]{img/resultados/rd_curves_comparison.png}
-    \caption{Curvas Rate-Distortion para diferentes tamaños de bloque comparando la línea base con ambos oráculos.}
-    \label{fig:rd_curves_oracle}
+    \includegraphics[width=1.0\linewidth]{img/resultados/oracle_sensitivity_matrix.png}
+    \caption{Correlación de Pearson entre desempeño real por bloque (filas) y características
+    candidatas del bloque (columnas), Linear Oracle, $Q=32$, por tamaño de bloque.}
+    \label{fig:oracle_sensitivity}
 \end{figure}
 
-\begin{figure}[ht]
+El resultado revela una disociación clara entre dos familias de parámetros, según qué eje
+de desempeño se mire. La \textbf{distorsión} (PSNR y compactación de la energía) está dominada, en los tres tamaños, por las mismas dos características de la señal: \texttt{fit\_rmse} ($r=-0.43$ a $-0.64$
+con PSNR, $r=-0.52$ a $-0.69$ con compactación) y $Y_{std}$, muy cerca detrás -- bloques cuya
+luminancia real se aleja más de un plano, o es más variable, reconstruyen peor a igual $Q$. La
+\textbf{tasa real} (bpv y \textit{sparsity}), en cambio, está dominada por
+\texttt{point\_count} ($r=-0.50$ a $-0.82$ con bpv, $r=-0.29$ a $-0.67$ con \textit{sparsity}):
+bloques con más puntos codifican, en promedio, a menor bpv real -- consistente con que más
+símbolos por bloque le dan al codificador RLGR adaptativo más contexto que explotar incluso en un
+encode aislado por bloque. \texttt{planarity} (la geometría de los puntos, no de la señal) es un
+\textit{driver} secundario de bpv en $B_c=4$ ($r=-0.53$) pero se diluye en tamaños mayores, y no
+predice distorsión en ningún tamaño ($|r|\leq0.09$) -- la orientación/planaridad geométrica del
+parche importa para cuántos bits cuesta codificarlo, pero no para cuán bien se reconstruye.
+
+Es importante diferenciar las relaciones naturales del método base respecto a lo que es efecto de los aportes de este trabajo. Son las asociaciones relativas a la luminancia las que evidencian la acción de nuestro método. Se observa que la relación entre $Y_{std}$ y \texttt{fit\_rmse} respecto a la cantidad de bits aumenta para bloques más pequeños y que la compactación de la energía tiene un efecto menos agresivo para la calidad de la señal en el PSNR. Esto es congruente con lo que se vio en las curvas de tasa-distorsión y obedece a que el método es más efectivo a mayor resolución y parches pequeños (Figura~\ref{fig:oracle_real_rd}).
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\linewidth]{img/resultados/gain_parameters_analysis.png}
-    \caption{Análisis de distribución de ganancias y parámetros óptimos de selección de nodos ($p$).}
+    \includegraphics[width=1.0\linewidth]{img/resultados/oracle_p_w_distribution.png}
+    \caption{Distribución conjunta (hexbin, escala de color logarítmica) de los parámetros óptimos
+    $p$ (fracción de nodos seleccionados) y $w$ (peso de auto-lazo) encontrados por búsqueda
+    exhaustiva, ambos oráculos, todos los tamaños de bloque agrupados.}
     \label{fig:gain_analysis}
 \end{figure}
 
-Como se observa en la Figura \ref{fig:gain_analysis}, la distribución de los parámetros óptimos se mantiene estable para ambas ejecuciones del oráculo. Esta consistencia es fundamental, ya que sugiere que el comportamiento del sistema no es errático ante diferentes aproximaciones de la señal. Por consiguiente, es viable realizar un paso posterior de agrupación (clustering) de estos parámetros, lo que permitiría una representación compacta de la configuración de adaptación con un overhead de señalización mínimo en el flujo de bits final.
+El patrón en $p$ es bimodal: la mayor concentración de
+bloques óptimos cae cerca de $p\approx0$ (casi ningún nodo recibe auto-lazo) o cerca de
+$p\approx1$ (casi todos lo reciben), con menor densidad en valores intermedios -- pocos bloques
+encuentran óptimo un punto medio. $w$ no muestra una concentración comparable: para un $p$ dado,
+la densidad se reparte de forma relativamente uniforme a lo largo del rango evaluado, sugiriendo
+que, condicional a \emph{cuántos} nodos reciben auto-lazo, \emph{cuánto} peso se les asigna es
+menos determinante para el costo RD que la decisión binaria de selección misma. Esta asimetría es
+consistente con el mecanismo de calibración desacoplada de la Sección~\ref{sec:adapter_rdo_real}
+para el sistema real, donde $s_{lp}$ solo toma 3 valores de una malla gruesa mientras que
+$s_{lw}$ se refina por sección áurea -- lo observado aquí sobre datos de oráculo es evidencia
+adicional (no la motivación original) de que esa asimetría de diseño es razonable.
 
-\section{Análisis de Sensibilidad y Agrupamiento RD (RD-Clustering)}
+Además nos dice que existe una tendencia del algoritmo a encontrar óptimos en representaciones planas para una gran cantidad de bloques. Un peso muy bajo de self-loop o una fracción cercana a 1 corresponde a un proxy de lo que sería la transformada estructural. Lo anterior justífica la lógica del filtro por variación de señal ya que están intimamente relacionadas.
 
-En esta sección se presentan los resultados de la estrategia de agrupamiento conjunta de pendientes y parámetros de auto-lazo ($S_x, S_y, S_z, SLW, SLP$). El análisis integra datos de múltiples barridos para evaluar la capacidad, resolución y robustez del sistema.
+Como se observa en las dos figuras anteriores, la distribución de los parámetros óptimos se
+mantiene estable para ambas ejecuciones del oráculo. Esta consistencia sugiere que el
+comportamiento del sistema no es errático ante diferentes aproximaciones de la señal, y que es
+viable un paso posterior de agrupación (\textit{clustering}) de estos parámetros para una
+representación compacta de la configuración de adaptación con overhead de señalización mínimo.
 
-\subsection{Desempeño Numérico y Análisis de Ganancia}
+% ============================================================
+% EXPERIMENTO E10: VERIFICACIÓN DE LIBRO DE CÓDIGOS OFFLINE
+% MULTI-SECUENCIA (RESULTADOS PENDIENTES)
+% ============================================================
+\section{Verificación Multi-Secuencia del Codebook Direccional Offline}
+\label{sec:resultados_e10}
 
-Las siguientes tablas presentan una visión factual del desempeño del sistema bajo diferentes ejes de sensibilidad.
+% [CONTEXTO] Este experimento evalúa el desempeño del algoritmo PCADC con
+% codebook entrenado offline (frame 0 de cada secuencia) sobre 14 secuencias:
+%   - Depth-10: longdress, loot, redandblack, soldier, andrew10, david10, phil10, ricardo10, sarah10
+%   - Depth-9: andrew9, david9, phil9, ricardo9, sarah9
+% Grilla de configuraciones:
+%   - Malla reportada: B_c ∈ {4, 8, 16}, K ∈ {4, 8, 16, 24, 30}, Q ∈ {24, 32, 48, 64}
+%     (K=30 sin sarah10; B_c=32 solo se corrió para longdress y no se reporta)
+% El padre de partición es B_p = B_c * 2 (geométricamente equivalente al 1/32 del bounding box)
+% Métrica principal: BPV (bits per voxel) vs. PSNR_Y (luma)
+% Referencia Δ BPV: diferencia relativa vs. baseline estructural (K=0, solo GFT sin self-loops)
+% [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+Esta sección evalúa el desempeño de PCADC frente a la GFT puramente estructural en las 14
+secuencias -- las 4 de \texttt{8iVFB} y las 10 de \texttt{MVUB}, todas con el
+mismo codebook direccional entrenado \emph{una sola vez} sobre el primer frame de la secuencia
+(Sección~\ref{sec:codebook_training_real}). El \textbf{baseline} de comparación en cada curva es
+la GFT estructural sin auto-lazos: la misma transformada de base, sin clasificación por
+dirección de gradiente ni codebook. La malla barrida es $B_c\in\{4,8,16\}$ $\times$ $K\in\{4,8,16,24,30\}$ $\times$ $Q\in\{24,32,48,64\}$, con bloque padre entre 32 y 16 según corresponda
+(Sección~\ref{sec:pc_partition_hierarchy}). Las curvas siguientes reportan BPV real (RLGR + CABAC, incluyendo
+overhead de señalización) vs.\ PSNR$_Y$; ambas métricas reales de compresión.
 
-\begin{table}[ht]
-\centering
-\caption{Barrido de Capacidad (B=4, Q=24): Impacto del tamaño del libro de códigos.}
-\begin{tabular}{|c|c|c|c|c|c|}
-\hline
-\textbf{Config} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Activos} \\
-\hline
-C=2 & 55,618.99 & 2.3333 & 15.3685 & 0.9662 & 2 \\
-C=4 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 4 \\
-C=6 & 46,856.72 & 1.9608 & 15.2298 & 2.5434 & 6 \\
-C=8 & 44,563.69 & 1.8627 & 15.4449 & 2.8455 & 8 \\
-C=10 & 44,541.58 & 1.8627 & 15.0114 & 2.8221 & 8 \\
-\hline
-\end{tabular}
-\label{tab:capacity_sweep}
-\end{table}
+    \subsection{Curvas Tasa-Distorsión por Secuencia}
+        \label{sec:e10_rd_curves}
 
-En el barrido de capacidad para bloques de $4 \times 4$ (Tabla \ref{tab:capacity_sweep}), se observa una reducción sustancial y monótona del costo RD a medida que el libro de códigos se expande de $C=2$ ($55,618.99$) a $C=8$ ($44,563.69$). Sin embargo, los resultados para $C=10$ revelan un punto de saturación absoluto: la mejora en el costo es insignificante (apenas 22 unidades) y el sistema induce automáticamente el desvanecimiento de dos clusters, operando con solo 8 activos. Este fenómeno identifica factualmene el límite de diversidad de señales que el optimizador puede extraer de la muestra actual.
+	Las siguientes curvas presentan la efectividad de la compresión, para las distintas configuraciones, respecto al baseline. En linea punteada negra se observa el método puramente estructural, mientras cada linea densa muestra el resultado para distinto número de clusters entrenados. La metodología demuestra mayor capacidad de compresión para menores pasos de cuantización, es en ese sentido que se hace un acercamiento al paso de cuantización escalar $Q=32$ para que la distancia de las curvas se aprecie de mejor manera.
+        \clearpage
+        \paragraph{8iVFB.}
+
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_longdress_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_loot_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_longdress_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_loot_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_longdress_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_loot_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{longdress} ($B_c^*=16$), derecha \texttt{loot} ($B_c^*=16$).}
+            \label{fig:e10_rd_longdress_loot}
+        \end{center}
+
+        \clearpage
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_redandblack_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_soldier_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_redandblack_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_soldier_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_redandblack_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_soldier_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{redandblack} ($B_c^*=16$), derecha \texttt{soldier} ($B_c^*=8$).}
+            \label{fig:e10_rd_redandblack_soldier}
+        \end{center}
+
+        \clearpage
+        \paragraph{MVUB: mismo sujeto, depth-9 (izquierda) vs.\ depth-10 (derecha).}
+
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_andrew9_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_andrew10_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_andrew9_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_andrew10_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_andrew9_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_andrew10_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{andrew9} ($B_c^*=16$; razón~1), derecha \texttt{andrew10} ($B_c^*=8$).}
+            \label{fig:e10_rd_andrew9_andrew10}
+        \end{center}
+
+        \clearpage
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_david9_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_david10_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_david9_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_david10_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_david9_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_david10_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{david9} ($B_c^*=16$; razón~1), derecha \texttt{david10} ($B_c^*=16$).}
+            \label{fig:e10_rd_david9_david10}
+        \end{center}
+
+        \clearpage
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_phil9_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_phil10_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_phil9_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_phil10_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_phil9_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_phil10_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{phil9} ($B_c^*=16$; razón~1), derecha \texttt{phil10} ($B_c^*=16$).}
+            \label{fig:e10_rd_phil9_phil10}
+        \end{center}
+
+        \clearpage
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_ricardo9_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_ricardo10_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_ricardo9_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_ricardo10_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_ricardo9_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_ricardo10_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{ricardo9} ($B_c^*=16$; razón~1; peor BD-Rate de la familia depth-9 en la Tabla~\ref{tab:e10_bd_ratio1}, $K=24$), derecha \texttt{ricardo10} ($B_c^*=16$).}
+            \label{fig:e10_rd_ricardo9_ricardo10}
+        \end{center}
+
+        \clearpage
+        \begin{center}
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_sarah9_bc4.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_sarah10_bc4.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_sarah9_bc8.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_sarah10_bc8.png}
+
+            \vspace{0.3cm}
+
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_sarah9_bc16.png}\hfill
+            \includegraphics[width=0.47\linewidth]{img/resultados/e10_rd_sarah10_bc16.png}
+
+            \vspace{0.2cm}
+            \captionof{figure}{Curvas RD por $K$, $B_c\in\{4,8,16\}$, izquierda \texttt{sarah9} ($B_c^*=16$; razón~1; mejor celda observada en toda la Sección~\ref{sec:e10_bd_summary}, $-3.91\%$ a $K=24$), derecha \texttt{sarah10} ($B_c^*=16$; sin $K=30$).}
+            \label{fig:e10_rd_sarah9_sarah10}
+        \end{center}
 
 
-\begin{table}[ht]
-\centering
-\caption{Barrido de Cuantización (B=4, C=4): Estabilidad ante el ruido de cuantización.}
-\begin{tabular}{|c|c|c|c|c|c|}
-\hline
-\textbf{Config} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Activos} \\
-\hline
-Q=24 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 4 \\
-Q=36 & 81,959.46 & 1.5294 & 21.3542 & 1.8335 & 4 \\
-Q=48 & 124,685.76 & 1.3137 & 23.3599 & 1.7791 & 4 \\
-Q=64 & 178,545.21 & 1.0588 & 31.3334 & 1.5176 & 4 \\
-\hline
-\end{tabular}
-\label{tab:quantization_sweep}
-\end{table}
 
-La sensibilidad ante el ruido de cuantización (Tabla \ref{tab:quantization_sweep}) muestra que la complejidad informacional del libro de códigos ($H$) decrece a medida que $Q$ aumenta. Mientras que para $Q=24$ el sistema requiere $1.83$ bits por bloque para señalizar la asignación, este valor cae a $1.51$ para $Q=64$. Esto sugiere que el ruido de cuantización suaviza el espacio de búsqueda, haciendo que las transformadas especializadas pierdan relevancia frente a bases más genéricas en regímenes de baja tasa de bits.
+        En los 42 paneles la curva PCADC se mantiene visiblemente por sobre el método base
+        estructural en todo el rango de $Q$ evaluado, sin cruces: no hay ningún punto de
+        operación donde el codebook offline sea peor que la GFT puramente geométrica, lo que habla de la sanidad del método. La
+        separación entre ambas curvas no es constante: es mayor para pasos de cuantización menores, esto se explica ya que el método es especialmente poderoso para adaptar bases de frecuencias que no son planas. A mayor cuantización, menos relevantes se hacen las altas frecuencias y por tanto, el método prefiere transformadas más planas ya que la fortaleza principal del algoritmo está en aprovechar la riqueza de la señal. Además, podemos observar que a diferencia de la versión oráculo acá el efecto se deteriora a medida que nos acercamos a bloques hijos más pequeños, esto reside simplemente en la distancia entre el bloque padre y el bloque hijo generando una resolución demasiado grande que se desaprovecha en la compresión de la señal.
+	Es relevante mencionar que no se ven signos de saturación para el número de clusters, ya que para clusters de tamaño 30 aun se observan ganancias por sobre las que entregan menores números de grupos, no existe un deterioro significativo en PSNR, mientras disminuye los bpvs necesarios para la representación de la información. El overhead no está saturando la decisión, esto se explica principalmente por una definición numérica de escala.
 
 
-\begin{table}[ht]
-\centering
-\caption{Barrido de Resolución (Q=24, C=4): Comparativa entre escalas estructurales.}
-\begin{tabular}{|c|c|c|c|c|c|}
-\hline
-\textbf{Config} & \textbf{Costo RD} & \textbf{Tasa (R)} & \textbf{Dist (D)} & \textbf{Entropía (H)} & \textbf{Activos} \\
-\hline
-B=4 & 49,192.73 & 2.0588 & 15.8575 & 1.8332 & 4 \\
-B=8 & 105,564.73 & 7.5667 & 32.1042 & 1.3383 & 3 \\
-B=16 & 433,657.41 & 31.2333 & 62.9272 & 1.7709 & 4 \\
-\hline
-\end{tabular}
-\label{tab:resolution_sweep}
-\end{table}
+    \subsection{Ganancia de Codificación: BD-Rate Multi-Frame por Tamaño de Bloque}
+        \label{sec:e10_bd_summary}
 
-La comparativa de escalas estructurales (Tabla \ref{tab:resolution_sweep}) evidencia un castigo severo al costo RD al incrementar el tamaño del bloque. El costo para $B=16$ es casi nueve veces superior al de $B=4$. Estos datos validan que la capacidad de adaptación de la GFT híbrida tiene mayor apalancamiento en resoluciones finas, donde las fluctuaciones locales de los atributos son más predecibles y compactables.
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        El BD-Rate~\cite{bjontegaard2001calculation} se calcula de forma independiente \emph{por frame} y se reporta como media
+        $\pm$ desviación estándar entre \textit{frames} -- la métrica agregada correcta, en vez
+        de un único punto muestral. Cada secuencia aporta entre 5 y 7 \textit{frames}
+        adicionales al de entrenamiento, tomados cada 50 \textit{frames} de la secuencia
+        original..
+
+        Esta sección presenta dos vistas complementarias del mismo BD-Rate multi-\textit{frame}.
+        Las Tablas~\ref{tab:e10_bd_ratio1}--\ref{tab:e10_bd_ratio8} fijan $K=24$ y se agrupan
+        por razón geométrica $B_p/B_c$ en vez de por $B_c$ nominal, \textbf{nunca mezclando dos
+        razones distintas en la misma fila} esto justificado en la Sección~\ref{sec:e10_scale_ratio}. Incluyen
+        BD-Rate y BD-PSNR como par, en negrita la mejor fila de cada tabla. Las
+        Tablas~\ref{tab:e10_bd_classic_bc4}--\ref{tab:e10_bd_classic_bc16} retoman el agrupamiento
+        clásico por $B_c$ nominal pero evalúan los cinco valores de $K$ disponibles por fila,
+        usando media $\pm$ std multi-\textit{frame} donde hay cobertura suficiente y cayendo al
+        punto único de \texttt{frame\_idx}=1 (marcado $\dagger$) donde no la hay; en negrita el
+        mejor $K$ de cada fila.
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate y BD-PSNR multi-\textit{frame} a razón $B_p/B_c=1$, $K=24$ (media
+            $\pm$ std entre \textit{frames}). Razón 1: el bloque hijo \emph{es} el bloque padre --
+            solo posible en depth-9 ($B_p=16$, $B_c=16$); depth-10/8iVFB ($B_p=32$) no tiene un
+            $B_c$ que dé razón 1.}
+            \small
+            \begin{tabular}{l|c|c|c|c}
+                \hline
+                \textbf{Secuencia} & $B_p$ & $B_c$ & \textbf{BD-Rate (\%)} & \textbf{BD-PSNR (dB)} \\
+                \hline
+                andrew9 & 16 & 16 & $-2.759 \pm 0.360$ & $+0.138 \pm 0.018$ \\
+                david9 & 16 & 16 & $-2.635 \pm 0.246$ & $+0.093 \pm 0.013$ \\
+                phil9 & 16 & 16 & $-3.278 \pm 0.169$ & $+0.149 \pm 0.008$ \\
+                ricardo9 & 16 & 16 & $-2.297 \pm 0.326$ & $+0.101 \pm 0.012$ \\
+                \textbf{sarah9} & 16 & 16 & $\mathbf{-3.908 \pm 0.943}$ & $\mathbf{+0.172 \pm 0.043}$ \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_bd_ratio1}
+        \end{table}
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate y BD-PSNR multi-\textit{frame} a razón $B_p/B_c=2$, $K=24$. $B_c=16$
+            para 8iVFB/depth-10 ($B_p=32$), $B_c=8$ para depth-9 ($B_p=16$).}
+            \small
+            \begin{tabular}{l|c|c|c|c}
+                \hline
+                \textbf{Secuencia} & $B_p$ & $B_c$ & \textbf{BD-Rate (\%)} & \textbf{BD-PSNR (dB)} \\
+                \hline
+                longdress & 32 & 16 & $-1.677 \pm 0.101$ & $+0.081 \pm 0.005$ \\
+                loot & 32 & 16 & $-1.561 \pm 0.113$ & $+0.061 \pm 0.004$ \\
+                redandblack & 32 & 16 & $-1.586 \pm 0.154$ & $+0.059 \pm 0.005$ \\
+                soldier & 32 & 16 & $-1.942 \pm 0.172$ & $+0.084 \pm 0.008$ \\
+                andrew10 & 32 & 16 & $-1.347 \pm 0.270$ & $+0.063 \pm 0.013$ \\
+                david10 & 32 & 16 & $-1.537 \pm 0.346$ & $+0.061 \pm 0.016$ \\
+                phil10 & 32 & 16 & $-2.113 \pm 0.187$ & $+0.089 \pm 0.007$ \\
+                ricardo10 & 32 & 16 & $-1.445 \pm 0.163$ & $+0.069 \pm 0.007$ \\
+                sarah10 & 32 & 16 & $-2.383 \pm 0.263$ & $+0.102 \pm 0.012$ \\
+                andrew9 & 16 & 8 & $-2.463 \pm 0.185$ & $+0.120 \pm 0.009$ \\
+                david9 & 16 & 8 & $-1.616 \pm 0.171$ & $+0.085 \pm 0.010$ \\
+                \textbf{phil9} & 16 & 8 & $\mathbf{-3.210 \pm 0.390}$ & $\mathbf{+0.137 \pm 0.013}$ \\
+                ricardo9 & 16 & 8 & $-1.541 \pm 0.404$ & $+0.100 \pm 0.027$ \\
+                sarah9 & 16 & 8 & $-2.923 \pm 0.534$ & $+0.154 \pm 0.028$ \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_bd_ratio2}
+        \end{table}
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate y BD-PSNR multi-\textit{frame} a razón $B_p/B_c=4$, $K=24$. $B_c=8$
+            para 8iVFB/depth-10, $B_c=4$ para depth-9.}
+            \small
+            \begin{tabular}{l|c|c|c|c}
+                \hline
+                \textbf{Secuencia} & $B_p$ & $B_c$ & \textbf{BD-Rate (\%)} & \textbf{BD-PSNR (dB)} \\
+                \hline
+                longdress & 32 & 8 & $-1.335 \pm 0.239$ & $+0.059 \pm 0.011$ \\
+                loot & 32 & 8 & $-1.054 \pm 0.174$ & $+0.056 \pm 0.010$ \\
+                redandblack & 32 & 8 & $-0.900 \pm 0.112$ & $+0.050 \pm 0.006$ \\
+                soldier & 32 & 8 & $-1.592 \pm 0.175$ & $+0.078 \pm 0.008$ \\
+                andrew10 & 32 & 8 & $-1.388 \pm 0.121$ & $+0.061 \pm 0.005$ \\
+                david10 & 32 & 8 & $-0.807 \pm 0.091$ & $+0.059 \pm 0.009$ \\
+                phil10 & 32 & 8 & $-1.598 \pm 0.097$ & $+0.076 \pm 0.003$ \\
+                ricardo10 & 32 & 8 & $-0.840 \pm 0.153$ & $+0.074 \pm 0.014$ \\
+                sarah10 & 32 & 8 & $-1.400 \pm 0.104$ & $+0.088 \pm 0.007$ \\
+                \textbf{andrew9} & 16 & 4 & $\mathbf{-1.992 \pm 0.128}$ & $\mathbf{+0.106 \pm 0.007}$ \\
+                david9 & 16 & 4 & $-0.481 \pm 0.153$ & $+0.058 \pm 0.016$ \\
+                phil9 & 16 & 4 & $-1.700 \pm 0.060$ & $+0.115 \pm 0.005$ \\
+                ricardo9 & 16 & 4 & $-0.555 \pm 0.102$ & $+0.064 \pm 0.011$ \\
+                sarah9 & 16 & 4 & $-1.395 \pm 0.248$ & $+0.135 \pm 0.024$ \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_bd_ratio4}
+        \end{table}
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate y BD-PSNR multi-\textit{frame} a razón $B_p/B_c=8$, $K=24$,
+            $B_c=4$. Solo 8iVFB/depth-10 ($B_p=32$) alcanza esta razón; depth-9 ($B_p=16$) no
+            tiene un $B_c$ válido que la produzca.}
+            \small
+            \begin{tabular}{l|c|c|c|c}
+                \hline
+                \textbf{Secuencia} & $B_p$ & $B_c$ & \textbf{BD-Rate (\%)} & \textbf{BD-PSNR (dB)} \\
+                \hline
+                longdress & 32 & 4 & $-0.427 \pm 0.192$ & $+0.031 \pm 0.014$ \\
+                loot & 32 & 4 & $-0.249 \pm 0.025$ & $+0.035 \pm 0.004$ \\
+                redandblack & 32 & 4 & $-0.185 \pm 0.025$ & $+0.026 \pm 0.003$ \\
+                soldier & 32 & 4 & $-0.446 \pm 0.014$ & $+0.044 \pm 0.002$ \\
+                \textbf{andrew10} & 32 & 4 & $\mathbf{-0.607 \pm 0.036}$ & $\mathbf{+0.043 \pm 0.002}$ \\
+                david10 & 32 & 4 & $-0.189 \pm 0.043$ & $+0.035 \pm 0.007$ \\
+                phil10 & 32 & 4 & $-0.558 \pm 0.063$ & $+0.055 \pm 0.007$ \\
+                ricardo10 & 32 & 4 & $-0.180 \pm 0.037$ & $+0.028 \pm 0.006$ \\
+                sarah10 & 32 & 4 & $-0.324 \pm 0.063$ & $+0.046 \pm 0.008$ \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_bd_ratio8}
+        \end{table}
+
+        Las cuatro tablas muestran la misma asimetría en las cuatro razones geométricas
+        disponibles: las secuencias MVUB depth-9 superan sistemáticamente a sus contrapartes
+        8iVFB/MVUB-depth-10 a igual razón nominal, confirmando a nivel multi-\textit{frame} el
+        hallazgo de la Sección~\ref{sec:e10_scale_ratio}. Las secuencias de mejor performance se encuentran en la primera tabla, sin embargo, esta es una comparación injusta ya que también son los que tienen menos distancia respecto a su bloque padre lo que hace que el entrenamiento esté especialmente optimizado para su misma escala. De hecho, podemos notar que esta ganancia para la secuencia sarah es poco estable, mostrando que es un efecto concreto de compartir la misma escala y que la generalización es mucho mejor para la secuencia \texttt{phil9}, que muestra el mejor resultado de la Tabla~\ref{tab:e10_bd_ratio2}. El resto de tablas nos muestra numéricamente como el método reduce su performance a medida que crece la distancia entre el tamaño del bloque padre de entrenamiento y el hijo, lo que es la principal limitante de este trabajo. En la sección oracle, demostramos que el principal fuerte de compresión está para bloques más pequeños, mas el método no alcanza a plasmar esto sin generar pérdidas por señalización y la solución queda corta en definir una estrategia que minimice el efecto trade-off de señalización.
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate multi-\textit{frame} ``clásica'' a $B_c=4$, todos los $K$ evaluados
+            (media $\pm$ std entre \textit{frames}; $\dagger$: sin cobertura multi-\textit{frame}
+            suficiente en esa celda, valor de un único \textit{frame},
+            \texttt{frame\_idx}=1). \texttt{sarah10} no tiene $K=30$.}
+            \scriptsize
+            \resizebox{\linewidth}{!}{%
+            \begin{tabular}{l|ccccc}
+                \hline
+                \textbf{Secuencia} & $K=4$ & $K=8$ & $K=16$ & $K=24$ & $K=30$ \\
+                \hline
+                longdress & $-0.24 \pm 0.03$ & $-0.26^\dagger$ & $-0.33 \pm 0.20$ & $-0.43 \pm 0.19$ & $\mathbf{-0.57 \pm 0.03}$ \\
+                loot & $-0.08 \pm 0.01$ & $-0.13 \pm 0.03$ & $-0.21 \pm 0.04$ & $-0.25 \pm 0.03$ & $\mathbf{-0.26 \pm 0.04}$ \\
+                redandblack & $-0.06 \pm 0.01$ & $-0.11 \pm 0.03$ & $-0.15 \pm 0.04$ & $-0.19 \pm 0.02$ & $\mathbf{-0.25 \pm 0.03}$ \\
+                soldier & $-0.16 \pm 0.02$ & $-0.27 \pm 0.02$ & $-0.42 \pm 0.03$ & $-0.45 \pm 0.01$ & $\mathbf{-0.48 \pm 0.04}$ \\
+                andrew10 & $-0.29 \pm 0.04$ & $-0.41^\dagger$ & $-0.57 \pm 0.03$ & $-0.61 \pm 0.04$ & $\mathbf{-0.64 \pm 0.04}$ \\
+                david10 & $-0.12 \pm 0.03$ & $-0.14^\dagger$ & $-0.14 \pm 0.02$ & $-0.19 \pm 0.04$ & $\mathbf{-0.21 \pm 0.04}$ \\
+                phil10 & $-0.21 \pm 0.01$ & $-0.24^\dagger$ & $-0.46 \pm 0.03$ & $\mathbf{-0.56 \pm 0.06}$ & $-0.52 \pm 0.04$ \\
+                ricardo10 & $-0.07 \pm 0.02$ & $-0.11^\dagger$ & $-0.15 \pm 0.03$ & $-0.18 \pm 0.04$ & $\mathbf{-0.19 \pm 0.03}$ \\
+                sarah10 & $-0.06 \pm 0.03$ & $-0.10^\dagger$ & $-0.27^\dagger$ & $\mathbf{-0.32 \pm 0.06}$ & -- \\
+                andrew9 & $-0.77 \pm 0.13$ & $-1.44^\dagger$ & $-1.64 \pm 0.15$ & $-1.99 \pm 0.13$ & $\mathbf{-2.09 \pm 0.17}$ \\
+                david9 & $-0.18 \pm 0.06$ & $-0.48^\dagger$ & $-0.44 \pm 0.11$ & $-0.48 \pm 0.15$ & $\mathbf{-0.61 \pm 0.15}$ \\
+                phil9 & $-0.61 \pm 0.02$ & $-0.85^\dagger$ & $-1.46^\dagger$ & $\mathbf{-1.70 \pm 0.06}$ & $-1.66^\dagger$ \\
+                ricardo9 & $-0.11 \pm 0.03$ & $-0.43^\dagger$ & $-0.46 \pm 0.06$ & $\mathbf{-0.56 \pm 0.10}$ & $-0.46 \pm 0.07$ \\
+                sarah9 & $-0.27 \pm 0.10$ & $-0.52^\dagger$ & $-1.24 \pm 0.26$ & $-1.40 \pm 0.25$ & $\mathbf{-1.86 \pm 0.21}$ \\
+                \hline
+            \end{tabular}}
+            \label{tab:e10_bd_classic_bc4}
+        \end{table}
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate multi-\textit{frame} ``clásica'' a $B_c=8$, todos los $K$
+            evaluados. Misma convención de $\dagger$ y celdas vacías que la
+            Tabla~\ref{tab:e10_bd_classic_bc4}.}
+            \scriptsize
+            \resizebox{\linewidth}{!}{%
+            \begin{tabular}{l|ccccc}
+                \hline
+                \textbf{Secuencia} & $K=4$ & $K=8$ & $K=16$ & $K=24$ & $K=30$ \\
+                \hline
+                longdress & $-0.60 \pm 0.15$ & $-0.50^\dagger$ & $-1.11 \pm 0.23$ & $-1.34 \pm 0.24$ & $\mathbf{-1.49 \pm 0.07}$ \\
+                loot & $-0.50 \pm 0.06$ & $-0.68 \pm 0.10$ & $-0.95 \pm 0.09$ & $-1.05 \pm 0.17$ & $\mathbf{-1.12 \pm 0.18}$ \\
+                redandblack & $-0.39 \pm 0.08$ & $-0.60 \pm 0.04$ & $-0.85 \pm 0.08$ & $-0.90 \pm 0.11$ & $\mathbf{-1.06 \pm 0.09}$ \\
+                soldier & $-0.67 \pm 0.11$ & $-1.09 \pm 0.11$ & $-1.46 \pm 0.19$ & $-1.59 \pm 0.17$ & $\mathbf{-1.69 \pm 0.18}$ \\
+                andrew10 & $-0.71 \pm 0.15$ & $-0.86^\dagger$ & $-1.43 \pm 0.14$ & $-1.39 \pm 0.12$ & $\mathbf{-1.54 \pm 0.18}$ \\
+                david10 & $-0.41 \pm 0.08$ & $-0.61^\dagger$ & $-0.69 \pm 0.12$ & $-0.81 \pm 0.09$ & $\mathbf{-0.88 \pm 0.13}$ \\
+                phil10 & $-0.59 \pm 0.07$ & $-1.07^\dagger$ & $-1.43 \pm 0.11$ & $-1.60 \pm 0.10$ & $\mathbf{-1.70 \pm 0.08}$ \\
+                ricardo10 & $-0.26 \pm 0.14$ & $-0.29^\dagger$ & $-0.61 \pm 0.15$ & $-0.84 \pm 0.15$ & $\mathbf{-0.87 \pm 0.17}$ \\
+                sarah10 & $-0.48 \pm 0.11$ & $-0.74^\dagger$ & $-1.28^\dagger$ & $\mathbf{-1.40 \pm 0.10}$ & -- \\
+                andrew9 & $-1.27 \pm 0.22$ & $-2.15^\dagger$ & $-2.43 \pm 0.29$ & $-2.46 \pm 0.18$ & $\mathbf{-2.92 \pm 0.31}$ \\
+                david9 & $-0.63 \pm 0.12$ & $-0.90^\dagger$ & $-1.30 \pm 0.22$ & $-1.62 \pm 0.17$ & $\mathbf{-1.81 \pm 0.25}$ \\
+                phil9 & $-1.37 \pm 0.17$ & $-2.01^\dagger$ & $-2.99^\dagger$ & $-3.21 \pm 0.39$ & $\mathbf{-3.30^\dagger}$ \\
+                ricardo9 & $-0.42 \pm 0.36$ & $-1.11^\dagger$ & $-1.30 \pm 0.32$ & $\mathbf{-1.54 \pm 0.40}$ & $-1.42 \pm 0.33$ \\
+                sarah9 & $-1.13 \pm 0.29$ & $-1.32^\dagger$ & $-2.72 \pm 0.35$ & $-2.92 \pm 0.53$ & $\mathbf{-3.38 \pm 0.54}$ \\
+                \hline
+            \end{tabular}}
+            \label{tab:e10_bd_classic_bc8}
+        \end{table}
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate multi-\textit{frame} ``clásica'' a $B_c=16$, todos los $K$
+            evaluados. Misma convención de $\dagger$ y celdas vacías que la
+            Tabla~\ref{tab:e10_bd_classic_bc4}.}
+            \scriptsize
+            \resizebox{\linewidth}{!}{%
+            \begin{tabular}{l|ccccc}
+                \hline
+                \textbf{Secuencia} & $K=4$ & $K=8$ & $K=16$ & $K=24$ & $K=30$ \\
+                \hline
+                longdress & $-0.76 \pm 0.12$ & $-1.00^\dagger$ & $-1.61 \pm 0.26$ & $-1.68 \pm 0.10$ & $\mathbf{-1.90 \pm 0.19}$ \\
+                loot & $-0.80 \pm 0.13$ & $-0.89 \pm 0.34$ & $-1.33 \pm 0.23$ & $\mathbf{-1.56 \pm 0.11}$ & $-1.50 \pm 0.30$ \\
+                redandblack & $-0.56 \pm 0.17$ & $-0.89 \pm 0.22$ & $-1.23 \pm 0.15$ & $\mathbf{-1.59 \pm 0.15}$ & $-1.49 \pm 0.15$ \\
+                soldier & $-0.84 \pm 0.15$ & $-1.36 \pm 0.21$ & $-1.64 \pm 0.20$ & $-1.94 \pm 0.17$ & $\mathbf{-2.05 \pm 0.24}$ \\
+                andrew10 & $-0.60 \pm 0.17$ & $-1.22^\dagger$ & $-1.23 \pm 0.16$ & $-1.35 \pm 0.27$ & $\mathbf{-1.48 \pm 0.19}$ \\
+                david10 & $-0.85 \pm 0.32$ & $-1.17^\dagger$ & $-1.39 \pm 0.40$ & $-1.54 \pm 0.35$ & $\mathbf{-1.76 \pm 0.38}$ \\
+                phil10 & $-1.16 \pm 0.27$ & $-1.44^\dagger$ & $-1.99 \pm 0.24$ & $-2.11 \pm 0.19$ & $\mathbf{-2.40 \pm 0.23}$ \\
+                ricardo10 & $-0.54 \pm 0.36$ & $-0.70^\dagger$ & $-1.03 \pm 0.36$ & $\mathbf{-1.45 \pm 0.16}$ & $-1.30 \pm 0.38$ \\
+                sarah10 & $-0.96 \pm 0.43$ & $-1.59^\dagger$ & $-2.13^\dagger$ & $\mathbf{-2.38 \pm 0.26}$ & -- \\
+                andrew9 & $-1.32 \pm 0.17$ & $-2.02^\dagger$ & $-2.29 \pm 0.34$ & $-2.76 \pm 0.36$ & $\mathbf{-2.98 \pm 0.30}$ \\
+                david9 & $-1.12 \pm 0.29$ & $-1.69^\dagger$ & $-2.02 \pm 0.47$ & $-2.64 \pm 0.25$ & $\mathbf{-2.72 \pm 0.38}$ \\
+                phil9 & $-1.41 \pm 0.09$ & $-1.99^\dagger$ & $-3.06^\dagger$ & $\mathbf{-3.28 \pm 0.17}$ & $-3.24^\dagger$ \\
+                ricardo9 & $-0.66 \pm 0.14$ & $-1.26^\dagger$ & $-1.54 \pm 0.24$ & $\mathbf{-2.30 \pm 0.33}$ & $-1.88 \pm 0.45$ \\
+                sarah9 & $-1.40 \pm 0.50$ & $-1.60^\dagger$ & $-3.21 \pm 1.19$ & $\mathbf{-3.91 \pm 0.94}$ & $-3.88 \pm 0.60$ \\
+                \hline
+            \end{tabular}}
+            \label{tab:e10_bd_classic_bc16}
+        \end{table}
+
+        Las tres tablas clásicas extienden la comparación anterior a los cinco valores de $K$
+        evaluados. El patrón es consistente en las tres: el BD-Rate mejora casi monótonamente con
+        $K$ para la gran mayoría de las filas, 
+        confirmando a nivel multi-\textit{frame} la tendencia promedio ya reportada en la
+        Sección~\ref{sec:e10_k_sweep}. El mejor $K$ por fila no siempre es $K=30$: a $B_c=16$, \texttt{loot}, \texttt{redandblack}, \texttt{ricardo10}, \texttt{phil9}, \texttt{ricardo9} y \texttt{sarah9} (6 de las 13 filas con cobertura de $K=30$) alcanzan su mejor BD-Rate en $K=24$; \texttt{ricardo9} lo hace en los tres $B_c$, y \texttt{phil9}/\texttt{phil10} solo en $B_c=4$. Este efecto es coherente, ya que la saturación para modos más cercanos al bloque padre empieza antes que la de los bloques de mayor distancia. Mientras la primera está bien representada por 24 direcciones de color, el resto puede seguir optimizando el porcentaje de auto-bucles y sus pesos además de las direcciones para encontrar hasta la más mínima ganancia. Sin embargo, las ganancias están claramente encontrando un límite teórico y levantan nuevamente la necesidad de mejorar la estrategia de señalización para aprovechar tanto necesidad de resolución como capacidad de generalización de los bloques y sus agrupaciones dentro del octree
+
+        Contrastado con el techo teórico de la Sección~\ref{sec:oracle_upper_bounds} -- el
+        Linear Oracle logra hasta $-17.31\%$ en $B=4$, con acceso a la señal de luminancia real
+        de cada bloque y sin restricción de codebook discreto ni overhead de señalización --, la
+        ganancia real de E10 ($-0.06\%$ a $-3.91\%$ según secuencia, $B_c$ y $K$) captura solo una
+        fracción de ese techo. La brecha es esperable y no invalida el resultado: el oráculo
+        resuelve un problema estrictamente más fácil (conocimiento perfecto de la señal, sin
+        necesidad de transmitir ni aproximar nada), mientras que E10 mide el desempeño del
+        sistema completo y realista -- codebook discreto entrenado en un único \textit{frame},
+        señalización real por CABAC, y una dirección por bloque en vez de una superficie
+        ajustada por mínimos cuadrados. 
 
 
-\begin{table}[ht]
-\centering
-\caption{Impacto de la Duración de Optimización (B=4, C=6, Q=24).}
-\begin{tabular}{|l|c|c|}
-\hline
-\textbf{Duración} & \textbf{Costo RD Final} & \textbf{Hamming Σ} \\
-\hline
-Estándar (20 iters) & 45,936.24 & 253 \\
-Prolongada (40 iters) & 46,856.72 & 439 \\
-\hline
-\end{tabular}
-\label{tab:iteration_impact}
-\end{table}
+    \subsection{Sensibilidad Cruzada de Métricas y Parámetros}
+        \label{sec:e10_driver_corr}
 
-Finalmente, el análisis de duración (Tabla \ref{tab:iteration_impact}) revela que duplicar el esfuerzo computacional de 20 a 40 iteraciones no garantiza una mejora en el desempeño. De hecho, el costo final aumentó marginalmente, lo que indica que el sistema entra en una fase de oscilación estocástica alrededor de un mínimo local, confirmando que el límite práctico de ROI computacional se alcanza en la iteración 20.
+        % [PLACEHOLDER] Matriz de correlación de Pearson (n=14 secuencias) entre métricas de
+        % desempeño (BD-Rate, BD-PSNR, % gated, % overhead), parámetros entrenados (s_lp, s_lw
+        % promedio a K=24) y características de contenido (g_raw promedio, Y_std, log10(N_vox),
+        % profundidad). Objetivo: identificar qué variables explican más varianza del desempeño.
+        %
+        % Nota estadística: con n=14, el error estándar de un r de Pearson es
+        % aproximadamente 1/sqrt(n-3) ~= 0.30 — solo correlaciones con |r| notablemente mayor
+        % a ese piso deberían tratarse como señal real y no ruido de muestra pequeña.
+	
+	La siguiente matriz de correlación tiene por objetivo visualizar la correlación entre el desempeño y las variables que motivan el diseño de PCADC. Para aquello comparamos distintos paramétros de desempeño como el BD-Rate y BD-PSNR respecto a características del bloque, como la magnitud del gradiente o el número de puntos, o características propias del algoritmo como el porcentaje de bloques filtrados para el entrenamiento, el tamaño relativo del overhead o los parámetros del libro de códigos (porcentaje y peso de auto-bucle).
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.95\linewidth]{img/resultados/e10_driver_correlations.png}
+            \caption{Matriz de correlación de Pearson ($n=14$ secuencias) entre métricas de
+            desempeño, parámetros de adaptador entrenados ($s_{lp}$, $s_{lw}$ promedio, $K=24$)
+            y características de contenido ($g_{raw}$ promedio, $Y_{std}$, $\log_{10}(N_{vox})$,
+            profundidad).}
+            \label{fig:e10_driver_corr}
+        \end{figure}
 
-\subsection{Dinámica de Evolución del Costo}
+	De esta matriz se extraen tres lecturas, con la cautela de que $n=14$ implica un error estándar de $\approx0.30$ para cada $r$, y de que la columna BD-Rate corresponde al mejor par $(B_c,K)$ de cada secuencia evaluado sobre \texttt{frame\_idx}=1, no a las medias multi-\textit{frame} de la Sección~\ref{sec:e10_bd_summary}. Primero, el correlato más fuerte del BD-Rate es la propia fracción de overhead ($r=-0.88$; $+0.81$ con BD-PSNR): las secuencias que más gastan en señalizar modos son también las que más ganan, es decir, el índice de modo transporta información que la codificación de coeficientes efectivamente aprovecha y el costo de señalización se paga solo. Le siguen, con magnitud similar entre sí, el tamaño de la nube ($\log_{10}N_{vox}$, $r=+0.63$: nubes más grandes ganan menos), la magnitud media del gradiente ($g_{raw}$, $r=-0.61$) y el peso medio de auto-lazo ($s_{lw}$, $r=-0.60$); estos dos últimos están fuertemente ligados entre sí ($r=+0.86$), lo que indica que la calibración RDO asigna auto-lazos más pesados precisamente donde el gradiente de luminancia es más marcado. Segundo, la tasa de \textit{gating} no correlaciona con el desempeño entre secuencias ($r=-0.08$ con BD-Rate, $0.00$ con BD-PSNR): cuántos bloques se filtran no explica cuál secuencia gana más, aunque sí contribuye a la dispersión entre \textit{frames} de una misma secuencia (Sección~\ref{sec:e10_bd_summary}). Tercero, la profundidad nominal es un predictor más débil que la densidad absoluta: \texttt{depth==10} correlaciona $+0.30$ con BD-Rate y $-0.53$ con el overhead, frente a $+0.63$ y $-0.79$ para $\log_{10}N_{vox}$, en línea con la Sección~\ref{sec:e10_scale_ratio}. En conjunto, la matriz confirma que el algoritmo traduce características de la señal (gradiente y variabilidad de luminancia, esta última con $r=-0.49$) en ganancia de compresión, y que la señalización está transportando la información relevante para ello.
 
-\begin{figure}[ht]
-    \centering
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/cost_evolution_B4.png}
-        \caption{Bloques B=4}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/cost_evolution_B8.png}
-        \caption{Bloques B=8}
-    \end{subfigure}
-    \caption{Trayectorias de reducción de costo RD.}
-    \label{fig:cost_evolution_split}
-\end{figure}
+    \subsection{Análisis de Capacidad del Libro de Códigos ($K$)}
+        \label{sec:e10_k_sweep}
 
-Las trayectorias de costo (Fig. \ref{fig:cost_evolution_split}) destacan el "Breakthrough" de la segunda iteración. En bloques de $B=4$, se observa un descenso casi vertical que representa la transición de la inicialización geométrica a la optimización conjunta de parámetros. A diferencia de las escalas mayores, $B=4$ muestra una convergencia asintótica mucho más suave, indicando un aprendizaje más estable de las correlaciones de señal.
+        % [PLACEHOLDER] Esta subsección analiza el efecto de K (número de modos/clústeres)
+        % en el rendimiento RD. Figuras sugeridas:
+        %
+        % 1. Curva BD-Rate promedio vs. K (para distintos B_c): ¿satura en K=16 o K=24?
+        % 2. Distribución de modos activos por secuencia (¿cuántos de los K modos se usan realmente?)
+        % 3. Entropía del índice de modo vs. K (relacionar con overhead de señalización)
+        %
+        % Preguntas a responder:
+        %  - ¿Cuál es el K óptimo que maximiza la relación ganancia/overhead?
+        %  - ¿Difiere el K óptimo entre secuencias dense (8iVFB) y semidensas (MVUB)?
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=1.0\linewidth]{img/resultados/e10_k_sweep.png}
+            \caption{Efecto del tamaño del libro de códigos $K$ en la ganancia BD-Rate promedio,
+            separado por profundidad (panel izquierdo: 5 secuencias depth-9, $B_p=16$; panel
+            derecho: 9 secuencias depth-10, $B_p=32$) para evitar promediar dos razones
+            padre:hijo distintas bajo el mismo $B_c$ nominal — en depth-9, $B_c=16$ es el caso
+            en que el bloque hijo \emph{es} el bloque padre (razón 1); en depth-10 el mismo
+            $B_c=16$ corresponde a razón 2.}
+            \label{fig:e10_k_sweep}
+        \end{figure}
+
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        La ganancia BD-Rate promedio crece de forma monótona con $K$ en ambos paneles, sin
+        saturación hasta $K=24$ (el máximo con cobertura completa de las 14 secuencias) -- cada
+        $K$ adicional agrega una dirección al libro de códigos esférico
+        (Sección~\ref{sec:codebook_training_real}), aumentando la resolución angular disponible
+        a costo de un overhead que crece solo logarítmicamente
+        (Sección~\ref{sec:overhead_method}). 
+
+    \subsection{Análisis de Escala de Bloque ($B_c$)}
+        \label{sec:e10_scale_ratio}
+
+        % [PLACEHOLDER] Analizar el efecto del tamaño de bloque hijo B_c:
+        %  - ¿Cuál B_c da mejor RD para las secuencias depth-10?
+        %  - ¿Cuál B_c es óptimo para depth-9 (donde B_c=32 no existe)?
+        %  - Relacionar con los resultados del experimento de barrido de resolución
+        %    ya publicados en la Tabla \ref{tab:resolution_sweep} (sección anterior)
+        %  - ¿Es B_c=16 geométricamente equivalente entre depth-9 y depth-10?
+        %    (ambos representan 1/32 del bounding box → sí, por diseño)
+
+        \begin{table}[H]
+            \centering
+            \caption{BD-Rate ($K=24$, frame\_idx=1) para los 5 sujetos con ambas profundidades,
+            comparados a razón padre:hijo equivalente ($B_p/B_c$) en vez de a igual $B_c$ nominal.}
+            \footnotesize
+            \begin{tabular}{l|c|cc|cc|c}
+                \hline
+                \textbf{Sujeto} & \textbf{Razón} & $B_c$ (9) & \textbf{BD-Rate (9)} &
+                $B_c$ (10) & \textbf{BD-Rate (10)} & \textbf{Razón brecha} \\
+                \hline
+                andrew   & 2 & 8 & -2.91\% & 16 & -1.56\% & 1.86$\times$ \\
+                andrew   & 4 & 4 & -2.06\% &  8 & -1.32\% & 1.56$\times$ \\
+                \hline
+                phil     & 2 & 8 & -3.33\% & 16 & -2.18\% & 1.53$\times$ \\
+                phil     & 4 & 4 & -1.66\% &  8 & -1.60\% & 1.04$\times$ \\
+                \hline
+                ricardo  & 2 & 8 & -1.64\% & 16 & -1.07\% & 1.53$\times$ \\
+                ricardo  & 4 & 4 & -0.53\% &  8 & -0.58\% & 0.91$\times$ \\
+                \hline
+                sarah    & 2 & 8 & -2.79\% & 16 & -2.32\% & 1.20$\times$ \\
+                sarah    & 4 & 4 & -1.53\% &  8 & -1.34\% & 1.15$\times$ \\
+                \hline
+                david    & 2 & 8 & -1.81\% & 16 & -1.45\% & 1.25$\times$ \\
+                david    & 4 & 4 & -0.71\% &  8 & -0.87\% & 0.81$\times$ \\
+                \hline
+            \end{tabular}
+            \normalsize
+            \label{tab:e10_depth_ratio}
+        \end{table}
+
+        La Tabla~\ref{tab:e10_depth_ratio} responde directamente la pregunta de equivalencia
+        geométrica entre profundidades:
+        a \textbf{razón 2} (bloque hijo = mitad del padre), la razón de brecha es consistentemente
+        mayor a 1 para los 5 sujetos (1.20$\times$ a 1.86$\times$), es decir, depth-9 gana
+        sistemáticamente más que su contraparte depth-10 a razón geométrica equivalente — la
+        equivalencia por diseño ($B_p/2^{\text{profundidad}}=1/32$ en ambos casos, Sección
+        \ref{sec:pc_partition_hierarchy}) \emph{no} produce desempeño idéntico, solo comparable
+        en orden de magnitud. A \textbf{razón 4} (bloque hijo = un cuarto del padre) el patrón
+        se debilita y en dos casos se \textbf{invierte}: \texttt{ricardo} (0.91$\times$) y
+        \texttt{david} (0.81$\times$) muestran a esa razón un BD-Rate depth-10 mejor que su
+        contraparte depth-9, lo opuesto al patrón dominante. Esto indica que la equivalencia
+        geométrica por razón $B_p/B_c$ es una aproximación razonable pero incompleta: a
+        particiones más finas relativas al padre (razón 4), factores no capturados por la razón
+        —probablemente la densidad absoluta de puntos por bloque, distinta entre profundidades a
+        igual razón— empiezan a dominar sobre el efecto de escala relativa. Esto es evidencia a
+        favor de que la densidad de puntos sí importa de forma independiente a la resolución
+        relativa, no solo como matiz sino como factor que puede revertir el signo de la
+        comparación en el régimen de bloques más finos.
 
 
-\subsection{Velocidad de Convergencia y Reasignación}
+    \subsection{Análisis del Overhead de Señalización}
 
-\begin{figure}[ht]
-    \centering
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/hamming_evolution_B4.png}
-        \caption{Bloques B=4}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
-        \includegraphics[width=\textwidth]{img/resultados/hamming_evolution_B8.png}
-        \caption{Bloques B=8}
-    \end{subfigure}
-    \caption{Evolución de la distancia Hamming por escala.}
-    \label{fig:hamming_evolution_split}
-\end{figure}
+        % [PLACEHOLDER] En este experimento, el overhead incluye:
+        %  (a) Índice de modo k ∈ {0, ..., K-1} por bloque → señalizado con CABAC
+        %  (b) Parámetros del libro de códigos (SLP_k, SLW_k) × K → transmitidos una vez por frame
+        %  Cuantificar:
+        %  - Overhead total en bits por frame para distintas configuraciones (B_c, K)
+        %  - Fracción del bitstream que corresponde a overhead vs. coeficientes GFT
+        %  - Comparar con el overhead de RAHT en G-PCC (que es cero: no hay señalización extra)
+        %  - ¿Vale la pena el overhead? Mostrar ganancia neta (BPV total incluyendo overhead)
 
-El análisis de la distancia Hamming (Fig. \ref{fig:hamming_evolution_split}) confirma la presencia de un "piso de vibración". Ningún experimento alcanzó un estado de Hamming cero, lo que sugiere que el espacio de búsqueda es altamente no-convexo. En la escala $B=4$, los bloques continúan oscilando entre clusters competitivos incluso en la iteración 20, manteniendo el sistema en una búsqueda constante de refinamiento.
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.8\linewidth]{img/resultados/e10_overhead_breakdown.png}
+            \caption{Overhead CABAC del índice de modo como fracción de los bits totales
+            (coeficientes RLGR + overhead) $\times 100$, por secuencia: barra = promedio $\pm$
+            desviación estándar, marcador rojo = máximo observado, sobre todas las
+            configuraciones $(B_c, K, Q)$ evaluadas (frame\_idx=1). Secuencias ordenadas de
+            mayor a menor overhead promedio.}
+            \label{fig:e10_overhead}
+        \end{figure}
+
+        El eje vertical es un porcentaje (overhead / bits totales $\times 100$), no una fracción
+        de 0 a 1: el máximo real observado en las 14 secuencias, sobre todas las configuraciones
+        evaluadas, es $1.09\%$ (\texttt{sarah9}) -- muy lejos de comprometer el presupuesto de
+        bits. La dependencia de esta fracción con $Q$, en cambio, no es uniforme entre
+        secuencias, y conviene precisarla más allá de lo que muestra la figura (que agrupa
+        todas las configuraciones). El mecanismo de \textit{gating}
+        (Sección~\ref{sec:mode_selection}), con barrera $\tau_{\text{gate}}(Q)=100\cdot(Q/32)^2$
+        creciente en $Q$, fuerza a más bloques padre al modo estructural a medida que sube la
+        cuantización y reduce así el numerador (índices de modo que codificar); pero el
+        denominador (bits RLGR de coeficientes) también cae con $Q$, y cuál de los dos cae más
+        rápido depende de cuántos bloques ya estaban filtrados a $Q$ bajo. En las secuencias con
+        \textit{gating} alto desde $Q=24$ -- \texttt{david9}/\texttt{david10} ($78\%$ de padres
+        filtrados a $Q=24$, $B_c=16$, $K=24$), \texttt{ricardo9}/\texttt{ricardo10} ($81\%$) y
+        \texttt{loot} ($53\%$) -- la fracción sí decrece monótonamente con $Q$ (p.\,ej.\
+        \texttt{david10}: $0.245\%\to0.224\%\to0.197\%\to0.167\%$ para $Q=24,32,48,64$;
+        \texttt{loot}: $0.243\%\to0.239\%\to0.177\%\to0.113\%$). En las secuencias con
+        \textit{gating} bajo a $Q=24$ -- \texttt{longdress} ($10\%$), \texttt{soldier} ($13\%$),
+        \texttt{phil9} ($32\%$), \texttt{andrew9} ($37\%$) -- ocurre lo contrario hasta $Q=48$:
+        los bits de coeficientes caen más rápido que los de señalización y la fracción
+        \emph{crece} (\texttt{longdress}: $0.189\%\to0.239\%\to0.317\%\to0.303\%$;
+        \texttt{andrew9}: $0.444\%\to0.498\%\to0.606\%\to0.552\%$; \texttt{phil9}:
+        $0.709\%\to0.826\%\to0.922\%\to0.744\%$), y solo en $Q=64$, cuando el \textit{gating}
+        alcanza $55$--$80\%$ también en ellas, la fracción vuelve a bajar (valores promediados
+        sobre los \textit{frames} disponibles de cada secuencia). En ningún caso la fracción se
+        acerca a comprometer la ganancia neta reportada en la Sección~\ref{sec:e10_bd_summary}
+        (que ya incluye este costo en el BPV real medido): la desviación estándar (ancho de
+        barra) es pequeña frente a la media y el máximo observado (marcador rojo) se mantiene
+        acotado y cercano al promedio en las 14 secuencias.
+	Es interesante observar también que el orden se condice con los mejores desempeños mostrados para este algoritmo. La secuencia de Sarah y Phil son los mejores rendimientos para MVUB al mismo tiempo que los mayores overhead. Lo mismo sucede con longdress y soldier para 8iVFB. Lo anterior sugiere que el diseño naturalmente justifica el costo del overhead debido a las ganancias relativas. Pero también abre la pregunta de si una distribución más estratégica y multiresolución podría mejorar los resultados para secuencias más complejas y mayor resolución.
 
 
-\subsection{Evolución Estadística de Parámetros (SLP y SLW)}
+    \subsection{Direcciones del Libro de Códigos}
+        \label{sec:e10_codebook_dirs}
 
-Las figuras \ref{fig:slp_split_b4} a \ref{fig:slw_split_b8} desglosan la evolución de los parámetros de auto-lazo en sus cuatro componentes estadísticas fundamentales. Este desglose permite observar no solo la tendencia central, sino la dispersión y los límites del libro de códigos.
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=1.0\linewidth]{img/resultados/e10_codebook_directions.png}
+            \caption{Ángulo de elevación $\theta = \arccos(|c_y|)$ de los 23 centroides
+            entrenados ($K=24$) para cada una de las 14 secuencias. Izquierda: sin ponderar,
+            círculo blanco marca la media por secuencia. Derecha: mismo ángulo, tamaño de marcador
+            proporcional a la frecuencia de uso real del modo (\texttt{cluster\_distribution.n\_
+            blocks\_assigned}, frame\_idx=1); el rombo marca la media \emph{ponderada por
+            frecuencia}. $\theta=0°$ corresponde a un gradiente vertical, $\theta=90°$ a uno
+            horizontal.}
+            \label{fig:e10_codebook_directions}
+        \end{figure}
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.0\linewidth]{img/resultados/slp_split_B4.png}
-    \caption{Estadísticas detalladas de SLP (B=4, Q=24).}
-    \label{fig:slp_split_b4}
-\end{figure}
+        El panel derecho responde directamente la pregunta de si la concentración angular
+        visible en algunas secuencias corresponde a modos realmente usados o solo a centroides
+        cercanos entre sí pero raramente asignados: en las secuencias donde el panel izquierdo ya
+        mostraba agrupamientos visibles de $\theta$ (p.\,ej.\ \texttt{ricardo9},
+        \texttt{ricardo10}), los marcadores más grandes -- los modos con más bloques asignados --
+        caen predominantemente \emph{dentro} de esos agrupamientos, no dispersos por el rango
+        completo: la concentración angular observada es un efecto de uso real, no un artefacto de
+        cómo se distribuyen los centroides entrenados. La media ponderada por frecuencia (rombo)
+        se desplaza, en consecuencia, hacia esos ángulos dominantes de forma más marcada que la
+        media simple (círculo blanco) en las secuencias más concentradas, mientras que en
+        secuencias con uso más uniforme (p.\,ej.\ \texttt{longdress}) ambas medias permanecen
+        próximas entre sí.
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.0\linewidth]{img/resultados/slp_split_B8.png}
-    \caption{Estadísticas detalladas de SLP (B=8, Q=24).}
-    \label{fig:slp_split_b8}
-\end{figure}
+        \begin{table}[H]
+            \centering
+            \caption{Similitud coseno entre cada centroide $K=4$ y su vecino más cercano en el
+            libro de códigos $K=24$ de la misma secuencia (peor y mejor caso de los 3 centroides
+            direccionales de $K=4$).}
+            \begin{tabular}{l|c|c}
+                \hline
+                \textbf{Secuencia} & \textbf{Peor caso} & \textbf{Mejor caso} \\
+                \hline
+                longdress    & 0.9637 & 0.9962 \\
+                loot         & 0.9539 & 0.9903 \\
+                redandblack  & 0.9476 & 0.9903 \\
+                soldier      & 0.9805 & 0.9985 \\
+                andrew10     & 0.9737 & 0.9948 \\
+                david10      & 0.9722 & 0.9906 \\
+                phil10       & 0.9805 & 0.9996 \\
+                ricardo10    & 0.9653 & 0.9890 \\
+                sarah10      & 0.9520 & 0.9891 \\
+                andrew9      & 0.9678 & 0.9960 \\
+                david9       & 0.9712 & 0.9896 \\
+                phil9        & 0.9800 & 0.9974 \\
+                ricardo9     & 0.9768 & 0.9951 \\
+                sarah9       & 0.9522 & 0.9855 \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_codebook_nesting}
+        \end{table}
+        La Figura~\ref{fig:e10_codebook_directions} muestra que los centroides entrenados no se
+        concentran en un único ángulo: cada secuencia cubre un rango amplio de $\theta$, con la
+        media (círculo blanco) típicamente cerca del centro del rango — evidencia de que el
+        entrenamiento no colapsa a una única dirección dominante incluso cuando existe una
+        (Sección~\ref{sec:e10_spatial_info} muestra que la mayoría de los bloques sí comparten una
+        orientación de superficie predominante). La Tabla~\ref{tab:e10_codebook_nesting} cuantifica
+        qué tan \emph{anidado} está el libro de códigos entre capacidades: el peor caso de
+        similitud coseno entre un centroide de $K=4$ y su vecino más cercano en $K=24$ va de
+        $0.947$ (\texttt{sarah10}) a $0.981$ (\texttt{soldier}, \texttt{phil10}) — alto pero
+        \emph{no} perfecto. Esto es esperable dado el mecanismo real: el k-means esférico se
+        re-entrena de forma independiente para cada $K$ (Sección~\ref{sec:codebook_training_real}),
+        sin restricción jerárquica que fuerce a los centroides de $K=4$ a ser un subconjunto
+        exacto de los de $K=24$ (a diferencia de, por ejemplo, un árbol de clustering jerárquico
+        construido explícitamente así). Que la similitud observada sea consistentemente alta es
+        entonces un resultado \emph{empírico} sobre la estabilidad de las direcciones dominantes
+        del contenido, no una garantía estructural del algoritmo de entrenamiento — vale la pena
+        señalarlo así explícitamente y no como si fuera anidamiento por diseño.
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.0\linewidth]{img/resultados/slw_split_B4.png}
-    \caption{Estadísticas detalladas de SLW (B=4, Q=24).}
-    \label{fig:slw_split_b4}
-\end{figure}
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+    %[OBSERVACIÓN: Esta figura debería compartir la misma escala para los colores para que sean realmente comparables]
+        Los parámetros de auto-lazo $(s_{lp}, s_{lw})$ asociados a cada dirección del codebook se
+        calibran por separado para cada modo (Sección~\ref{sec:adapter_rdo_real}); la
+        Figura~\ref{fig:e10_adapter_distribution} muestra su distribución conjunta, separada por
+        familia estructural -- la agrupación relevante aquí también, dado que $s_{lp}$ y $s_{lw}$
+        se calibran sobre la población de bloques activos de cada secuencia, que difiere
+        sistemáticamente entre familias (Sección~\ref{sec:e10_multiframe_compute}).
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=1.0\linewidth]{img/resultados/slw_split_B8.png}
-    \caption{Estadísticas detalladas de SLW (B=8, Q=24).}
-    \label{fig:slw_split_b8}
-\end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=1.0\linewidth]{img/resultados/e10_adapter_distribution.png}
+            \caption{Mapa de calor conjunto de $(s_{lp}, s_{lw})$ calibrados por modo, separado
+            por familia estructural, $K=24$, todos los pasos de cuantización agrupados. $s_{lp}$
+            en sus 3 valores reales de malla gruesa $\{0.05, 0.25, 0.60\}$
+            (Sección~\ref{sec:adapter_rdo_real}); $s_{lw}$ discretizado en 10 bins de igual ancho
+            para la visualización.}
+            \label{fig:e10_adapter_distribution}
+        \end{figure}
 
-La evolución de $SLP$ (Fig. \ref{fig:slp_split_b4}) revela una tendencia global de \textit{sparsification}. El promedio global decae drásticamente desde el valor inicial de $0.85$ hacia el rango $[0.40, 0.50]$, demostrando que el sistema aprende a simplificar la conectividad para maximizar la esparsidad espectral. Simultáneamente, la desviación estándar creciente en $SLW$ (Fig. \ref{fig:slw_split_b4}) indica que los clusters se están diferenciando funcionalmente para capturar patrones de señal específicos y heterogéneos.
+        El patrón es estructural, no accidental: $s_{lp}$ solo toma sus tres valores de malla
+        gruesa (el eje ya está simplificado a esos 3 valores, sin refinamiento continuo, tal como
+        especifica el mecanismo de calibración desacoplada -- el refinamiento por sección áurea
+        nunca se aplica a $s_{lp}$). En las tres familias, la masa se concentra en $s_{lp}$ bajo
+        (0.05) con $s_{lw}$ moderado, pero MVUB depth-9 muestra más peso proporcional en $s_{lp}$
+        alto (0.60) que las otras dos familias -- consistente con la Tabla~\ref{tab:e10_bd_ratio1}:
+        las secuencias depth-9 son también las que más ganan con auto-lazos extensos, y esto es
+        visible directamente en cómo se calibran, no solo en el resultado final.
+
+        Lo anterior compara direcciones \emph{entre} valores de $K$. La pregunta más fundamental
+        es otra: \emph{dentro} de un $K$ dado, ¿el k-means esférico efectivamente converge a
+        direcciones estables porque minimizan el costo de agrupamiento, o el entrenamiento se
+        detiene en un estado intermedio sin alcanzar estabilidad real? La
+        Figura~\ref{fig:e10_convergence_frequency} responde esto para 6 secuencias -- las 2
+        8iVFB (\texttt{longdress}, \texttt{loot}) y, por cada profundidad MVUB, el mejor y peor
+        caso por BD-Rate multi-\textit{frame} (Tablas~\ref{tab:e10_bd_classic_bc4}--\ref{tab:e10_bd_classic_bc16}):
+        \texttt{phil9}/\texttt{ricardo9} (depth-9) y \texttt{phil10}/\texttt{ricardo10}
+        (depth-10) --, graficando el desplazamiento angular máximo entre centroides de una
+        iteración a la siguiente (escala logarítmica) para cada $K\in\{4,8,16,24,30\}$.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=1.0\linewidth]{img/resultados/e10_convergence_frequency.png}
+            \caption{Desplazamiento angular máximo entre centroides, iteración a iteración
+            (escala log), por $K$, para 6 secuencias: 8iVFB (\texttt{longdress}, \texttt{loot})
+            y mejor/peor BD-Rate multi-\textit{frame} por profundidad MVUB
+            (\texttt{phil9}/\texttt{ricardo9}, \texttt{phil10}/\texttt{ricardo10}).}
+            \label{fig:e10_convergence_frequency}
+        \end{figure}
+
+        El resultado es inequívoco en las 6 secuencias mostradas y se confirma sobre las 14 en
+        la Tabla~\ref{tab:e10_convergence} a continuación: el desplazamiento angular máximo cae
+        varios órdenes de magnitud hasta $\sim\!10^{-6}$ grados (esencialmente cero, límite
+        numérico) antes de detenerse, y el criterio de convergencia real del algoritmo
+        (Sección~\ref{sec:codebook_training_real}: estabilidad exacta de asignación, sin
+        tolerancia de distancia) se cumple en el 100\% de los casos evaluados -- ningún caso se
+        detiene en un estado intermedio o inestable dentro del tope de iteraciones disponible.
+        Que \texttt{ricardo9}/\texttt{ricardo10} (peor BD-Rate de su profundidad) y
+        \texttt{phil9}/\texttt{phil10} (mejor) converjan con la misma solidez descarta una
+        explicación simple para la brecha de desempeño entre ellas: no es que una converja mal y
+        la otra bien: ambas alcanzan el mismo criterio de parada estricto, de modo que la
+        diferencia de BD-Rate debe originarse en otro lugar (contenido de la secuencia, tasa de
+        \textit{gating}, Sección~\ref{sec:e10_driver_corr}), no en la calidad del entrenamiento.
+
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        La Tabla~\ref{tab:e10_convergence} extiende esto a las 14 secuencias y añade, en la misma
+        fila, un resumen de la segunda etapa de entrenamiento -- independiente de la primera --:
+        la búsqueda de adaptador $(s_{lp}, s_{lw})$ por modo, que evalúa una malla gruesa de 9
+        puntos y refina después $s_{lw}$ únicamente mediante sección áurea en una ventana de
+        $\pm0.15$ alrededor del mejor punto de la malla (Sección~\ref{sec:adapter_rdo_real}).
+
+        \begin{table}[H]
+            \centering
+            \caption{Convergencia del k-means esférico y resumen de la búsqueda de adaptador,
+            las 14 secuencias, $K=24$. Las 23 direcciones convergen en el 100\% de los casos
+            (estabilidad exacta de asignación). \textbf{Negrita}: extremos de cada columna.}
+            \footnotesize
+            \begin{tabular}{l|c|c|c|c}
+                \hline
+                \textbf{Secuencia} & \textbf{$n$ iter.\ k-means} & \textbf{despl.\ final (°)} &
+                \textbf{evals.\ auto-lazo} & \textbf{$\Delta$costo medio (\%)} \\
+                \hline
+                longdress    & 14 & $1.48\times10^{-6}$ & 345 & $-1.0\%$ \\
+                loot         & 10 & $1.48\times10^{-6}$ & 345 & $-0.9\%$ \\
+                redandblack  & 11 & $1.21\times10^{-6}$ & 345 & $-1.2\%$ \\
+                soldier      & 13 & $1.21\times10^{-6}$ & 345 & $-0.8\%$ \\
+                andrew10     & 16 & $1.21\times10^{-6}$ & 345 & $\mathbf{-0.6\%}$ \\
+                david10      & \textbf{29} & $1.21\times10^{-6}$ & 345 & $-1.2\%$ \\
+                phil10       & 21 & $1.21\times10^{-6}$ & 345 & $\mathbf{-0.6\%}$ \\
+                ricardo10    & 20 & $\mathbf{8.54\times10^{-7}}$ & 345 & $-1.5\%$ \\
+                sarah10      & 12 & $1.71\times10^{-6}$ & 345 & $-1.3\%$ \\
+                andrew9      & 14 & $1.48\times10^{-6}$ & 345 & $-1.1\%$ \\
+                david9       & \textbf{29} & $1.21\times10^{-6}$ & 345 & $-1.8\%$ \\
+                phil9        & 23 & $1.21\times10^{-6}$ & 345 & $-1.5\%$ \\
+                ricardo9     & 14 & $1.21\times10^{-6}$ & 345 & $\mathbf{-2.2\%}$ \\
+                sarah9       & \textbf{10} & $1.21\times10^{-6}$ & 345 & $-1.5\%$ \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_convergence}
+        \end{table}
+
+        Las 14 secuencias comparten el mismo número de evaluaciones de auto-lazo (345 = 23
+        modos $\times$ 15 evaluaciones/modo: 9 de malla gruesa + refinamiento de sección áurea
+        de tamaño fijo) -- la búsqueda nunca es exhaustiva. La reducción de costo lograda por
+        esa búsqueda, respecto al punto de partida de la malla, va de $-0.6\%$
+        (\texttt{andrew10}, \texttt{phil10}) a $-2.2\%$ (\texttt{ricardo9}) -- \texttt{ricardo9}
+        combina la búsqueda de adaptador más productiva con uno de los peores BD-Rate
+        multi-\textit{frame} de su profundidad (Tabla~\ref{tab:e10_bd_ratio1}), sugiriendo que ahí
+        el cuello de botella no es la calibración de $(s_{lp},s_{lw})$ en sí -- que ya extrae más
+        ganancia relativa que en cualquier otra secuencia -- sino la aproximación discreta de
+        dirección (Sección~\ref{sec:e10_codebook_dirs}) o la escasa cantidad de bloques activos
+        disponibles para calibrar (Tabla~\ref{tab:e10_info_theory}). El número de iteraciones de
+        k-means hasta converger no muestra un patrón claro por familia (rango 10--29, con
+        \texttt{david9} y \texttt{david10} coincidiendo en el máximo pese a ser de profundidades
+        distintas) -- es sensible a la inicialización aleatoria de los centroides más que a una
+        propiedad estructural de la secuencia.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.6\linewidth]{img/resultados/e10_training_diagnostics.png}
+            \caption{Ejemplo de traza de búsqueda de adaptador (self-loop percentage/weight)
+            para el modo 1 de \texttt{longdress}: grilla gruesa de 9 puntos seguida de sección
+            áurea sobre $s_{lw}$.}
+            \label{fig:e10_training_diagnostics}
+        \end{figure}
+
+        La Figura~\ref{fig:e10_training_diagnostics} ilustra, para un caso concreto, la mecánica
+        resumida en la Tabla~\ref{tab:e10_convergence}: el óptimo marcado corresponde al
+        resultado final de la sección áurea, alcanzado en un número fijo y pequeño de
+        evaluaciones adicionales (4 iteraciones de refinamiento tras la malla gruesa de 9
+        puntos), no a una búsqueda exhaustiva del espacio $(s_{lp}, s_{lw})$.
 
 
-\subsection{Frontera de Eficiencia Informacional}
+	Las siguientes figuras muestran visualmente como se están comportando la dirección de los centroides y la distribución espacial de estos para cuatro secuencias representativas. 
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/es_fig_annex1_spherical_centroids.png}
+            \caption{Libro de códigos ($K=24$) proyectado en $S^2$ para 4 secuencias
+            representativas (longdress, soldier: 8iVFB; andrew10, ricardo9: MVUB, una por
+            profundidad).}
+            \label{fig:e10_es_annex1}
+        \end{figure}
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.8\linewidth]{img/resultados/efficiency_frontier.png}
-    \caption{Relación entre ganancia interna y entropía del libro de códigos.}
-    \label{fig:efficiency_frontier}
-\end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.92\linewidth]{img/resultados/es_fig_annex2_spatial_layout.png}
+            \caption{Nube de puntos y luminancia original (izquierda) e inclinación esférica
+            $\theta$ del clúster asignado por bloque padre (derecha), para las mismas 4
+            secuencias representativas.}
+            \label{fig:e10_es_annex2}
+        \end{figure}
 
-La frontera de eficiencia (Fig. \ref{fig:efficiency_frontier}) mapea el Pareto del sistema. Se identifica que las configuraciones de baja capacidad ($C=2, 4$) ofrecen la mejor relación ganancia por bit de entropía. A medida que se añaden clusters, la ganancia bruta aumenta, pero el costo de señalización de índices se vuelve desproporcionadamente alto, situando el punto óptimo de operación cerca de $C=6$.
+La figura \ref{fig:e10_es_annex1} muestra como las direcciones se distribuyen uniformemente para las secuencias 8iVFB a diferencia de las secuencias MVUB que agrupan varios modos en una misma dirección. Esto ofrece una explicación parcial del mejor rendimiento de las secuencias depth-9 (Tabla~\ref{tab:e10_bd_ratio1}): hay más modos representando una menor diversidad de comportamiento lumínico, además de un menor número de puntos. Cabe precisar que la ventaja es propia de depth-9 y no de MVUB en general: a $K=24$ y mejor $B_c$, las cinco secuencias MVUB depth-10 promedian $-1.77\%$ frente a $-1.69\%$ de las cuatro 8iVFB (Tablas~\ref{tab:e10_bd_classic_bc8}--\ref{tab:e10_bd_classic_bc16}). Además se observa que el algoritmo es capaz de relacionar direccionalidad de gradiente lumínico respecto a transformadas direccionales angularmente congruentes. 
+    \subsection{Estructura Espacial y Teoría de la Información}
+        \label{sec:e10_spatial_info}
+
+        % [PLACEHOLDER] ¿Los bloques adyacentes en orden Morton comparten modo? ¿Cuánta
+        % información (en bits) hay realmente en esa adyacencia, y dónde gana/pierde el
+        % codec según el gradiente local?
+
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=0.85\linewidth]{img/resultados/e10_adjacency_zscore.png}
+            \caption{Puntaje $z$ de la fracción de pares adyacentes (orden Morton) con el mismo
+            modo, respecto a una permutación aleatoria de las mismas etiquetas (200 muestras).
+            Secuencias ordenadas por magnitud descendente de $z$ en ``todos los bloques''.
+            ``Todos los bloques'' incluye los forzados a modo 0 por el gating; ``solo bloques
+            activos'' aísla la competencia RD real entre modos direccionales.}
+            \label{fig:e10_adjacency_zscore}
+        \end{figure}
+
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        Concretamente, se mide la distribución de índices de modo $\{M_p\}$ de los bloques padre
+        activos de cada secuencia bajo dos modelos: sin contexto (orden 0, $H_0=H(M)$) y
+        condicionada al índice del bloque padre inmediatamente anterior en orden Morton (orden 1
+        de Markov, $H_1=H(M_p\mid M_{p-1})$), ambos con corrección de sesgo Miller--Madow para
+        muestra finita (Ecuación~\ref{eq: miller_madow}). El objetivo es cuantificar cuánta
+        información mutua hay realmente en la adyacencia espacial de modos --
+        $I(M_p;M_{p-1})=H_0-H_1$, la misma cantidad que explota el codificador aritmético
+        adaptativo de orden 1 usado en la práctica (Sección~\ref{sec:overhead_method}) -- y
+        comparar ese piso teórico contra el costo real medido del codificador (columna
+        Coder/$H_1$), en vez de asumir que la teoría y la implementación coinciden.
+
+        \begin{table}[H]
+            \centering
+            \caption{Entropía del índice de modo (bits/bloque, corrección Miller--Madow),
+            información mutua entre bloques adyacentes, razón entre el overhead CABAC real y el
+            piso teórico de orden 1, y fracción de la entropía total explicada por el estado de
+            gating, todas sobre el subconjunto de bloques activos ($B_c=16$ o $B_c=8$ según
+            corresponda, $K=24$, $Q=24$, frame\_idx=1).}
+            \begin{tabular}{l|c|c|c|c|c}
+                \hline
+                \textbf{Secuencia} & \textbf{$n$ activos} & $H_0$ & $H_1$ (Markov) &
+                \textbf{Coder/$H_1$} & \textbf{Gating explica} \\
+                \hline
+                ricardo10    &  157 & 4.423 & 3.125 & 1.220 & 43.2\% \\
+                ricardo9     &  158 & 4.437 & 3.154 & 1.217 & 42.5\% \\
+                david9       &  310 & 4.378 & 3.535 & 1.080 & 38.0\% \\
+                david10      &  308 & 4.484 & 3.815 & 1.048 & 41.1\% \\
+                sarah9       &  343 & 4.335 & 3.521 & 1.079 & 37.4\% \\
+                sarah10      &  343 & 4.366 & 3.676 & 1.065 & 37.5\% \\
+                redandblack  &  391 & 4.570 & 3.884 & 1.027 & 26.5\% \\
+                loot         &  413 & 4.538 & 3.976 & 1.008 & 29.1\% \\
+                andrew9      &  638 & 4.455 & 3.916 & 1.002 & 22.1\% \\
+                andrew10     &  649 & 4.517 & 4.210 & 0.975 & 23.1\% \\
+                phil9        &  966 & 4.489 & 4.138 & 0.973 & 19.6\% \\
+                phil10       &  974 & 4.428 & 4.251 & 0.972 & 21.6\% \\
+                soldier      & 1015 & 4.495 & 4.315 & 0.966 &  9.1\% \\
+                longdress    &  763 & 4.570 & 4.346 & 0.960 &  8.4\% \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_info_theory}
+        \end{table}
+
+        La Tabla~\ref{tab:e10_info_theory} admite tres lecturas. La primera aplica la capacidad
+        efectiva definida en la Sección~\ref{sec:overhead_method}, $K_{eff}=2^{H}$: con $H_0$
+        entre $4.335$ (\texttt{sarah9}) y $4.570$ (\texttt{longdress}, \texttt{redandblack})
+        bits, frente al máximo $\log_2 24=4.585$ de una distribución uniforme, resulta
+        $K_{eff}=2^{H_0}\approx20$ a $24$ modos: sobre los bloques activos el libro de códigos
+        se usa de forma casi uniforme, sin colapsar a unas pocas direcciones dominantes, lo que
+        es coherente con la ausencia de saturación en $K$ observada en la
+        Sección~\ref{sec:e10_k_sweep}. La segunda es que la adyacencia Morton sí aporta
+        información: $H_1$ cae a entre $3.125$ (\texttt{ricardo10}) y $4.346$
+        (\texttt{longdress}) bits, es decir, $2^{H_1}\approx9$ a $20$ modos condicionales, y la
+        reducción es mayor precisamente en las secuencias con menos bloques activos, donde la
+        fracción de la entropía explicada por el estado de \textit{gating} también es mayor
+        ($43.2\%$ en \texttt{ricardo10} frente a $8.4\%$ en \texttt{longdress}). La tercera es
+        el punto donde el codificador real cruza el piso teórico: la razón Coder/$H_1$ es menor
+        que 1 para todas las secuencias con al menos $\approx640$ bloques activos
+        (\texttt{andrew9}, con $638$ bloques y $1.002$, es el caso límite; \texttt{andrew10},
+        con $649$, ya alcanza $0.975$) y mayor que 1 para las de $413$ bloques o menos
+        (\texttt{loot}, $1.008$; \texttt{ricardo10}, $1.220$). El codificador aritmético
+        adaptativo necesita del orden de algunos cientos de símbolos para que su tabla de
+        transiciones amortice el costo de calentamiento; por debajo de ese tamaño paga por sobre
+        el piso de orden 1, y por sobre él explota regularidades que el estimador de $H_1$ con
+        corrección Miller--Madow no captura. (Los valores $2^{H}$ se derivan directamente de la
+        tabla mediante la definición de $K_{eff}$; no son mediciones adicionales.)
+
+
+
+    \subsection{Análisis Cualitativo}
+        \label{sec:e10_qualitative}
+
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        Las secciones anteriores caracterizan el desempeño de PCADC de forma agregada (BPV,
+        PSNR, BD-Rate) o a nivel de bloque individual (Sección~\ref{sec:oracle_sensitivity}).
+        Esta sección complementa esa evidencia cuantitativa con una inspección visual directa
+        sobre 6 de las 14 secuencias -- las mismas 2 por familia usadas en la Sección~\ref{sec:e10_codebook_dirs} -- de la nube de puntos original, la reconstrucción decodificada por PCADC, y
+        el error absoluto de luminancia $|\Delta Y|$ por punto frente al método base estructural
+        (modo 0, sin auto-lazos). Todas las figuras usan la configuración de referencia del
+        resto del capítulo ($K=24$, $Q=32$, \texttt{frame\_idx}=1, $B_c$ óptimo por secuencia --
+        Sección~\ref{sec:e10_rd_curves} -- que resulta en $B_c=16$ para las 6 secuencias aquí
+        mostradas) y la misma metodología de decodificación real ya empleada en toda esta
+        sección: cuantización hacia adelante sobre los coeficientes GFT de referencia y
+        des-cuantización + GFT inversa exacta, matemáticamente
+        equivalente a un \textit{round-trip} completo del \textit{bitstream} físico dado que la
+        codificación entrópica RLGR/aritmética es sin pérdidas alrededor de los mismos enteros.
+
+        Las imágenes son a cuerpo completo: (a) nube original en RGB verdadero; (b)
+        reconstrucción decodificada por PCADC, también en RGB verdadero (solo el canal $Y$ se
+        codifica -- los canales $U,V$ son \textit{passthrough} sin pérdidas desde la fuente); (c)
+        mapa de error absoluto de luminancia $|\Delta Y|$ del método base estructural; (d) el
+        mismo mapa de error para PCADC. Fila inferior: los mismos 4 paneles, pero recortados
+        espacialmente a la región de la cabeza y con mayor densidad de puntos. Los paneles (c)/(d) y (g)/(h) comparten escala de color idéntica (percentil
+        99 conjunto de ambos mapas de error, para evitar que unos pocos puntos atípicos de
+        borde/oclusión saturen la escala), de forma que son directamente comparables punto a
+        punto. A este $Q=32$ fijo, la diferencia de PSNR promedio entre PCADC y el método base es
+        cercana a cero en las 6 secuencias (consistente con el patrón ya documentado en la
+        Sección~\ref{sec:e10_bd_summary}: la ventaja real de PCADC se mide en BD-Rate sobre la
+        curva RD completa, no como una comparación de PSNR a igual paso de cuantización) -- por
+        lo que se espera, y no indica un error, que los paneles de error luzcan visualmente
+        similares en varias de estas secuencias.
+
+        \paragraph{8iVFB.}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/e10_qualitative_longdress.png}
+            \caption{Comparación cualitativa \texttt{longdress} ($B_c=16$, $K=24$, $Q=32$,
+            \texttt{frame\_idx}=1, $N=775\,745$): fila superior, cuerpo completo; fila inferior,
+            zoom cabeza. (a,e) original, (b,f) decodificado PCADC, (c,g) error $|\Delta Y|$
+            método base, (d,h) error $|\Delta Y|$ PCADC.}
+            \label{fig:e10_qual_longdress}
+        \end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/e10_qualitative_loot.png}
+            \caption{Comparación cualitativa \texttt{loot} ($B_c=16$, $K=24$, $Q=32$,
+            \texttt{frame\_idx}=1, $N=783\,406$): misma disposición que la
+            Figura~\ref{fig:e10_qual_longdress}.}
+            \label{fig:e10_qual_loot}
+        \end{figure}
+
+        \paragraph{MVUB, profundidad 9.}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/e10_qualitative_phil9.png}
+            \caption{Comparación cualitativa \texttt{phil9} ($B_c=16$, $K=24$, $Q=32$,
+            \texttt{frame\_idx}=1, $N=371\,313$): misma disposición que la
+            Figura~\ref{fig:e10_qual_longdress}.}
+            \label{fig:e10_qual_phil9}
+        \end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/e10_qualitative_ricardo9.png}
+            \caption{Comparación cualitativa \texttt{ricardo9} ($B_c=16$, $K=24$, $Q=32$,
+            \texttt{frame\_idx}=1, $N=213\,046$): misma disposición que la
+            Figura~\ref{fig:e10_qual_longdress}.}
+            \label{fig:e10_qual_ricardo9}
+        \end{figure}
+
+        \paragraph{MVUB, profundidad 10.}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/e10_qualitative_phil10.png}
+            \caption{Comparación cualitativa \texttt{phil10} ($B_c=16$, $K=24$, $Q=32$,
+            \texttt{frame\_idx}=1, $N=1\,664\,661$): misma disposición que la
+            Figura~\ref{fig:e10_qual_longdress}.}
+            \label{fig:e10_qual_phil10}
+        \end{figure}
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=\linewidth]{img/resultados/e10_qualitative_ricardo10.png}
+            \caption{Comparación cualitativa \texttt{ricardo10} ($B_c=16$, $K=24$, $Q=32$,
+            \texttt{frame\_idx}=1, $N=952\,178$): misma disposición que la
+            Figura~\ref{fig:e10_qual_longdress}.}
+            \label{fig:e10_qual_ricardo10}
+        \end{figure}
+
+        Las 6 figuras confirman visualmente lo que ya establece la evidencia cuantitativa: no
+        hay artefactos visibles a simple vista en ninguna de las reconstrucciones PCADC (paneles
+        (b)/(f)), incluso con el zoom sobre la cabeza -- coherente con que las ganancias de este
+        método operan sobre un rango de PSNR$_Y$ de 29 a 44\,dB, donde la degradación de un método
+        respecto al otro es una fracción de decibel, no un artefacto perceptible. Los mapas de
+        error (c/d/g/h) sí muestran estructura real y no ruido uniforme -- el error se concentra
+        de forma heterogénea sobre la superficie (más visible en zoom que en cuerpo completo,
+        justificando la fila adicional), consistente con la dependencia de la ganancia respecto de la magnitud del gradiente de luminancia observada a nivel de secuencia (Sección~\ref{sec:e10_driver_corr}) y a nivel de bloque en el oráculo (Sección~\ref{sec:oracle_sensitivity}): la alineación entre la dirección discreta asignada por el codebook y el gradiente de color real varía punto a punto sobre la misma superficie continua, no solo entre bloques.
+	Visiblemente especialmente en la comparación de error, las imágenes aumentadas muestran localidades donde el error del baseline se disminuye ligeramente pasando de un amarillo fuerte a un naranjo aproximadamente 2 puntos menos de diferencia. Esto se repite en distintos puntos extremos de diferencia para distintas secuencias. No necesariamente esto implica un mejor performance general, pero si que la distribución del error es distinta a la del baseline.
+
+
+    % \subsection{Figuras Extendidas del Reporte Técnico (Multi-Secuencia)}
+    %     \label{sec:e10_reporte_es_multiseq}
+    %
+    %     % [PLACEHOLDER] Esta subsección incorpora, con cobertura multi-secuencia, las figuras
+    %     % del reporte técnico intermedio en español (docs/report/main_es.pdf), originalmente
+    %     % calculadas sobre longdress únicamente (results/exp_e9_multi_entropy_suite.db, sin
+    %     % dimensión de secuencia). Regeneradas desde results/exp_e10_multisequence.db (14
+    %     % secuencias) manteniendo el estilo visual del reporte original
+    %     % (docs/report/generate_report_figures_e10.py).
+    %
+    %     % \begin{figure}[H]
+    %     %     \centering
+    %     %     \includegraphics[width=\linewidth]{img/resultados/es_fig1_rd_curves.png}
+    %     %     \caption{Curvas RD por escala de sub-bloque $B_c \in \{32,16,8,4\}$: media a
+    %     %     través de las 14 secuencias por cada $K$ (el panel $B_c=32$ permanece con
+    %     %     $n=1$, solo longdress — esa escala no se extendió al resto de secuencias).
+    %     %     Sin barras de error: la dispersión de BPV entre secuencias al mismo $Q$ es
+    %     %     real y grande (coeficiente de variación 34\%–71\% según $(B_c,Q)$; p.\,ej.\
+    %     %     0.223–2.166 BPV en $B_c{=}16,K{=}24,Q{=}24$) por heterogeneidad de contenido,
+    %     %     no ruido — dibujarla como barra de error solo produce trazos que dominan la
+    %     %     figura.}
+    %     %     \label{fig:e10_es_fig1}
+    %     % \end{figure}
+    %
+    %     % \begin{figure}[H]
+    %     %     \centering
+    %     %     \includegraphics[width=0.85\linewidth]{img/resultados/es_fig7_sensitivity_matrix.png}
+    %     %     \caption{Matriz de sensibilidad $\tau_{gate}, K, \gamma, B_c, Q$ vs.\ ahorro real,
+    %     %     conmutaciones de trellis, razón overhead:ahorro y cobertura GFT, agrupando las
+    %     %     filas frame\_idx=1 de las 14 secuencias ($\gamma$ es constante en E10, de ahí su
+    %     %     fila en cero).}
+    %     %     \label{fig:e10_es_fig7}
+    %     % \end{figure}
+    %
+    %
+    %     % \begin{figure}[H]
+    %     %     \centering
+    %     %     \includegraphics[width=0.65\linewidth]{img/resultados/es_fig_annex3_cost_evolution.png}
+    %     %     \caption{Convergencia real de k-means esférico ($K=24$), las 14 secuencias
+    %     %     superpuestas — reemplaza la versión ilustrativa (valores no provenientes de una
+    %     %     consulta a base de datos) del reporte técnico original. Un segundo panel con la
+    %     %     traza real de búsqueda RDO en sección áurea sobre $s_{lw}$ se intentó y se
+    %     %     descartó: incluso normalizado por secuencia (el costo crudo $J_{block}$ varía
+    %     %     hasta $40\times$ entre secuencias, dominado por $N_{vox}$/energía de la señal)
+    %     %     resultó en 14 líneas mayormente planas con picos de ruido puntuales, sin lectura
+    %     %     útil.}
+    %     %     \label{fig:e10_es_annex3}
+    %     % \end{figure}
+    %     %
+    %     % \begin{figure}[H]
+    %     %     \centering
+    %     %     \includegraphics[width=\linewidth]{img/resultados/es_fig_annex4_trellis_cabac.png}
+    %     %     \caption{Conmutaciones de modo trellis y sobrecarga CABAC vs.\ $Q$, media a
+    %     %     través de las 14 secuencias en $B_c=16$ (sustituye el $B_c=32$ del reporte
+    %     %     original, que solo tenía cobertura de longdress). Sin barras de error: el
+    %     %     rango real entre secuencias es grande (204–1103 conmutaciones, 75–529 bytes
+    %     %     CABAC en $K{=}24,Q{=}24$), reportado como número en vez de como barra que
+    %     %     domina la figura.}
+    %     %     \label{fig:e10_es_annex4}
+    %     % \end{figure}
+    %
+    %     El reporte técnico original (\texttt{docs/report/main\_es.pdf}), evaluado únicamente
+    %     sobre \texttt{longdress} ($n=1$), afirmaba que $K=24$ era "globalmente óptimo para todas
+    %     las granularidades de bloque" y reportaba correlaciones de sensibilidad altas
+    %     ($r=+0.90$ para $K$ vs.\ overhead, $r=+0.81$ para conmutaciones). Con cobertura de
+    %     $n=14$ secuencias, ambas afirmaciones se sostienen solo parcialmente: la ganancia
+    %     \emph{promedio} sigue creciendo con $K$ (Sección~\ref{sec:e10_k_sweep}), pero el óptimo
+    %     \emph{individual} no es $K=24$ en 3 de 14 secuencias, y las correlaciones reales,
+    %     agregadas sobre las 14 secuencias, son sustancialmente más débiles
+    %     ($|r|\leq0.49$ en la Figura~\ref{fig:e10_es_fig7} — ver también la Sección
+    %     \ref{sec:e10_driver_corr} para el conjunto de variables completo, con un vocabulario de
+    %     controles/métricas ligeramente distinto). La heterogeneidad de contenido entre 14
+    %     secuencias diluye relaciones que parecían fuertes al medirse sobre una única secuencia
+    %     con contenido idiosincrático. La Figura~\ref{fig:e10_es_fig1} hace visible directamente
+    %     por qué: al mismo $(B_c,K,Q)$, el BPV varía hasta $10\times$ entre secuencias (p.\,ej.\
+    %     $0.223$ a $2.166$ en $B_c{=}16,K{=}24,Q{=}24$) — una sola secuencia no puede representar
+    %     ese rango. Las Figuras~\ref{fig:e10_es_annex1} y \ref{fig:e10_es_annex2} confirman, sobre
+    %     4 secuencias representativas de ambas familias de contenido y ambas profundidades, que
+    %     la coherencia espacial de la inclinación del clúster (regiones anatómicas contiguas
+    %     comparten orientación) —observada originalmente solo en \texttt{longdress}— se mantiene
+    %     en las demás secuencias, un hallazgo que sí generaliza.
+    %
+
+    \subsection{Costo Computacional}
+        \label{sec:e10_multiframe_compute}
+
+        % [NOTA: texto redactado por IA -- revisar antes de la entrega final]
+        Esta subsección reporta el costo computacional del método sin filtrar resultados
+        desfavorables, como corresponde a una caracterización honesta. Se distinguen dos costos
+        de naturaleza distinta: la calibración RDO de los auto-bucles (inversión \emph{única} por
+        secuencia, $K=24$) y la codificación por \textit{frame} (costo \emph{recurrente}, todas
+        las configuraciones $(B_p, B_c, K)$ evaluadas). Las Tablas~\ref{tab:e10_cost_bp32} y
+        \ref{tab:e10_cost_bp16} agrupan este segundo costo por $(B_c, K)$, separadas por $B_p$
+        -- la agrupación relevante para el costo, ya que $B_p$ (no la etiqueta depth-9/depth-10)
+        determina cuántos bloques hijo hay que procesar por bloque padre.
+
+        \begin{table}[H]
+            \centering
+            \caption{Tiempo de codificación por \textit{frame} (s), $B_p=32$ (8iVFB + MVUB
+            depth-10 combinadas), por $(B_c, K)$.}
+            \begin{tabular}{c|c|c|c|c}
+                \hline
+                $B_c$ & $K$ & $n$ & \textbf{media (s)} & \textbf{std (s)} \\
+                \hline
+                4  &  4 & 204 &  172.04 &  33.92 \\
+                4  &  8 &  92 &  390.09 & 278.99 \\
+                4  & 16 & 188 &  419.70 & 211.64 \\
+                4  & 24 & 204 &  424.73 &  87.34 \\
+                4  & 30 & 184 &  665.65 & 277.32 \\
+                \hline
+                8  &  4 & 204 &   51.43 &  11.18 \\
+                8  &  8 &  96 &  111.92 &  71.89 \\
+                8  & 16 & 188 &  142.79 &  65.23 \\
+                8  & 24 & 232 &  159.86 &  37.65 \\
+                8  & 30 & 184 &  242.41 & 101.37 \\
+                \hline
+                16 &  4 & 204 &   99.44 &  50.45 \\
+                16 &  8 &  96 &  136.34 &  66.93 \\
+                16 & 16 & 188 &  309.47 & 140.84 \\
+                16 & 24 & 360 &  403.13 & 220.41 \\
+                16 & 30 & 184 &  541.72 & 251.09 \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_cost_bp32}
+        \end{table}
+
+        \begin{table}[H]
+            \centering
+            \caption{Tiempo de codificación por \textit{frame} (s), $B_p=16$ (MVUB depth-9),
+            por $(B_c, K)$.}
+            \begin{tabular}{c|c|c|c|c}
+                \hline
+                $B_c$ & $K$ & $n$ & \textbf{media (s)} & \textbf{std (s)} \\
+                \hline
+                4  &  4 & 108 &   44.02 &   8.29 \\
+                4  &  8 &  20 &   57.76 &  10.92 \\
+                4  & 16 &  92 &   95.07 &  45.99 \\
+                4  & 24 & 108 &  107.75 &  20.11 \\
+                4  & 30 &  92 &  153.06 &  73.65 \\
+                \hline
+                8  &  4 & 108 &   13.47 &   2.61 \\
+                8  &  8 &  20 &   19.75 &   3.70 \\
+                8  & 16 &  92 &   35.22 &  19.61 \\
+                8  & 24 & 108 &   41.21 &   7.61 \\
+                8  & 30 &  92 &   55.63 &  23.66 \\
+                \hline
+                16 &  4 & 108 &   26.78 &   4.34 \\
+                16 &  8 &  20 &   46.46 &   7.39 \\
+                16 & 16 &  92 &   82.05 &  19.66 \\
+                16 & 24 & 108 &  115.19 &  18.51 \\
+                16 & 30 &  92 &  145.31 &  33.94 \\
+                \hline
+            \end{tabular}
+            \label{tab:e10_cost_bp16}
+        \end{table}
+
+        En ambos $B_p$ el costo crece con $K$ (más modos candidatos que evaluar por bloque) y es
+        sistemáticamente mayor para $B_c=4$ que para $B_c=8$ o $16$ (más bloques hijo por padre,
+        cada uno con su propia construcción de grafo y GFT) -- excepto a $B_p=32,\,K\geq16$,
+        donde $B_c=16$ supera a $B_c=8$: con menos bloques hijo pero cada uno más grande, el
+        costo por bloque de construir y resolver la GFT domina sobre el costo de iterar sobre
+        más bloques pequeños. La varianza es considerable incluso dentro de una misma
+        configuración (p.\,ej.\ $B_p=32,B_c=4,K=30$: std $277\text{s}$ sobre una media de
+        $666\text{s}$), reflejando la dependencia del costo con la densidad de puntos de cada
+        \textit{frame} particular, no solo con $(B_c,K)$.
+
+        \begin{figure}[H]
+            \centering
+            \includegraphics[width=1.0\linewidth]{img/resultados/e10_compute_time.png}
+            \caption{Tiempo de codificación por \textit{frame}, por $(B_c, K)$, media $\pm$
+            desviación estándar, separado por familia estructural.}
+            \label{fig:e10_compute_time}
+        \end{figure}
+
+        La Figura~\ref{fig:e10_compute_time} desagrega lo mismo por familia y confirma que la
+        etiqueta depth-9/depth-10 en sí no es la variable relevante: MVUB depth-9 ($B_p=16$) es
+        entre $3\times$ y $10\times$ más rápida que las otras dos familias en cada $(B_c,K)$
+        (p.\,ej.\ $B_c=8,K=4$: $13.5\text{s}$ vs.\ $44.8\text{s}$ en 8iVFB y $57.4\text{s}$ en
+        MVUB depth-10), pero 8iVFB y MVUB depth-10 -- ambas $B_p=32$ -- son comparables entre sí
+        pese a tener profundidades de octree nominalmente distintas. Esto es consistente con la
+        matriz de sensibilidad de la Sección~\ref{sec:e10_driver_corr}: $\log_{10}(N_{vox})$
+        correlaciona con el overhead y el desempeño más que la profundidad nominal por sí sola,
+        y $B_p$ es, en la práctica, un proxy directo de cuántos vóxeles hay que procesar por
+        bloque padre.
+
+        El costo de entrenamiento (calibración RDO de los auto-bucles, $K=24$), por contraste,
+        es una inversión única por secuencia que domina fuertemente el presupuesto total para
+        8iVFB/MVUB-depth-10 ($19{,}686$--$179{,}697\text{s}$, desde $\sim$5.5 horas para \texttt{longdress} hasta $\sim$50 horas para \texttt{sarah10}) frente a MVUB depth-9 ($1{,}298$--$1{,}748\text{s}$, menos de 30 minutos) -- dos órdenes de magnitud de diferencia, explicada directamente por el tamaño de la
+        nube de entrenamiento (más bloques activos muestreados por modo en las secuencias más
+        densas, Sección~\ref{sec:adapter_rdo_real}). El costo de k-means esférico en sí es, en
+        cambio, insignificante ($<0.1\text{s}$ en todos los casos) frente a la calibración RDO.
