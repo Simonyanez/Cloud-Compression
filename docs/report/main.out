@@ -1,0 +1,15 @@
+\BOOKMARK [1][-]{section.1}{End-to-End Algorithmic Methodology}{}% 1
+\BOOKMARK [2][-]{subsection.1.1}{Phase 1: Geometric Centroid Training on S2}{section.1}% 2
+\BOOKMARK [2][-]{subsection.1.2}{Phase 2: Continuous Golden-Section Graph Parameter Optimization \(slp, slw\)}{section.1}% 3
+\BOOKMARK [2][-]{subsection.1.3}{Inverse-Distance Graph Construction \046 Laplacian Eigendecomposition}{section.1}% 4
+\BOOKMARK [2][-]{subsection.1.4}{Internal RDO Decider: L0 Sparsity Proxy}{section.1}% 5
+\BOOKMARK [2][-]{subsection.1.5}{Macro-Scale Trellis Optimization \046 Conditional Entropy}{section.1}% 6
+\BOOKMARK [1][-]{section.2}{Experimental Setup \046 Matched Baseline Auditing}{}% 7
+\BOOKMARK [1][-]{section.3}{Diagnostic Audits \046 Visual Analyses}{}% 8
+\BOOKMARK [2][-]{subsection.3.1}{Cluster Activation Dynamics \(Per Block Size\)}{section.3}% 9
+\BOOKMARK [2][-]{subsection.3.2}{gate Sensitivity \046 Operational Gating Dynamics}{section.3}% 10
+\BOOKMARK [2][-]{subsection.3.3}{Directional Centroids \046 Activation-Weighted Compaction}{section.3}% 11
+\BOOKMARK [2][-]{subsection.3.4}{Signaling Overhead Density vs. Compaction Breakeven}{section.3}% 12
+\BOOKMARK [2][-]{subsection.3.5}{Operational Phase Boundary Map}{section.3}% 13
+\BOOKMARK [2][-]{subsection.3.6}{Algorithmic Parameter Sensitivity Matrix}{section.3}% 14
+\BOOKMARK [1][-]{section.4}{Conclusion}{}% 15

@@ -1,0 +1,34 @@
+\begin{table}[H]
+\centering
+\caption{Mejor configuración por secuencia ($B_c^*, K^*$ que minimizan BD-Rate, ajuste
+cúbico log-tasa sobre los 4 puntos $Q\in\{24,32,48,64\}$) frente a la línea base
+estructural emparejada. Valores derivados de \texttt{results/exp\_e10\_multisequence.db}
+(14 secuencias, \texttt{frame\_idx=1}). Promedio: BD-Rate $=-2.034\%$, BD-PSNR
+$=+0.088$ dB.}
+\label{tab:master_rd}
+\vspace{0.4em}
+\resizebox{0.85\linewidth}{!}{%
+\begin{tabular}{lccrr}
+\toprule
+Secuencia & Profundidad & $(B_c^*, K^*)$ & BD-Rate (\%) & BD-PSNR (dB) \\
+\midrule
+longdress    & 10 & $(16, 24)$ & $-1.909$ & $+0.079$ \\
+loot         & 10 & $(16, 24)$ & $-1.679$ & $+0.058$ \\
+redandblack  & 10 & $(16, 24)$ & $-1.156$ & $+0.042$ \\
+soldier      & 10 & $(16, 16)$ & $-1.605$ & $+0.063$ \\
+andrew9      &  9 & $(16, 24)$ & $-3.308$ & $+0.170$ \\
+andrew10     & 10 & $(8, 16)$  & $-1.572$ & $+0.067$ \\
+david9       &  9 & $(16, 24)$ & $-2.189$ & $+0.085$ \\
+david10      & 10 & $(16, 24)$ & $-1.445$ & $+0.058$ \\
+phil9        &  9 & $(8, 24)$  & $-3.333$ & $+0.142$ \\
+phil10       & 10 & $(16, 24)$ & $-2.178$ & $+0.083$ \\
+ricardo9     &  9 & $(16, 16)$ & $-1.851$ & $+0.082$ \\
+ricardo10    & 10 & $(16, 16)$ & $-1.141$ & $+0.054$ \\
+sarah9       &  9 & $(8, 24)$  & $-2.791$ & $+0.148$ \\
+sarah10      & 10 & $(16, 24)$ & $-2.322$ & $+0.095$ \\
+\midrule
+\textbf{Promedio ($n=14$)} & -- & -- & \textbf{-2.034} & \textbf{+0.088} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

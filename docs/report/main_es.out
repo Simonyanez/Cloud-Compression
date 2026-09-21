@@ -1,0 +1,17 @@
+\BOOKMARK [1][-]{section.1}{Metodolog\355a Algor\355tmica Secuencial}{}% 1
+\BOOKMARK [2][-]{subsection.1.1}{Particionamiento Espacial Jer\341rquico}{section.1}% 2
+\BOOKMARK [2][-]{subsection.1.2}{Construcci\363n de Grafos y L\363gica de Nodos Sumidero \(Sink Nodes\)}{section.1}% 3
+\BOOKMARK [2][-]{subsection.1.3}{Entrenamiento de Centroides Geom\351tricos en S2}{section.1}% 4
+\BOOKMARK [2][-]{subsection.1.4}{Optimizaci\363n Continua de Par\341metros del Grafo \(slp, slw\)}{section.1}% 5
+\BOOKMARK [2][-]{subsection.1.5}{Desacoplamiento Jer\341rquico y Codificaci\363n Aritm\351tica de Modos}{section.1}% 6
+\BOOKMARK [2][-]{subsection.1.6}{Ejemplo de Estructuraci\363n y Decodificaci\363n del Overhead \(CABAC\)}{section.1}% 7
+\BOOKMARK [1][-]{section.2}{Evaluaci\363n Experimental y Resultados de Tasa-Distorsi\363n}{}% 8
+\BOOKMARK [1][-]{section.3}{An\341lisis y Discusi\363n de Resultados}{}% 9
+\BOOKMARK [2][-]{subsection.3.1}{Escalabilidad del Codebook: Ganancia Promedio Monot\363nica, \323ptimo Individual Variable}{section.3}% 10
+\BOOKMARK [2][-]{subsection.3.2}{Sensibilidad de Par\341metros Algor\355tmicos}{section.3}% 11
+\BOOKMARK [1][-]{section.4}{Conclusiones}{}% 12
+\BOOKMARK [1][-]{appendix.Alph1}{Anexo: Visualizaci\363n Espacial, Diagn\363stico de Costo y Referencias}{}% 13
+\BOOKMARK [2][-]{subsection.Alph1.1}{Distribuci\363n de Modos y Conmutaciones \(Switches\) por Nivel de Cuantizaci\363n}{appendix.Alph1}% 14
+\BOOKMARK [2][-]{subsection.Alph1.2}{Visualizaci\363n 3D de Codebooks en la Esfera S2 y Distribuci\363n Espacial}{appendix.Alph1}% 15
+\BOOKMARK [2][-]{subsection.Alph1.3}{Convergencia del Entrenamiento de Codebook}{appendix.Alph1}% 16
+\BOOKMARK [1][-]{appendix.Alph2}{Referencias Bibliogr\341ficas y Marco Te\363rico}{}% 17

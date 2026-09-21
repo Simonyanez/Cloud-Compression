@@ -1,0 +1,53 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}End-to-End Algorithmic Methodology}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Phase 1: Geometric Centroid Training on $\mathbb  {S}^2$}{1}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}Phase 2: Continuous Golden-Section Graph Parameter Optimization ($s_{\text  {lp}}, s_{\text  {lw}}$)}{2}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Inverse-Distance Graph Construction \& Laplacian Eigendecomposition}{2}{subsection.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.4}Internal RDO Decider: $L_0$ Sparsity Proxy}{3}{subsection.1.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.5}Macro-Scale Trellis Optimization \& Conditional Entropy}{3}{subsection.1.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {Comprehensive End-to-End PCADC Architecture:} Detailed interaction flow between Encoder and Decoder pipelines, showing geometric training on $\mathbb  {S}^2$, RDO-driven graph adapter parameterization, causal gating state synchronization, and compiled PyRLGR binary bitstream delivery.}}{4}{figure.1}\protected@file@percent }
+\newlabel{fig:gating_pipeline}{{1}{4}{\textbf {Comprehensive End-to-End PCADC Architecture:} Detailed interaction flow between Encoder and Decoder pipelines, showing geometric training on $\mathbb {S}^2$, RDO-driven graph adapter parameterization, causal gating state synchronization, and compiled PyRLGR binary bitstream delivery}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Experimental Setup \& Matched Baseline Auditing}{4}{section.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Multi-Scale Rate-Distortion Performance with Inset Zooms:} Operational RD trajectories (Attribute PSNR vs. BPV) for $B \in \{32, 16, 8, 4\}$ comparing the Structural Baseline (black dashed line) against PCADC net curves ($K \in \{4,8,10,12,16\}$) and the theoretical No-Overhead Limit (purple dotted line). Inset windows display high-magnification views of the bit savings.}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:rd_master}{{2}{5}{\textbf {Multi-Scale Rate-Distortion Performance with Inset Zooms:} Operational RD trajectories (Attribute PSNR vs. BPV) for $B \in \{32, 16, 8, 4\}$ comparing the Structural Baseline (black dashed line) against PCADC net curves ($K \in \{4,8,10,12,16\}$) and the theoretical No-Overhead Limit (purple dotted line). Inset windows display high-magnification views of the bit savings}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comprehensive Björntegaard Delta Metrics across Full Capacity Grid ($B \in \{4,8,16,32\} \times K \in \{4,8,16,24\}$). Evaluated over physical PyRLGR transform bitstreams, exact Order-1 CABAC mode overhead, and fully decoded inverse GFT attributes across $Q \in \{24, 32, 48, 64\}$ ($N_{\text  {vox}} = 765{,}821$). Values demonstrate monotonic coding gain expansion with capacity $K$ across all scales.}}{6}{table.1}\protected@file@percent }
+\newlabel{tab:bjontegaard}{{1}{6}{Comprehensive Björntegaard Delta Metrics across Full Capacity Grid ($B \in \{4,8,16,32\} \times K \in \{4,8,16,24\}$). Evaluated over physical PyRLGR transform bitstreams, exact Order-1 CABAC mode overhead, and fully decoded inverse GFT attributes across $Q \in \{24, 32, 48, 64\}$ ($N_{\text {vox}} = 765{,}821$). Values demonstrate monotonic coding gain expansion with capacity $K$ across all scales}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Master Rate-Distortion Results (Physical PyRLGR Bitstream \& Exact Order-1 CABAC Overhead). Net physical bitstream performance ($\text  {Net BPV} = \text  {PyRLGR Bytes} \times 8 / N_{\text  {vox}} + \text  {CABAC Overhead Bytes} \times 8 / N_{\text  {vox}}$) vs.\nobreakspace  {}matched structural baseline across scale-adaptive operating points ($N_{\text  {vox}}=765{,}821$). Values derived from \texttt  {exp\_e9\_multi\_entropy\_suite.db}.}}{6}{table.2}\protected@file@percent }
+\newlabel{tab:master_rd}{{2}{6}{Master Rate-Distortion Results (Physical PyRLGR Bitstream \& Exact Order-1 CABAC Overhead). Net physical bitstream performance ($\text {Net BPV} = \text {PyRLGR Bytes} \times 8 / N_{\text {vox}} + \text {CABAC Overhead Bytes} \times 8 / N_{\text {vox}}$) vs.~matched structural baseline across scale-adaptive operating points ($N_{\text {vox}}=765{,}821$). Values derived from \texttt {exp\_e9\_multi\_entropy\_suite.db}}{table.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Diagnostic Audits \& Visual Analyses}{6}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Cluster Activation Dynamics (Per Block Size)}{6}{subsection.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces \textbf  {Cluster Activation Distribution across Block Scales ($B \in \{32,16,8,4\}$ at $Q=24$):} Faceted comparison between $K=4$ (starved codebook, red) and $K=12$ (rich multi-mode utilization, green). Fallback bypass to Mode 0 ($k=0$) remains stable above $60\%$ across macro scales.}}{7}{figure.3}\protected@file@percent }
+\newlabel{fig:cluster_facets}{{3}{7}{\textbf {Cluster Activation Distribution across Block Scales ($B \in \{32,16,8,4\}$ at $Q=24$):} Faceted comparison between $K=4$ (starved codebook, red) and $K=12$ (rich multi-mode utilization, green). Fallback bypass to Mode 0 ($k=0$) remains stable above $60\%$ across macro scales}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}$\tau _{\text  {gate}}$ Sensitivity \& Operational Gating Dynamics}{7}{subsection.3.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \textbf  {$\tau _{\text  {gate}}$ Gating Sensitivity ($Q=24, K=12$):} (a) Fallback bypass percentage vs. $\tau _{\text  {gate}}$; (b) Net coding gain $\Delta \text  {BPV}$ vs. $\tau _{\text  {gate}}$, highlighting the optimal texture filtering window ($\tau _{\text  {gate}} \in [50, 300]$).}}{8}{figure.4}\protected@file@percent }
+\newlabel{fig:tau_sensitivity}{{4}{8}{\textbf {$\tau _{\text {gate}}$ Gating Sensitivity ($Q=24, K=12$):} (a) Fallback bypass percentage vs. $\tau _{\text {gate}}$; (b) Net coding gain $\Delta \text {BPV}$ vs. $\tau _{\text {gate}}$, highlighting the optimal texture filtering window ($\tau _{\text {gate}} \in [50, 300]$)}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Directional Centroids \& Activation-Weighted Compaction}{8}{subsection.3.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces \textbf  {Codebook Geometry and Empirical Activation Weights:} (a) Learned 3D unit normal centroids $\{c_k\} \subset \mathbb  {S}^2$ for $K=12$; (b) Empirical per-mode rate savings weighted by block activation count; (c) Sink node selection fraction ($s_{\text  {lp}}$) frequency distribution across scales.}}{8}{figure.5}\protected@file@percent }
+\newlabel{fig:codebook_weighted}{{5}{8}{\textbf {Codebook Geometry and Empirical Activation Weights:} (a) Learned 3D unit normal centroids $\{c_k\} \subset \mathbb {S}^2$ for $K=12$; (b) Empirical per-mode rate savings weighted by block activation count; (c) Sink node selection fraction ($s_{\text {lp}}$) frequency distribution across scales}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Signaling Overhead Density vs. Compaction Breakeven}{8}{subsection.3.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces \textbf  {Overhead-to-Savings Ratio vs. Block Scale $B$:} Illustrating the $y=1.0$ breakeven frontier and the loss regime for fine subblocks at coarse quantization.}}{9}{figure.6}\protected@file@percent }
+\newlabel{fig:overhead_curves}{{6}{9}{\textbf {Overhead-to-Savings Ratio vs. Block Scale $B$:} Illustrating the $y=1.0$ breakeven frontier and the loss regime for fine subblocks at coarse quantization}{figure.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Operational Phase Boundary Map}{9}{subsection.3.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces \textbf  {Operational Phase Transition Map:} Pearson correlation $r(\text  {GFT Coverage\%}, \Delta \text  {BPV})$ across $(B \times Q)$. The black dashed contour ($r=0$) delineates the operational phase boundary.}}{9}{figure.7}\protected@file@percent }
+\newlabel{fig:phase_map}{{7}{9}{\textbf {Operational Phase Transition Map:} Pearson correlation $r(\text {GFT Coverage\%}, \Delta \text {BPV})$ across $(B \times Q)$. The black dashed contour ($r=0$) delineates the operational phase boundary}{figure.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6}Algorithmic Parameter Sensitivity Matrix}{10}{subsection.3.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces \textbf  {Algorithmic Parameter Sensitivity Matrix:} Correlating internal codec controls ($\tau _{\text  {gate}}, K, \gamma (Q), s_{\text  {lp}}, s_{\text  {lw}}$) against key operational metrics.}}{10}{figure.8}\protected@file@percent }
+\newlabel{fig:param_sensitivity}{{8}{10}{\textbf {Algorithmic Parameter Sensitivity Matrix:} Correlating internal codec controls ($\tau _{\text {gate}}, K, \gamma (Q), s_{\text {lp}}, s_{\text {lw}}$) against key operational metrics}{figure.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Conclusion}{10}{section.4}\protected@file@percent }

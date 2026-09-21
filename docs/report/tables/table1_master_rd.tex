@@ -1,0 +1,33 @@
+\begin{table}[H]
+\centering
+\caption{Master Rate-Distortion Results (Physical PyRLGR Bitstream \& Exact Order-1 CABAC Overhead). Net physical bitstream performance ($\text{Net BPV} = \text{PyRLGR Bytes} \times 8 / N_{\text{vox}} + \text{CABAC Overhead Bytes} \times 8 / N_{\text{vox}}$) vs.~matched structural baseline across scale-adaptive operating points ($N_{\text{vox}}=765{,}821$). Values derived from \texttt{exp\_e9\_multi\_entropy\_suite.db}.}
+\label{tab:master_rd}
+\vspace{0.4em}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{lllrrrrrrr}
+\toprule
+$B_c$ & $K$ & $Q$ & Baseline BPV & PCADC Net BPV & $\Delta$ Real BPV & Net Gain (\%) & Gated (\%) & CABAC OH (B) & Decoded PSNR \\
+\midrule
+32 & 24 & 24 & 7.8255 & 7.5298 & \textbf{-295.66 mB} & \textbf{-3.78\%} & 5.5\%  & 402 B & 34.39 dB \\
+   &    & 32 & 5.7139 & 5.4843 & \textbf{-229.58 mB} & \textbf{-4.02\%} & 8.9\%  & 385 B & 32.86 dB \\
+   &    & 48 & 3.5746 & 3.4046 & \textbf{-169.99 mB} & \textbf{-4.76\%} & 17.7\% & 349 B & 30.87 dB \\
+   &    & 64 & 2.5058 & 2.3811 & \textbf{-124.79 mB} & \textbf{-4.98\%} & 23.7\% & 319 B & 29.54 dB \\
+\midrule
+16 & 24 & 24 & 7.9662 & 7.7173 & \textbf{-248.83 mB} & \textbf{-3.12\%} & 5.5\%  & 411 B & 34.43 dB \\
+   &    & 32 & 5.8106 & 5.6190 & \textbf{-191.57 mB} & \textbf{-3.30\%} & 8.9\%  & 395 B & 32.86 dB \\
+   &    & 48 & 3.6435 & 3.5011 & \textbf{-142.40 mB} & \textbf{-3.91\%} & 17.7\% & 351 B & 30.82 dB \\
+   &    & 64 & 2.5863 & 2.4709 & \textbf{-115.43 mB} & \textbf{-4.46\%} & 23.7\% & 326 B & 29.47 dB \\
+\midrule
+8  & 16 & 24 & 8.2941 & 8.1335 & \textbf{-160.63 mB} & \textbf{-1.94\%} & 5.5\%  & 373 B & 34.35 dB \\
+   &    & 32 & 6.1140 & 5.9808 & \textbf{-133.21 mB} & \textbf{-2.18\%} & 8.9\%  & 353 B & 32.71 dB \\
+   &    & 48 & 3.9030 & 3.8076 & \textbf{-95.33 mB}  & \textbf{-2.44\%} & 17.7\% & 307 B & 30.60 dB \\
+   &    & 64 & 2.8301 & 2.7614 & \textbf{-68.67 mB}  & \textbf{-2.43\%} & 23.7\% & 280 B & 29.21 dB \\
+\midrule
+4  & 8  & 24 & 9.2964 & 9.2304 & \textbf{-66.01 mB}  & \textbf{-0.71\%} & 5.5\%  & 247 B & 34.05 dB \\
+   &    & 32 & 6.9972 & 6.9366 & \textbf{-60.60 mB}  & \textbf{-0.87\%} & 8.9\%  & 241 B & 32.30 dB \\
+   &    & 48 & 4.7231 & 4.6443 & \textbf{-78.72 mB}  & \textbf{-1.67\%} & 17.7\% & 250 B & 30.07 dB \\
+   &    & 64 & 3.5566 & 3.5126 & \textbf{-44.04 mB}  & \textbf{-1.24\%} & 23.7\% & 228 B & 28.56 dB \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

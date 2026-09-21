@@ -1,0 +1,30 @@
+\begin{table}[H]
+\centering
+\caption{Signalling Overhead Density vs.~Compaction Breakeven. Best operating point per $(B,Q,K)$. OH:Sav $>1.0$ indicates overhead exceeds transform savings (\textbf{loss territory}).}
+\label{tab:overhead}
+\vspace{0.4em}
+\resizebox{0.88\linewidth}{!}{%
+\begin{tabular}{lllrrrr}
+\toprule
+$Q$ & $B$ & $K$ & Baseline BPV & OH BPV & Compaction\% & OH:Sav \\
+\midrule
+24 & 32 & 12 & 0.207863 & 0.002596 & 3.04\% & 0.4290 \\
+24 & 16 & 12 & 0.214340 & 0.002827 & 2.96\% & 0.4664 \\
+24 & 8  & 4  & 0.230030 & 0.000497 & 0.74\% & 0.4960 \\
+24 & 8  & 12 & 0.230030 & 0.001979 & 1.61\% & 0.6409 \\
+24 & 4  & 4  & 0.283496 & 0.000876 & 0.46\% & 0.7287 \\
+24 & 4  & 16 & 0.283496 & 0.001357 & 1.17\% & 0.7488 \\
+\midrule
+64 & 32 & 12 & 0.070045 & 0.001266 & 5.08\% & 0.5851 \\
+64 & 16 & 12 & 0.073554 & 0.001210 & 3.72\% & 0.7350 \\
+64 & 8  & 4  & 0.085978 & 0.000880 & 1.47\% & 0.8479 \\
+\rowcolor{red!10}
+64 & 8  & 12 & 0.085978 & 0.000520 & 2.04\% & 0.9333 \\
+\rowcolor{red!10}
+64 & 4  & 4  & 0.144713 & 0.000085 & 0.66\% & 1.0537 \\
+\rowcolor{red!10}
+64 & 4  & 8  & 0.144713 & 0.000039 & 0.66\% & 2.2750 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

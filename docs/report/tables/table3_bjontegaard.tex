@@ -1,0 +1,33 @@
+\begin{table}[H]
+\centering
+\caption{Comprehensive Björntegaard Delta Metrics across Full Capacity Grid ($B \in \{4,8,16,32\} \times K \in \{4,8,16,24\}$). Evaluated over physical PyRLGR transform bitstreams, exact Order-1 CABAC mode overhead, and fully decoded inverse GFT attributes across $Q \in \{24, 32, 48, 64\}$ ($N_{\text{vox}} = 765{,}821$). Values demonstrate monotonic coding gain expansion with capacity $K$ across all scales.}
+\label{tab:bjontegaard}
+\vspace{0.4em}
+\resizebox{0.95\linewidth}{!}{%
+\begin{tabular}{lllrrr}
+\toprule
+Block Scale $B_c$ & Mode Capacity $K$ & Trellis Regularization & BD-Rate (\%) & BD-PSNR (dB) & Peak Gain (\%) \\
+\midrule
+$B=32$ & $K=24$ & $\gamma=0.001$ & \textbf{-4.360\%} & \textbf{+0.1889 dB} & \textbf{-4.98\%} \\
+       & $K=16$ & $\gamma=0.001$ & -4.087\% & +0.1774 dB & -4.50\% \\
+       & $K=8$  & $\gamma=0.001$ & -2.864\% & +0.1238 dB & -3.18\% \\
+       & $K=4$  & $\gamma=0.001$ & -2.082\% & +0.0893 dB & -2.24\% \\
+\midrule
+$B=16$ & $K=24$ & $\gamma=0.001$ & \textbf{-3.615\%} & \textbf{+0.1610 dB} & \textbf{-4.46\%} \\
+       & $K=16$ & $\gamma=0.001$ & -3.229\% & +0.1428 dB & -4.08\% \\
+       & $K=8$  & $\gamma=0.001$ & -2.520\% & +0.1122 dB & -2.80\% \\
+       & $K=4$  & $\gamma=0.001$ & -1.518\% & +0.0673 dB & -1.77\% \\
+\midrule
+$B=8$  & $K=24$ & $\gamma=0.001$ & \textbf{-2.668\%} & \textbf{+0.1285 dB} & \textbf{-3.11\%} \\
+       & $K=16$ & $\gamma=0.001$ & -2.274\% & +0.1097 dB & -2.44\% \\
+       & $K=8$  & $\gamma=0.001$ & -1.981\% & +0.0948 dB & -2.46\% \\
+       & $K=4$  & $\gamma=0.001$ & -1.182\% & +0.0567 dB & -1.25\% \\
+\midrule
+$B=4$  & $K=24$ & $\gamma=0.001$ & \textbf{-2.078\%} & \textbf{+0.1191 dB} & \textbf{-2.70\%} \\
+       & $K=16$ & $\gamma=0.001$ & -1.635\% & +0.0932 dB & -2.16\% \\
+       & $K=8$  & $\gamma=0.001$ & -1.184\% & +0.0681 dB & -1.67\% \\
+       & $K=4$  & $\gamma=0.001$ & -0.876\% & +0.0504 dB & -1.16\% \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}

@@ -1,0 +1,25 @@
+\begin{table}[H]
+\centering
+\caption{BD-Rate promedio $\pm$ desviación estándar por $(B_c, K)$, agregado sobre las
+14 secuencias (\texttt{frame\_idx=1}, malla completa $Q\in\{24,32,48,64\}$ por
+secuencia). $K=30$ excluido: la corrida de fondo que lo produce aún no completa más
+que 2/14 secuencias. $B_c=32$ excluido de esta tabla por la misma razón que en la
+Fig.~\ref{fig:rd_master}: solo \texttt{longdress} tiene cobertura ahí ($n=1$), no es
+comparable con una media de $n=14$. La ganancia crece de forma monótona con $K$ en
+las tres escalas, pero con magnitudes bastante menores que en una única secuencia, y
+$B_c=16$ -- no $B_c=32$ -- es la escala con mejor desempeño promedio entre las que
+tienen cobertura completa.}
+\label{tab:bjontegaard}
+\vspace{0.4em}
+\resizebox{0.85\linewidth}{!}{%
+\begin{tabular}{lrrrr}
+\toprule
+Escala $B_c$ & $K=4$ & $K=8$ & $K=16$ & $K=24$ \\
+\midrule
+$B_c=16$ ($n=14$) & $-0.893\% \pm 0.376$ & $-1.297\% \pm 0.442$ & $-1.771\% \pm 0.608$ & $\mathbf{-1.977\% \pm 0.713}$ \\
+$B_c=8$  ($n=14$) & $-0.644\% \pm 0.418$ & $-0.994\% \pm 0.525$ & $-1.436\% \pm 0.719$ & $\mathbf{-1.591\% \pm 0.830}$ \\
+$B_c=4$  ($n=14$) & $-0.234\% \pm 0.214$ & $-0.387\% \pm 0.360$ & $-0.555\% \pm 0.543$ & $\mathbf{-0.649\% \pm 0.612}$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
